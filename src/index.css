@@ -1,11 +1,72 @@
-@import "@fontsource/inter";
+/* Font Imports */
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/inter/700.css';
+
+@import '@fontsource/poppins/300.css';
+@import '@fontsource/poppins/400.css';
+@import '@fontsource/poppins/500.css';
+@import '@fontsource/poppins/600.css';
+@import '@fontsource/poppins/700.css';
+
+@import '@fontsource/roboto/300.css';
+@import '@fontsource/roboto/400.css';
+@import '@fontsource/roboto/500.css';
+@import '@fontsource/roboto/700.css';
+
+@import '@fontsource/montserrat/400.css';
+@import '@fontsource/montserrat/500.css';
+@import '@fontsource/montserrat/600.css';
+@import '@fontsource/montserrat/700.css';
+
+@import '@fontsource/fira-code/400.css';
+@import '@fontsource/fira-code/500.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  :root {
+    /* Font Variables */
+    --font-primary: 'Inter', system-ui, sans-serif;
+    --font-display: 'Poppins', 'Inter', system-ui, sans-serif;
+    --font-body: 'Inter', system-ui, sans-serif;
+    --font-heading: 'Poppins', 'Inter', system-ui, sans-serif;
+    --font-mono: 'Fira Code', ui-monospace, monospace;
+
+    /* Font Weights */
+    --font-weight-light: 300;
+    --font-weight-normal: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+  }
+
   html {
     @apply scroll-smooth;
+    font-family: var(--font-primary);
+  }
+
+  body {
+    font-family: var(--font-body);
+    font-weight: var(--font-weight-normal);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-heading);
+    font-weight: var(--font-weight-semibold);
+  }
+
+  code,
+  pre {
+    font-family: var(--font-mono);
   }
   :root {
     --background: 220 14% 95%;
@@ -214,6 +275,68 @@
     stroke-width: 20;
     stroke-dashoffset: -990;
   }
+}
+
+/* Grok-style Login Animations */
+.bg-grid-pattern {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+  background-size: 50px 50px;
+}
+
+.dark .bg-grid-pattern {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+}
+
+/* Enhanced login card with glow effect */
+.login-card {
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.1),
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.dark .login-card {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* Floating stars animation */
+@keyframes float-down {
+  0% {
+    transform: translateY(-100vh) translateX(0px);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) translateX(20px);
+    opacity: 0;
+  }
+}
+
+/* Logo glow animation */
+.logo-glow {
+  filter: drop-shadow(0 0 20px rgba(59, 130, 246, 0.3));
+  transition: filter 0.3s ease;
+}
+
+.logo-glow:hover {
+  filter: drop-shadow(0 0 30px rgba(59, 130, 246, 0.5));
 }
 
 @keyframes ringB {

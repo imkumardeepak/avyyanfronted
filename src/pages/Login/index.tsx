@@ -1,36 +1,31 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { useEffect, useState } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Separator } from "@/components/ui/separator";
-import { ThemeToggle } from "@/components/ThemeToggle";
-import { Eye, EyeOff, AlertTriangle, User, Lock } from "lucide-react";
+import { useEffect, useState } from 'react';
+import { Navigate, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Separator } from '@/components/ui/separator';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { Eye, EyeOff, AlertTriangle, User, Lock } from 'lucide-react';
+import { GrokLoginWrapper } from '@/components/GrokAnimations';
 
 const Login = () => {
   const { login, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
-    email: "",
-    password: "",
+    email: '',
+    password: '',
   });
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    document.title = "Login - Avyaan Knitfab";
+    document.title = 'Login - Avyaan Knitfab';
   }, []);
 
   // Redirect if already authenticated
@@ -40,19 +35,19 @@ const Login = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setError('');
     setIsSubmitting(true);
 
     try {
       const result = await login(formData.email, formData.password);
 
       if (result.success) {
-        navigate("/", { replace: true });
+        navigate('/', { replace: true });
       } else {
-        setError(result.error || "Login failed");
+        setError(result.error || 'Login failed');
       }
     } catch (err) {
-      setError("An unexpected error occurred");
+      setError('An unexpected error occurred');
     } finally {
       setIsSubmitting(false);
     }
@@ -65,15 +60,15 @@ const Login = () => {
       [name]: value,
     }));
     // Clear error when user starts typing
-    if (error) setError("");
+    if (error) setError('');
   };
 
   const fillAdminCredentials = () => {
     setFormData({
-      email: "admin",
-      password: "admin",
+      email: 'admin',
+      password: 'admin',
     });
-    setError("");
+    setError('');
   };
 
   if (isLoading) {
@@ -85,32 +80,30 @@ const Login = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4 relative">
+    <GrokLoginWrapper>
       {/* Theme Toggle - Top Right */}
-      {/* <div className="absolute top-4 right-4">
+      {/* <div className="absolute top-4 right-4 z-10">
         <ThemeToggle />
       </div> */}
 
       <div className="w-full max-w-md space-y-6">
         {/* Login Form */}
-        <Card>
+        <Card className="login-card animate-fade-in-up">
           <CardHeader className="text-center space-y-4">
             <div className="flex flex-col items-center space-y-4">
               <img
                 src="/avyaanlogo.png"
                 alt="Avyaan Knitfab Logo"
-                className="h-20 w-auto border-2"
+                className="h-20 w-auto border-2 logo-glow animate-grok-float"
               />
               <div>
-                <h1 className="text-3xl font-bold text-foreground">
+                <h1 className="text-3xl font-bold text-foreground animate-grok-pulse font-display">
                   Avyaan Knitfab
                 </h1>
               </div>
             </div>
             <div className="space-y-2">
-              <CardDescription>
-                Enter your credentials to access your account
-              </CardDescription>
+              <CardDescription>Enter your credentials to access your account</CardDescription>
             </div>
           </CardHeader>
           <CardContent>
@@ -146,7 +139,7 @@ const Login = () => {
                   <Input
                     id="password"
                     name="password"
-                    type={showPassword ? "text" : "password"}
+                    type={showPassword ? 'text' : 'password'}
                     placeholder="Enter your password"
                     value={formData.password}
                     onChange={handleInputChange}
@@ -176,7 +169,7 @@ const Login = () => {
                     Signing in...
                   </>
                 ) : (
-                  "Sign In"
+                  'Sign In'
                 )}
               </Button>
             </form>
@@ -184,14 +177,14 @@ const Login = () => {
             <Separator className="my-6" />
             <div className="text-center text-xs text-muted-foreground font-bold">
               <p>
-                &copy; {new Date().getFullYear()} Aarkay Techno Consultants Pvt.
-                Ltd. All rights reserved.
+                &copy; {new Date().getFullYear()} Aarkay Techno Consultants Pvt. Ltd. All rights
+                reserved.
               </p>
             </div>
           </CardContent>
         </Card>
       </div>
-    </div>
+    </GrokLoginWrapper>
   );
 };
 
