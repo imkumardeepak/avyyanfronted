@@ -33,8 +33,8 @@ const FontSwitcher = () => {
 
   const applyFont = (fontValue: string) => {
     const root = document.documentElement;
-    const fontOption = fontOptions.find(f => f.value === fontValue);
-    
+    const fontOption = fontOptions.find((f) => f.value === fontValue);
+
     if (fontOption) {
       // Update CSS variables
       switch (fontValue) {
@@ -64,7 +64,7 @@ const FontSwitcher = () => {
     localStorage.setItem('preferred-font', fontValue);
   };
 
-  const currentFontName = fontOptions.find(f => f.value === currentFont)?.name || 'Inter';
+  const currentFontName = fontOptions.find((f) => f.value === currentFont)?.name || 'Inter';
 
   return (
     <DropdownMenu>
@@ -79,15 +79,11 @@ const FontSwitcher = () => {
           <DropdownMenuItem
             key={font.value}
             onClick={() => handleFontChange(font.value)}
-            className={`${font.className} ${
-              currentFont === font.value ? 'bg-accent' : ''
-            }`}
+            className={`${font.className} ${currentFont === font.value ? 'bg-accent' : ''}`}
           >
             <div className="flex flex-col">
               <span className="font-medium">{font.name}</span>
-              <span className="text-xs text-muted-foreground">
-                The quick brown fox jumps
-              </span>
+              <span className="text-xs text-muted-foreground">The quick brown fox jumps</span>
             </div>
           </DropdownMenuItem>
         ))}
