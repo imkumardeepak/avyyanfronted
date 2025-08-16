@@ -1,18 +1,32 @@
-import { lazy, Suspense, useEffect } from "react";
-import { Routes, Route } from "react-router-dom";
-import LoadingBar from "react-top-loading-bar";
-import { useLoadingBar } from "../hooks/useLoadingBar";
-import Layout from "../components/Layout";
-import AuthLayout from "../components/AuthLayout";
-import { ProtectedRoute, PublicRoute } from "../components/ProtectedRoute";
-import { Loader } from "../components/loader";
+import { lazy, Suspense, useEffect } from 'react';
+import { Routes, Route } from 'react-router-dom';
+import LoadingBar from 'react-top-loading-bar';
+import { useLoadingBar } from '../hooks/useLoadingBar';
+import Layout from '../components/Layout';
+import AuthLayout from '../components/AuthLayout';
+import { ProtectedRoute, PublicRoute } from '../components/ProtectedRoute';
+import { Loader } from '../components/loader';
 
 // Lazy-loaded pages
-const Home = lazy(() => import("../pages/Home"));
-const ComponentsDemo = lazy(() => import("../pages/ComponentsDemo"));
-const FormDemo = lazy(() => import("../pages/FormDemo"));
-const TasksPage = lazy(() => import("../pages/Tasks"));
-const Login = lazy(() => import("../pages/Login"));
+const Home = lazy(() => import('../pages/Home'));
+const Dashboard = lazy(() => import('../pages/Dashboard'));
+const Login = lazy(() => import('../pages/Login'));
+
+// Machine Manager Pages
+const MachineManager = lazy(() => import('../pages/MachineManager'));
+const MachineForm = lazy(() => import('../pages/MachineManager/MachineForm'));
+const MachineDetails = lazy(() => import('../pages/MachineManager/MachineDetails'));
+
+// User Management Pages
+const UserManagement = lazy(() => import('../pages/UserManagement'));
+const UserForm = lazy(() => import('../pages/UserManagement/UserForm'));
+const UserDetails = lazy(() => import('../pages/UserManagement/UserDetails'));
+
+// Chat Pages
+const Chat = lazy(() => import('../pages/Chat'));
+
+// Notification Pages
+const Notifications = lazy(() => import('../pages/Notifications'));
 
 const Router = () => {
   const { ref, handleStart, handleComplete } = useLoadingBar();
@@ -28,10 +42,7 @@ const Router = () => {
               path="login"
               element={
                 <PublicRoute>
-                  <LazyRoute
-                    onLoadStart={handleStart}
-                    onLoadComplete={handleComplete}
-                  >
+                  <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
                     <Login />
                   </LazyRoute>
                 </PublicRoute>
@@ -44,10 +55,7 @@ const Router = () => {
             path="/login"
             element={
               <PublicRoute>
-                <LazyRoute
-                  onLoadStart={handleStart}
-                  onLoadComplete={handleComplete}
-                >
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
                   <Login />
                 </LazyRoute>
               </PublicRoute>
@@ -66,58 +74,112 @@ const Router = () => {
             <Route
               index
               element={
-                <LazyRoute
-                  onLoadStart={handleStart}
-                  onLoadComplete={handleComplete}
-                >
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <Dashboard />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="dashboard"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <Dashboard />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="home"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
                   <Home />
                 </LazyRoute>
               }
             />
+
+            {/* Machine Manager Routes */}
             <Route
-              path="components"
+              path="machines"
               element={
-                <LazyRoute
-                  onLoadStart={handleStart}
-                  onLoadComplete={handleComplete}
-                >
-                  <ComponentsDemo />
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <MachineManager />
                 </LazyRoute>
               }
             />
             <Route
-              path="forms"
+              path="machines/create"
               element={
-                <LazyRoute
-                  onLoadStart={handleStart}
-                  onLoadComplete={handleComplete}
-                >
-                  <FormDemo />
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <MachineForm />
                 </LazyRoute>
               }
             />
             <Route
-              path="tasks"
+              path="machines/:id"
               element={
-                <LazyRoute
-                  onLoadStart={handleStart}
-                  onLoadComplete={handleComplete}
-                >
-                  <TasksPage />
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <MachineDetails />
                 </LazyRoute>
               }
             />
             <Route
-              path="projects"
+              path="machines/:id/edit"
               element={
-                <LazyRoute
-                  onLoadStart={handleStart}
-                  onLoadComplete={handleComplete}
-                >
-                  <div className="p-8 text-center">
-                    <h1 className="text-2xl font-bold">Projects Page</h1>
-                    <p className="text-muted-foreground">Coming soon...</p>
-                  </div>
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <MachineForm />
+                </LazyRoute>
+              }
+            />
+
+            {/* User Management Routes */}
+            <Route
+              path="users"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <UserManagement />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="users/create"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <UserForm />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="users/:id"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <UserDetails />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="users/:id/edit"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <UserForm />
+                </LazyRoute>
+              }
+            />
+
+            {/* Chat Routes */}
+            <Route
+              path="chat"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <Chat />
+                </LazyRoute>
+              }
+            />
+
+            {/* Notification Routes */}
+            <Route
+              path="notifications"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <Notifications />
                 </LazyRoute>
               }
             />

@@ -1,19 +1,19 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-
-export interface User {
-  id: string;
-  email: string;
-  name: string;
-  role: 'admin' | 'user';
-  avatar?: string;
-}
+import { authService } from '@/services/authService';
+import type { UserDto, LoginDto, PageAccessDto } from '@/types/auth';
 
 interface AuthContextType {
-  user: User | null;
+  user: UserDto | null;
+  token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  logout: () => void;
+  permissions: PageAccessDto[];
+  login: (credentials: LoginDto) => Promise<{ success: boolean; error?: string }>;
+  logout: () => Promise<void>;
+  hasRole: (role: string) => boolean;
+  hasPermission: (pageUrl: string, permission?: string) => boolean;
+  isAdmin: () => boolean;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -30,46 +30,34 @@ interface AuthProviderProps {
   children: React.ReactNode;
 }
 
-// Mock user data - in a real app, this would come from your API
-const MOCK_USERS = [
-  {
-    id: '1',
-    email: 'admin',
-    password: 'admin',
-    name: 'Admin User',
-    role: 'admin' as const,
-    avatar: '/avatars/admin.png'
-  },
-  {
-    id: '2',
-    email: 'user@example.com',
-    password: 'password',
-    name: 'John Doe',
-    role: 'user' as const,
-  }
-];
-
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<UserDto | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [permissions, setPermissions] = useState<PageAccessDto[]>([]);
 
   // Check for existing session on mount
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const savedUser = localStorage.getItem('auth_user');
-        const savedToken = localStorage.getItem('auth_token');
-        
+        const savedUser = authService.getUser();
+        const savedToken = authService.getToken();
+
         if (savedUser && savedToken) {
-          // In a real app, you'd validate the token with your API
-          const userData = JSON.parse(savedUser);
-          setUser(userData);
+          setUser(savedUser);
+          setToken(savedToken);
+
+          // Load user permissions
+          try {
+            const userPermissions = await authService.getPermissions();
+            setPermissions(userPermissions);
+          } catch (error) {
+            console.error('Error loading permissions:', error);
+          }
         }
       } catch (error) {
         console.error('Error checking auth:', error);
-        // Clear invalid data
-        localStorage.removeItem('auth_user');
-        localStorage.removeItem('auth_token');
+        authService.clearAuth();
       } finally {
         setIsLoading(false);
       }
@@ -78,66 +66,89 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     checkAuth();
   }, []);
 
-  const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+  const login = async (credentials: LoginDto): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
-    
+
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Find user in mock data
-      const foundUser = MOCK_USERS.find(
-        u => u.email === email && u.password === password
-      );
-      
-      if (!foundUser) {
-        return { success: false, error: 'Invalid email or password' };
-      }
-      
-      // Create user object without password
-      const userData: User = {
-        id: foundUser.id,
-        email: foundUser.email,
-        name: foundUser.name,
-        role: foundUser.role,
-        avatar: foundUser.avatar
-      };
-      
-      // In a real app, you'd get a JWT token from your API
-      const mockToken = `mock_token_${Date.now()}`;
-      
-      // Save to localStorage
-      localStorage.setItem('auth_user', JSON.stringify(userData));
-      localStorage.setItem('auth_token', mockToken);
-      
-      setUser(userData);
+      const response = await authService.login(credentials);
+
+      setUser(response.user);
+      setToken(response.token);
+      setPermissions(response.pageAccesses);
+
       return { success: true };
-      
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
-      return { success: false, error: 'An unexpected error occurred' };
+      const errorMessage =
+        error.response?.data?.message || error.message || 'An unexpected error occurred';
+      return { success: false, error: errorMessage };
     } finally {
       setIsLoading(false);
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('auth_user');
-    localStorage.removeItem('auth_token');
+  const logout = async (): Promise<void> => {
+    setIsLoading(true);
+    try {
+      await authService.logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      setUser(null);
+      setToken(null);
+      setPermissions([]);
+      setIsLoading(false);
+    }
+  };
+
+  const hasRole = (role: string): boolean => {
+    return authService.hasRole(role);
+  };
+
+  const hasPermission = (pageUrl: string, permission: string = 'View'): boolean => {
+    return permissions.some(
+      (p) =>
+        p.pageUrl === pageUrl &&
+        (permission === 'View'
+          ? p.canView
+          : permission === 'Create'
+            ? p.canCreate
+            : permission === 'Edit'
+              ? p.canEdit
+              : permission === 'Delete'
+                ? p.canDelete
+                : permission === 'Export'
+                  ? p.canExport
+                  : false)
+    );
+  };
+
+  const isAdmin = (): boolean => {
+    return authService.isAdmin();
+  };
+
+  const refreshUser = async (): Promise<void> => {
+    try {
+      const updatedUser = await authService.getProfile();
+      setUser(updatedUser);
+    } catch (error) {
+      console.error('Error refreshing user:', error);
+    }
   };
 
   const value: AuthContextType = {
     user,
+    token,
     isLoading,
     isAuthenticated: !!user,
+    permissions,
     login,
     logout,
+    hasRole,
+    hasPermission,
+    isAdmin,
+    refreshUser,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

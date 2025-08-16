@@ -17,8 +17,9 @@ const Login = () => {
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
-    email: '',
+    username: '',
     password: '',
+    rememberMe: false,
   });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -39,7 +40,11 @@ const Login = () => {
     setIsSubmitting(true);
 
     try {
-      const result = await login(formData.email, formData.password);
+      const result = await login({
+        username: formData.username,
+        password: formData.password,
+        rememberMe: formData.rememberMe,
+      });
 
       if (result.success) {
         navigate('/', { replace: true });
@@ -54,10 +59,10 @@ const Login = () => {
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: type === 'checkbox' ? checked : value,
     }));
     // Clear error when user starts typing
     if (error) setError('');
@@ -116,15 +121,15 @@ const Login = () => {
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email or Username</Label>
+                <Label htmlFor="username">Username or Email</Label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
-                    id="email"
-                    name="email"
+                    id="username"
+                    name="username"
                     type="text"
-                    placeholder="Enter your email or username"
-                    value={formData.email}
+                    placeholder="Enter your username or email"
+                    value={formData.username}
                     onChange={handleInputChange}
                     className="pl-10"
                     required
@@ -160,6 +165,20 @@ const Login = () => {
                     )}
                   </Button>
                 </div>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <input
+                  id="rememberMe"
+                  name="rememberMe"
+                  type="checkbox"
+                  checked={formData.rememberMe}
+                  onChange={handleInputChange}
+                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <Label htmlFor="rememberMe" className="text-sm">
+                  Remember me
+                </Label>
               </div>
 
               <Button type="submit" className="w-full" disabled={isSubmitting}>
