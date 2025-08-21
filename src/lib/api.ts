@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import axios, { type AxiosRequestConfig, type AxiosResponse } from 'axios';
 
 // Create axios instance
@@ -194,12 +194,12 @@ export const authApi = {
   checkPermission: (pageUrl: string, permission: string = 'View') =>
     api.get(`/api/Auth/permissions/check?pageUrl=${encodeURIComponent(pageUrl)}&permission=${permission}`),
 
-  // User management endpoints (Admin only) - EXACT BACKEND MATCH
+  // User management endpoints (Admin only) - EXACT BACKEND MATCH with UserController
   getAllUsers: () =>
-    api.get('/api/Auth/users'),
+    api.get('/api/User'),
 
   getUser: (id: number) =>
-    api.get(`/api/Auth/users/${id}`),
+    api.get(`/api/User/${id}`),
 
   createUser: (userData: {
     firstName: string;
@@ -210,7 +210,7 @@ export const authApi = {
     phoneNumber?: string;
     roleIds: number[];
   }) =>
-    api.post('/api/Auth/users', userData),
+    api.post('/api/User', userData),
 
   updateUser: (id: number, userData: {
     firstName: string;
@@ -220,26 +220,191 @@ export const authApi = {
     isActive: boolean;
     roleIds: number[];
   }) =>
-    api.put(`/api/Auth/users/${id}`, userData),
+    api.put(`/api/User/${id}`, userData),
 
   deleteUser: (id: number) =>
-    api.delete(`/api/Auth/users/${id}`),
+    api.delete(`/api/User/${id}`),
 
-  // NOTE: Lock/Unlock endpoints NOT FOUND in backend - removing
-  // lockUser and unlockUser endpoints do not exist in AuthController
+  // Lock/Unlock endpoints - Available in UserController
+  lockUser: (id: number) =>
+    api.post(`/api/User/${id}/lock`),
 
-  // NOTE: Role management endpoints NOT FOUND in backend - removing
-  // getAllRoles, assignRole, removeRole endpoints do not exist in AuthController
-  // Role management is handled through the UpdateUserDto.roleIds field
+  unlockUser: (id: number) =>
+    api.post(`/api/User/${id}/unlock`),
+
+  // Role assignment endpoints - Available in UserController
+  assignUserRole: (userId: number, assignData: { roleId: number; expiresAt?: string }) =>
+    api.post(`/api/User/${userId}/roles`, assignData),
+
+  removeUserRole: (userId: number, roleId: number) =>
+    api.delete(`/api/User/${userId}/roles/${roleId}`),
+
+  getUserRoles: (userId: number) =>
+    api.get(`/api/User/${userId}/roles`),
+};
+
+// User API - extracted from authApi for better organization
+export const userApi = {
+  // User management endpoints (Admin only) - EXACT BACKEND MATCH with UserController
+  getAllUsers: () => api.get('/api/User'),
+  getUser: (id: number) => api.get(`/api/User/${id}`),
+  createUser: (userData: {
+    firstName: string;
+    lastName: string;
+    username: string;
+    email: string;
+    password: string;
+    phoneNumber?: string;
+    roleIds: number[];
+  }) => api.post('/api/User', userData),
+  updateUser: (id: number, userData: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phoneNumber?: string;
+    isActive: boolean;
+    roleIds: number[];
+  }) => api.put(`/api/User/${id}`, userData),
+  deleteUser: (id: number) => api.delete(`/api/User/${id}`),
+  lockUser: (id: number) => api.post(`/api/User/${id}/lock`),
+  unlockUser: (id: number) => api.post(`/api/User/${id}/unlock`),
+  assignUserRole: (userId: number, assignData: { roleId: number; expiresAt?: string }) =>
+    api.post(`/api/User/${userId}/roles`, assignData),
+  removeUserRole: (userId: number, roleId: number) =>
+    api.delete(`/api/User/${userId}/roles/${roleId}`),
+  getUserRoles: (userId: number) => api.get(`/api/User/${userId}/roles`),
+};
+
+export const roleApi = {
+  // Role management endpoints - EXACT BACKEND MATCH with RoleController
+  getAllRoles: () => api.get('/api/Role'),
+
+  getRole: (id: number) => api.get(`/api/Role/${id}`),
+
+  createRole: (data: {
+    name: string;
+    description?: string;
+    isActive?: boolean;
+    permissionIds?: number[];
+    pagePermissions?: Array<{
+      pageName: string;
+      canRead: boolean;
+      canCreate: boolean;
+      canEdit: boolean;
+      canDelete: boolean;
+    }>;
+  }) => api.post('/api/Role', data),
+
+  updateRole: (id: number, data: {
+    name: string;
+    description?: string;
+    isActive?: boolean;
+    permissionIds?: number[];
+    pagePermissions?: Array<{
+      pageName: string;
+      canRead: boolean;
+      canCreate: boolean;
+      canEdit: boolean;
+      canDelete: boolean;
+    }>;
+  }) => api.put(`/api/Role/${id}`, data),
+
+  deleteRole: (id: number) => api.delete(`/api/Role/${id}`),
+
+  // Page access management
+  getAllPageAccesses: () => api.get('/api/Role/page-accesses'),
+
+  getPageAccess: (id: number) => api.get(`/api/Role/page-accesses/${id}`),
+
+  createPageAccess: (data: {
+    pageName: string;
+    pageUrl: string;
+    description?: string;
+    category?: string;
+    icon?: string;
+    sortOrder?: number;
+    isMenuItem?: boolean;
+  }) => api.post('/api/Role/page-accesses', data),
+
+  updatePageAccess: (id: number, data: {
+    pageName: string;
+    pageUrl: string;
+    description?: string;
+    category?: string;
+    icon?: string;
+    sortOrder?: number;
+    isMenuItem?: boolean;
+  }) => api.put(`/api/Role/page-accesses/${id}`, data),
+
+  deletePageAccess: (id: number) => api.delete(`/api/Role/page-accesses/${id}`),
+
+  // Role-page access management
+  getRolePageAccesses: (roleId: number) => api.get(`/api/Role/${roleId}/page-accesses`),
+
+  grantPageAccess: (roleId: number, pageAccessId: number, permissions: {
+    canView?: boolean;
+    canCreate?: boolean;
+    canEdit?: boolean;
+    canDelete?: boolean;
+    canExport?: boolean;
+  }) => api.post(`/api/Role/${roleId}/page-accesses/${pageAccessId}`, permissions),
+
+  revokePageAccess: (roleId: number, pageAccessId: number) =>
+    api.delete(`/api/Role/${roleId}/page-accesses/${pageAccessId}`),
+
+  // Role-user management
+  getUsersInRole: (roleId: number) => api.get(`/api/Role/${roleId}/users`),
+
+  assignRoleToUser: (roleId: number, data: { userId: number; expiresAt?: string }) =>
+    api.post(`/api/Role/${roleId}/users`, data),
+
+  removeRoleFromUser: (roleId: number, userId: number) =>
+    api.delete(`/api/Role/${roleId}/users/${userId}`),
+
+  // Permission operations
+  getAllPermissions: () => api.get('/api/Permissions'),
+
+  getPermissionsByCategory: () => api.get('/api/Permissions/by-category'),
+
+  getUserPermissions: (userId: number) => api.get(`/api/Permissions/user/${userId}`),
+
+  checkUserPermission: (userId: number, resource: string, action: string) =>
+    api.get(`/api/Permissions/check/${userId}?resource=${resource}&action=${action}`),
+
+  // Search and filter operations
+  searchRoles: (searchTerm?: string, isActive?: boolean) => {
+    const params = new URLSearchParams();
+    if (searchTerm) params.append('search', searchTerm);
+    if (isActive !== undefined) params.append('isActive', isActive.toString());
+    return api.get(`/api/Role/search?${params.toString()}`);
+  },
+
+  // Page-based permission operations
+  getRolePagePermissions: (roleId: number) =>
+    api.get(`/api/Role/${roleId}/page-permissions`),
+
+  updateRolePagePermissions: (roleId: number, pagePermissions: Array<{
+    pageName: string;
+    canRead: boolean;
+    canCreate: boolean;
+    canEdit: boolean;
+    canDelete: boolean;
+  }>) => api.put(`/api/Role/${roleId}/page-permissions`, { pagePermissions }),
+
+  getUserPagePermissions: (userId: number) =>
+    api.get(`/api/User/${userId}/page-permissions`),
+
+  getAllAvailablePages: () =>
+    api.get('/api/Navigation/available-pages'),
 };
 
 export const machineApi = {
   // Basic CRUD operations - EXACT BACKEND MATCH
-  getAll: () => api.get('/api/MachineManager'),
+  getAllMachines: () => api.get('/api/MachineManager'),
 
-  getById: (id: number) => api.get(`/api/MachineManager/${id}`),
+  getMachine: (id: number) => api.get(`/api/MachineManager/${id}`),
 
-  create: (data: {
+  createMachine: (data: {
     machineName: string;
     dia: number;
     gg: number;
@@ -252,7 +417,20 @@ export const machineApi = {
     description?: string;
   }) => api.post('/api/MachineManager', data),
 
-  update: (id: number, data: {
+  createMultipleMachines: (data: Array<{
+    machineName: string;
+    dia: number;
+    gg: number;
+    needle: number;
+    feeder: number;
+    rpm: number;
+    slit: number;
+    constat?: string;
+    efficiency: number;
+    description?: string;
+  }>) => api.post('/api/MachineManager/bulk', data),
+
+  updateMachine: (id: number, data: {
     machineName: string;
     dia: number;
     gg: number;
@@ -266,10 +444,10 @@ export const machineApi = {
     isActive: boolean;
   }) => api.put(`/api/MachineManager/${id}`, data),
 
-  delete: (id: number) => api.delete(`/api/MachineManager/${id}`),
+  deleteMachine: (id: number) => api.delete(`/api/MachineManager/${id}`),
 
   // Search operations - EXACT BACKEND MATCH
-  search: (machineName?: string, dia?: number) => {
+  searchMachines: (machineName?: string, dia?: number) => {
     const params = new URLSearchParams();
     if (machineName) params.append('machineName', machineName);
     if (dia !== undefined) params.append('dia', dia.toString());
@@ -295,11 +473,11 @@ export const machineApi = {
 
 export const chatApi = {
   // Chat room operations - EXACT BACKEND MATCH
-  getRooms: () => api.get('/api/Chat/rooms'),
+  getUserChatRooms: () => api.get('/api/Chat/rooms'),
 
-  getRoom: (chatRoomId: number) => api.get(`/api/Chat/rooms/${chatRoomId}`),
+  getChatRoom: (chatRoomId: number) => api.get(`/api/Chat/rooms/${chatRoomId}`),
 
-  createRoom: (data: {
+  createChatRoom: (data: {
     name: string;
     description?: string;
     type: string;
@@ -308,8 +486,16 @@ export const chatApi = {
     memberIds: number[];
   }) => api.post('/api/Chat/rooms', data),
 
+  updateChatRoom: (chatRoomId: number, data: {
+    name?: string;
+    description?: string;
+    isPrivate?: boolean;
+  }) => api.put(`/api/Chat/rooms/${chatRoomId}`, data),
+
+  deleteChatRoom: (chatRoomId: number) => api.delete(`/api/Chat/rooms/${chatRoomId}`),
+
   // Chat room messages - EXACT BACKEND MATCH
-  getRoomMessages: (chatRoomId: number, page: number = 1, pageSize: number = 50) =>
+  getChatRoomMessages: (chatRoomId: number, page: number = 1, pageSize: number = 50) =>
     api.get(`/api/Chat/rooms/${chatRoomId}/messages?page=${page}&pageSize=${pageSize}`),
 
   getMessage: (messageId: number) => api.get(`/api/Chat/messages/${messageId}`),
@@ -324,6 +510,15 @@ export const chatApi = {
   // NOTE: sendMessage endpoint does NOT exist in ChatController
   // Messages are sent through SignalR Hub (ChatHub.SendMessage)
   // Frontend should use SignalR connection for real-time messaging
+  sendMessage: (roomId: number, data: { content: string; messageType?: string }) => {
+    // This is a placeholder - actual implementation should use SignalR
+    return Promise.resolve({ data: { id: Date.now(), content: data.content, messageType: data.messageType || 'Text' } });
+  },
+
+  markMessageAsRead: (roomId: number, messageId: number) => {
+    // This would need to be implemented in the backend
+    return api.patch(`/api/Chat/rooms/${roomId}/messages/${messageId}/read`);
+  },
 };
 
 export const notificationApi = {
@@ -333,7 +528,7 @@ export const notificationApi = {
 
   getUnreadNotifications: () => api.get('/api/Notifications/unread'),
 
-  getUnreadCount: () => api.get('/api/Notifications/unread/count'),
+  getUnreadNotificationCount: () => api.get('/api/Notifications/unread/count'),
 
   getRecentNotifications: (count: number = 10) =>
     api.get(`/api/Notifications/recent?count=${count}`),
@@ -367,8 +562,8 @@ export const notificationApi = {
     relatedEntityType?: string;
   }) => api.post('/api/Notifications', data),
 
-  createBulkNotification: (data: {
-    userIds: number[];
+  createBulkNotifications: (data: Array<{
+    userId: number;
     title: string;
     message: string;
     type?: string;
@@ -380,7 +575,13 @@ export const notificationApi = {
     isSms?: boolean;
     scheduledAt?: string;
     metadata?: string;
-  }) => api.post('/api/Notifications/bulk', data),
+    relatedEntityId?: number;
+    relatedEntityType?: string;
+  }>) => api.post('/api/Notifications/bulk', data),
+
+  getUserNotifications: (userId: number) => api.get(`/api/Notifications/user/${userId}`),
+
+  deleteAllNotifications: () => api.delete('/api/Notifications/all'),
 
   createSystemNotification: (data: {
     title: string;
@@ -388,5 +589,7 @@ export const notificationApi = {
     actionUrl?: string;
   }) => api.post('/api/Notifications/system', data),
 };
+
+
 
 export default apiClient;

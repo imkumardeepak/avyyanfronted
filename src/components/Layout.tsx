@@ -1,20 +1,20 @@
-import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { TopHeader } from "./TopHeader";
 import Footer from "./Footer";
+import { SidebarProvider, useSidebar } from "../contexts/SidebarContext";
 
 const Layout = () => {
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  return (
+    <SidebarProvider>
+      <LayoutContent />
+    </SidebarProvider>
+  );
+};
 
-  const toggleSidebar = () => {
-    setIsSidebarCollapsed(!isSidebarCollapsed);
-  };
-
-  const toggleMobileSidebar = () => {
-    setIsMobileSidebarOpen(!isMobileSidebarOpen);
-  };
+const LayoutContent = () => {
+  const { isSidebarCollapsed, isMobileSidebarOpen, toggleSidebar, toggleMobileSidebar } =
+    useSidebar();
 
   return (
     <div className="min-h-screen bg-background">

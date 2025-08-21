@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { authService } from '@/services/authService';
 import type {
   UserDto,
   CreateUserDto,
   UpdateUserDto,
   ChangePasswordDto,
-  RoleDto
+  RoleDto,
+  AssignRoleDto
 } from '@/types/auth';
 import { AxiosError } from 'axios';
 
@@ -26,75 +27,20 @@ export const useUsers = () => {
   const [error, setError] = useState<string | null>(null);
 
   // Fetch all users
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-
       const users = await authService.getAllUsers();
       setUsers(users);
     } catch (err) {
       console.error('Error fetching users:', err);
-
-      // If API fails, use mock data for development
-      if (err instanceof AxiosError && err.response?.status === 404) {
-        console.warn('User API endpoints not available, using mock data');
-        const mockUsers: UserDto[] = [
-          {
-            id: 1,
-            username: 'admin',
-            email: 'admin@avyaan.com',
-            firstName: 'Admin',
-            lastName: 'User',
-            fullName: 'Admin User',
-            profilePicture: '',
-            isEmailVerified: true,
-            isLocked: false,
-            lastLoginAt: new Date().toISOString(),
-            createdAt: new Date().toISOString(),
-            roles: ['Admin'],
-            isOnline: true,
-          },
-          {
-            id: 2,
-            username: 'manager',
-            email: 'manager@avyaan.com',
-            firstName: 'Manager',
-            lastName: 'User',
-            fullName: 'Manager User',
-            profilePicture: '',
-            isEmailVerified: true,
-            isLocked: false,
-            lastLoginAt: new Date(Date.now() - 3600000).toISOString(),
-            createdAt: new Date(Date.now() - 86400000).toISOString(),
-            roles: ['Manager'],
-            isOnline: false,
-          },
-          {
-            id: 3,
-            username: 'operator',
-            email: 'operator@avyaan.com',
-            firstName: 'Operator',
-            lastName: 'User',
-            fullName: 'Operator User',
-            profilePicture: '',
-            isEmailVerified: true,
-            isLocked: false,
-            lastLoginAt: new Date(Date.now() - 7200000).toISOString(),
-            createdAt: new Date(Date.now() - 172800000).toISOString(),
-            roles: ['Operator'],
-            isOnline: true,
-          },
-        ];
-        setUsers(mockUsers);
-      } else {
-        setError(handleError(err, 'Failed to fetch users'));
-        setUsers([]);
-      }
+      setError(handleError(err, 'Failed to fetch users'));
+      setUsers([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // Get single user
   const getUser = async (id: number): Promise<UserDto | null> => {
@@ -161,16 +107,16 @@ export const useUsers = () => {
     }
   };
 
-  // Lock user account (mock implementation - endpoint doesn't exist in backend)
+  // Lock user account
   const lockUser = async (id: number): Promise<boolean> => {
     try {
       setLoading(true);
       setError(null);
-      // Mock implementation since endpoint doesn't exist
-      setUsers(prev => prev.map(u =>
-        u.id === id ? { ...u, isLocked: true } : u
-      ));
-      return true;
+      const success = await authService.lockUser(id);
+      if (success) {
+        setUsers(prev => prev.map(u => u.id === id ? { ...u, isLocked: true } : u));
+      }
+      return success;
     } catch (err) {
       setError(handleError(err, 'Failed to lock user'));
       return false;
@@ -179,16 +125,16 @@ export const useUsers = () => {
     }
   };
 
-  // Unlock user account (mock implementation - endpoint doesn't exist in backend)
+  // Unlock user account
   const unlockUser = async (id: number): Promise<boolean> => {
     try {
       setLoading(true);
       setError(null);
-      // Mock implementation since endpoint doesn't exist
-      setUsers(prev => prev.map(u =>
-        u.id === id ? { ...u, isLocked: false } : u
-      ));
-      return true;
+      const success = await authService.unlockUser(id);
+      if (success) {
+        setUsers(prev => prev.map(u => u.id === id ? { ...u, isLocked: false } : u));
+      }
+      return success;
     } catch (err) {
       setError(handleError(err, 'Failed to unlock user'));
       return false;
@@ -212,46 +158,17 @@ export const useUsers = () => {
     }
   };
 
-  // Assign role to user (using updateUser since direct role endpoints don't exist)
+  // Assign role to user
   const assignRole = async (userId: number, roleId: number): Promise<boolean> => {
     try {
       setLoading(true);
       setError(null);
-
-      // Get current user data
-      const currentUser = await authService.getUserById(userId);
-      if (!currentUser) {
-        throw new Error('User not found');
-      }
-
-      // Add role to existing roles
-      const currentRoleIds = currentUser.roles.map(role => {
-        // Map role names to IDs (mock mapping since we don't have role endpoints)
-        switch (role) {
-          case 'Admin': return 1;
-          case 'Manager': return 2;
-          case 'User': return 3;
-          default: return 3;
-        }
-      });
-
-      const newRoleIds = [...new Set([...currentRoleIds, roleId])];
-
-      // Update user with new roles
-      const updateData = {
-        firstName: currentUser.firstName,
-        lastName: currentUser.lastName,
-        email: currentUser.email,
-        phoneNumber: currentUser.phoneNumber,
-        isActive: !currentUser.isLocked,
-        roleIds: newRoleIds,
-      };
-
-      const success = await authService.updateUser(userId, updateData);
+      const assignData: AssignRoleDto = { userId, roleId, expiresAt: null };
+      const success = await authService.assignRole(assignData);
       if (success) {
         await fetchUsers(); // Refresh user data
       }
-      return !!success;
+      return success;
     } catch (err) {
       setError(handleError(err, 'Failed to assign role'));
       return false;
@@ -260,46 +177,16 @@ export const useUsers = () => {
     }
   };
 
-  // Remove role from user (using updateUser since direct role endpoints don't exist)
+  // Remove role from user
   const removeRole = async (userId: number, roleId: number): Promise<boolean> => {
     try {
       setLoading(true);
       setError(null);
-
-      // Get current user data
-      const currentUser = await authService.getUserById(userId);
-      if (!currentUser) {
-        throw new Error('User not found');
-      }
-
-      // Remove role from existing roles
-      const currentRoleIds = currentUser.roles.map(role => {
-        // Map role names to IDs (mock mapping since we don't have role endpoints)
-        switch (role) {
-          case 'Admin': return 1;
-          case 'Manager': return 2;
-          case 'User': return 3;
-          default: return 3;
-        }
-      });
-
-      const newRoleIds = currentRoleIds.filter(id => id !== roleId);
-
-      // Update user with new roles
-      const updateData = {
-        firstName: currentUser.firstName,
-        lastName: currentUser.lastName,
-        email: currentUser.email,
-        phoneNumber: currentUser.phoneNumber,
-        isActive: !currentUser.isLocked,
-        roleIds: newRoleIds,
-      };
-
-      const success = await authService.updateUser(userId, updateData);
+      const success = await authService.removeRole(userId, roleId);
       if (success) {
         await fetchUsers(); // Refresh user data
       }
-      return !!success;
+      return success;
     } catch (err) {
       setError(handleError(err, 'Failed to remove role'));
       return false;
@@ -361,13 +248,15 @@ export const useUsers = () => {
     } catch (err) {
       setError(handleError(err, 'Failed to fetch online users'));
       return [];
+    } finally {
+      setLoading(false);
     }
   };
 
   // Load users on mount
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [fetchUsers]);
 
   return {
     users,

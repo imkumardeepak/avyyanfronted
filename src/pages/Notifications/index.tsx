@@ -6,6 +6,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
+  DeleteConfirmationDialog,
+  BulkDeleteConfirmationDialog,
+} from '@/components/ui/confirmation-dialog';
+import {
   Bell,
   BellOff,
   Check,
@@ -34,6 +38,19 @@ const Notifications = () => {
   } = useNotifications();
 
   const [filter, setFilter] = useState<'all' | 'unread' | 'read'>('all');
+
+  // Confirmation dialog states
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean;
+    notificationId: number | null;
+    notificationTitle: string;
+  }>({
+    open: false,
+    notificationId: null,
+    notificationTitle: '',
+  });
+
+  const [deleteAllDialog, setDeleteAllDialog] = useState(false);
 
   const getNotificationIcon = (type: string) => {
     switch (type.toLowerCase()) {
@@ -78,9 +95,19 @@ const Notifications = () => {
     await markAsRead(notificationId);
   };
 
-  const handleDelete = async (notificationId: number) => {
-    if (window.confirm('Are you sure you want to delete this notification?')) {
-      await deleteNotification(notificationId);
+  const handleDelete = (notificationId: number) => {
+    const notification = notifications.find((n) => n.id === notificationId);
+    setDeleteDialog({
+      open: true,
+      notificationId,
+      notificationTitle: notification?.title || 'notification',
+    });
+  };
+
+  const confirmDelete = async () => {
+    if (deleteDialog.notificationId) {
+      await deleteNotification(deleteDialog.notificationId);
+      setDeleteDialog({ open: false, notificationId: null, notificationTitle: '' });
     }
   };
 
@@ -88,10 +115,13 @@ const Notifications = () => {
     await markAllAsRead();
   };
 
-  const handleDeleteAll = async () => {
-    if (window.confirm('Are you sure you want to delete all notifications?')) {
-      await deleteAllNotifications();
-    }
+  const handleDeleteAll = () => {
+    setDeleteAllDialog(true);
+  };
+
+  const confirmDeleteAll = async () => {
+    await deleteAllNotifications();
+    setDeleteAllDialog(false);
   };
 
   if (loading) {
@@ -267,6 +297,28 @@ const Notifications = () => {
           </ScrollArea>
         </CardContent>
       </Card>
+
+      {/* Delete Single Notification Dialog */}
+      <DeleteConfirmationDialog
+        open={deleteDialog.open}
+        onOpenChange={(open) =>
+          setDeleteDialog({ open, notificationId: null, notificationTitle: '' })
+        }
+        itemName={deleteDialog.notificationTitle}
+        itemType="Notification"
+        onConfirm={confirmDelete}
+        isLoading={loading}
+      />
+
+      {/* Delete All Notifications Dialog */}
+      <BulkDeleteConfirmationDialog
+        open={deleteAllDialog}
+        onOpenChange={setDeleteAllDialog}
+        count={notifications.length}
+        itemType="notification"
+        onConfirm={confirmDeleteAll}
+        isLoading={loading}
+      />
     </div>
   );
 };

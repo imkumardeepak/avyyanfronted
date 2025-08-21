@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { DeleteConfirmationDialog } from '@/components/ui/confirmation-dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   ArrowLeft,
@@ -25,6 +26,7 @@ const MachineDetails = () => {
   const { id } = useParams();
   const { getMachine, deleteMachine, loading, error } = useMachines();
   const [machine, setMachine] = useState<MachineManagerDto | null>(null);
+  const [deleteDialog, setDeleteDialog] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -41,21 +43,20 @@ const MachineDetails = () => {
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!machine) return;
+    setDeleteDialog(true);
+  };
 
-    if (
-      window.confirm(
-        `Are you sure you want to delete "${machine.machineName}"? This action cannot be undone.`
-      )
-    ) {
-      try {
-        await deleteMachine(machine.id);
-        navigate('/machines');
-      } catch (err) {
-        console.error('Failed to delete machine:', err);
-      }
+  const confirmDelete = async () => {
+    if (!machine) return;
+    try {
+      await deleteMachine(machine.id);
+      navigate('/machines');
+    } catch (err) {
+      console.error('Failed to delete machine:', err);
     }
+    setDeleteDialog(false);
   };
 
   const getEfficiencyStatus = (efficiency: number) => {
@@ -287,6 +288,17 @@ const MachineDetails = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmationDialog
+        open={deleteDialog}
+        onOpenChange={setDeleteDialog}
+        itemName={machine ? machine.machineName : ''}
+        itemType="Machine"
+        onConfirm={confirmDelete}
+        isLoading={loading}
+        additionalInfo="All production data, maintenance records, and performance history will be permanently removed."
+      />
     </div>
   );
 };

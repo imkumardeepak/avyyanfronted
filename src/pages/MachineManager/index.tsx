@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { DataTable } from '@/components/DataTable';
-import { Plus, Search, Filter, Download, Upload } from 'lucide-react';
+import { DeleteConfirmationDialog } from '@/components/ui/confirmation-dialog';
+import { Plus, Download, Upload } from 'lucide-react';
 import { useMachines } from '@/hooks/useMachines';
 import type { MachineManagerDto } from '@/types/machine';
 import type { Row } from '@tanstack/react-table';
@@ -14,9 +14,18 @@ type CellProps = { row: Row<MachineManagerDto> };
 
 const MachineManager = () => {
   const navigate = useNavigate();
-  const { machines, loading, error, searchMachines, deleteMachine } = useMachines();
-  const [searchTerm, setSearchTerm] = useState('');
+  const { machines, loading, error, deleteMachine } = useMachines();
+  const [searchTerm] = useState('');
   const [filteredMachines, setFilteredMachines] = useState<MachineManagerDto[]>([]);
+
+  // Confirmation dialog state
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean;
+    machine: MachineManagerDto | null;
+  }>({
+    open: false,
+    machine: null,
+  });
 
   useEffect(() => {
     if (searchTerm) {
@@ -113,15 +122,20 @@ const MachineManager = () => {
     },
   ];
 
-  const handleDelete = async (id: number) => {
-    if (window.confirm('Are you sure you want to delete this machine?')) {
-      await deleteMachine(id);
+  const handleDelete = (id: number) => {
+    const machine = machines.find((m) => m.id === id);
+    if (machine) {
+      setDeleteDialog({
+        open: true,
+        machine,
+      });
     }
   };
 
-  const handleSearch = async () => {
-    if (searchTerm) {
-      await searchMachines({ machineName: searchTerm });
+  const confirmDelete = async () => {
+    if (deleteDialog.machine) {
+      await deleteMachine(deleteDialog.machine.id);
+      setDeleteDialog({ open: false, machine: null });
     }
   };
 
@@ -162,34 +176,6 @@ const MachineManager = () => {
           </Button>
         </div>
       </div>
-
-      {/* Search and Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex space-x-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Search machines by name or description..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                />
-              </div>
-            </div>
-            <Button variant="outline" onClick={handleSearch}>
-              <Search className="h-4 w-4 mr-2" />
-              Search
-            </Button>
-            <Button variant="outline">
-              <Filter className="h-4 w-4 mr-2" />
-              Filters
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -243,6 +229,17 @@ const MachineManager = () => {
           <DataTable columns={columns} data={filteredMachines} searchKey="machineName" />
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmationDialog
+        open={deleteDialog.open}
+        onOpenChange={(open) => setDeleteDialog({ open, machine: null })}
+        itemName={deleteDialog.machine ? deleteDialog.machine.machineName : ''}
+        itemType="Machine"
+        onConfirm={confirmDelete}
+        isLoading={loading}
+        additionalInfo="All production data and maintenance records will be permanently removed."
+      />
     </div>
   );
 };

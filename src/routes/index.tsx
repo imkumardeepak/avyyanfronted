@@ -22,6 +22,11 @@ const UserManagement = lazy(() => import('../pages/UserManagement'));
 const UserForm = lazy(() => import('../pages/UserManagement/UserForm'));
 const UserDetails = lazy(() => import('../pages/UserManagement/UserDetails'));
 
+// Role Management Pages
+const RoleManagement = lazy(() => import('../pages/RoleManagement'));
+const RoleForm = lazy(() => import('../pages/RoleManagement/RoleForm'));
+const RoleDetails = lazy(() => import('../pages/RoleManagement/RoleDetails'));
+
 // Chat Pages
 const Chat = lazy(() => import('../pages/Chat'));
 
@@ -160,6 +165,40 @@ const Router = () => {
               element={
                 <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
                   <UserForm />
+                </LazyRoute>
+              }
+            />
+
+            {/* Role Management Routes */}
+            <Route
+              path="roles"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <RoleManagement />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="roles/new"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <RoleForm />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="roles/:id"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <RoleDetails />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="roles/:id/edit"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <RoleForm />
                 </LazyRoute>
               }
             />

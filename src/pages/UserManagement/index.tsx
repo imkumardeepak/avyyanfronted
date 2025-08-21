@@ -2,41 +2,48 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { DataTable } from '@/components/DataTable';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Plus, Search, Filter, UserCheck, UserX, Shield } from 'lucide-react';
-import { useUsers } from '@/hooks/useUsers';
+import { DeleteConfirmationDialog, ConfirmationDialog } from '@/components/ui/confirmation-dialog';
+import { Plus, UserCheck, UserX, Shield, AlertTriangle } from 'lucide-react';
+import { useUsers, useDeleteUser, useLockUser, useUnlockUser } from '@/hooks/queries';
+import { useAuth } from '@/contexts/AuthContext';
 import { formatDate } from '@/lib/utils';
 import type { Row } from '@tanstack/react-table';
-
-// UserDto type from useUsers hook
-interface UserDto {
-  id: number;
-  username: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  fullName: string;
-  profilePicture?: string;
-  isActive: boolean;
-  isLocked: boolean;
-  lockedUntil?: string;
-  lastLoginAt?: string;
-  createdAt: string;
-  updatedAt?: string;
-  roles: string[];
-  isOnline: boolean;
-}
+import type { UserDto } from '@/types/auth';
 
 type UserCellProps = { row: Row<UserDto> };
 
 const UserManagement = () => {
   const navigate = useNavigate();
-  const { users, loading, error, deleteUser, lockUser, unlockUser } = useUsers();
-  const [searchTerm, setSearchTerm] = useState('');
+  const { isAdmin } = useAuth();
+
+  // React Query hooks
+  const { data: users = [], isLoading, error, refetch } = useUsers();
+  const deleteUserMutation = useDeleteUser();
+  const lockUserMutation = useLockUser();
+  const unlockUserMutation = useUnlockUser();
+
+  const [searchTerm] = useState('');
   const [filteredUsers, setFilteredUsers] = useState<UserDto[]>([]);
+
+  // Confirmation dialog state
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean;
+    user: UserDto | null;
+  }>({
+    open: false,
+    user: null,
+  });
+
+  const [lockDialog, setLockDialog] = useState<{
+    open: boolean;
+    user: UserDto | null;
+  }>({
+    open: false,
+    user: null,
+  });
 
   useEffect(() => {
     if (searchTerm) {
@@ -121,8 +128,10 @@ const UserManagement = () => {
       accessorKey: 'lastLoginAt',
       header: 'Last Login',
       cell: ({ row }: UserCellProps) => {
-        const lastLogin = row.getValue('lastLoginAt');
-        return <div className="text-sm">{lastLogin ? formatDate(lastLogin) : 'Never'}</div>;
+        const lastLogin = row.getValue('lastLoginAt') as string;
+        return (
+          <div className="text-sm">{lastLogin ? formatDate(new Date(lastLogin)) : 'Never'}</div>
+        );
       },
     },
     {
@@ -165,23 +174,65 @@ const UserManagement = () => {
     },
   ];
 
-  const handleDelete = async (id: number) => {
-    if (window.confirm('Are you sure you want to delete this user?')) {
-      await deleteUser(id);
+  const handleDelete = (id: number) => {
+    const user = users.find((u) => u.id === id);
+    if (user) {
+      setDeleteDialog({
+        open: true,
+        user,
+      });
     }
   };
 
-  const handleLock = async (id: number) => {
-    if (window.confirm('Are you sure you want to lock this user?')) {
-      await lockUser(id);
+  const confirmDelete = () => {
+    if (deleteDialog.user) {
+      deleteUserMutation.mutate(deleteDialog.user.id);
+      setDeleteDialog({ open: false, user: null });
     }
   };
 
-  const handleUnlock = async (id: number) => {
-    await unlockUser(id);
+  const handleLock = (id: number) => {
+    const user = users.find((u) => u.id === id);
+    if (user) {
+      setLockDialog({
+        open: true,
+        user,
+      });
+    }
   };
 
-  if (loading) {
+  const confirmLock = () => {
+    if (lockDialog.user) {
+      lockUserMutation.mutate(lockDialog.user.id);
+      setLockDialog({ open: false, user: null });
+    }
+  };
+
+  const handleUnlock = (id: number) => {
+    unlockUserMutation.mutate(id);
+  };
+
+  // Check admin authorization
+  if (!isAdmin()) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Card className="w-96">
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <AlertTriangle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
+              <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
+              <p className="text-muted-foreground mb-4">
+                You need administrator privileges to access User Management.
+              </p>
+              <Button onClick={() => navigate('/dashboard')}>Return to Dashboard</Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -190,7 +241,20 @@ const UserManagement = () => {
   }
 
   if (error) {
-    return <div className="text-center text-red-500 p-4">Error loading users: {error}</div>;
+    return (
+      <div className="text-center p-4">
+        <Card className="w-96 mx-auto">
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+              <h2 className="text-xl font-semibold mb-2">Error Loading Users</h2>
+              <p className="text-muted-foreground mb-4">{error.message}</p>
+              <Button onClick={() => refetch()}>Try Again</Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
@@ -212,29 +276,6 @@ const UserManagement = () => {
           </Button>
         </div>
       </div>
-
-      {/* Search */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex space-x-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Search users by name, username, or email..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-            <Button variant="outline">
-              <Filter className="h-4 w-4 mr-2" />
-              Filters
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -283,6 +324,32 @@ const UserManagement = () => {
           <DataTable columns={columns} data={filteredUsers} searchKey="username" />
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmationDialog
+        open={deleteDialog.open}
+        onOpenChange={(open) => setDeleteDialog({ open, user: null })}
+        itemName={
+          deleteDialog.user ? `${deleteDialog.user.firstName} ${deleteDialog.user.lastName}` : ''
+        }
+        itemType="User"
+        onConfirm={confirmDelete}
+        isLoading={deleteUserMutation.isPending}
+        additionalInfo="All associated data and permissions will be permanently removed."
+      />
+
+      {/* Lock Confirmation Dialog */}
+      <ConfirmationDialog
+        open={lockDialog.open}
+        onOpenChange={(open) => setLockDialog({ open, user: null })}
+        title="Lock User Account"
+        description={`Are you sure you want to lock ${lockDialog.user ? `${lockDialog.user.firstName} ${lockDialog.user.lastName}'s` : "this user's"} account? They will not be able to log in until the account is unlocked.`}
+        confirmText="Lock Account"
+        cancelText="Cancel"
+        onConfirm={confirmLock}
+        variant="warning"
+        isLoading={lockUserMutation.isPending}
+      />
     </div>
   );
 };

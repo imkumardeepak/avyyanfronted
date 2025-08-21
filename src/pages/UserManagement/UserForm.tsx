@@ -7,11 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
 import { Checkbox } from '@/components/ui/checkbox';
-import { useToast } from '@/hooks/use-toast';
-import { useUsers } from '@/hooks/useUsers';
-import { ArrowLeft, Save, User, Mail, Phone, Shield } from 'lucide-react';
+
+import { useUser, useRoles, useCreateUser, useUpdateUser } from '@/hooks/queries';
+import { useAuth } from '@/contexts/AuthContext';
+import { ArrowLeft, Save, User, Mail, Phone, Shield, AlertTriangle } from 'lucide-react';
 import type { CreateUserDto, UpdateUserDto, UserDto, RoleDto } from '@/types/auth';
 
 const createUserSchema = z.object({
@@ -39,12 +40,14 @@ type UpdateFormData = z.infer<typeof updateUserSchema>;
 const UserForm = () => {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { toast } = useToast();
-  const { createUser, updateUser, getUser, getAllRoles } = useUsers();
-  
-  const [isLoading, setIsLoading] = useState(false);
-  const [user, setUser] = useState<UserDto | null>(null);
-  const [roles, setRoles] = useState<RoleDto[]>([]);
+  const { isAdmin } = useAuth();
+
+  // React Query hooks
+  const { data: roles = [] } = useRoles();
+  const { data: user } = useUser(id ? parseInt(id) : 0, !!id);
+  const createUserMutation = useCreateUser();
+  const updateUserMutation = useUpdateUser();
+
   const [selectedRoles, setSelectedRoles] = useState<number[]>([]);
 
   const isEditMode = !!id;
@@ -70,133 +73,106 @@ const UserForm = () => {
     },
   });
 
-  // Load user data and roles
+  // Load user data when editing
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        setIsLoading(true);
-        
-        // Load roles
-        const rolesData = await getAllRoles();
-        setRoles(rolesData);
+    if (user && isEditMode) {
+      setValue('firstName', user.firstName);
+      setValue('lastName', user.lastName);
+      setValue('email', user.email);
+      setValue('phoneNumber', user.phoneNumber || '');
+      setValue('isActive', !user.isLocked);
 
-        // Load user data if editing
-        if (isEditMode && id) {
-          const userData = await getUser(parseInt(id));
-          if (userData) {
-            setUser(userData);
-            setValue('firstName', userData.firstName);
-            setValue('lastName', userData.lastName);
-            setValue('email', userData.email);
-            setValue('phoneNumber', userData.phoneNumber || '');
-            setValue('isActive', !userData.isLocked);
-            
-            // Set selected roles
-            const userRoleIds = rolesData
-              .filter(role => userData.roles.includes(role.name))
-              .map(role => role.id);
-            setSelectedRoles(userRoleIds);
-            setValue('roleIds', userRoleIds);
-          }
-        }
-      } catch (error) {
-        toast({
-          title: 'Error',
-          description: 'Failed to load data',
-          variant: 'destructive',
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadData();
-  }, [id, isEditMode, getUser, getAllRoles, setValue, toast]);
+      // Set selected roles
+      const userRoleIds = roles
+        .filter((role) => user.roles.includes(role.name))
+        .map((role) => role.id);
+      setSelectedRoles(userRoleIds);
+      setValue('roleIds', userRoleIds);
+    }
+  }, [user, roles, isEditMode, setValue]);
 
   const onSubmit = async (data: CreateFormData | UpdateFormData) => {
-    try {
-      setIsLoading(true);
+    if (isEditMode && id) {
+      // Update user
+      const updateData: UpdateUserDto = {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        phoneNumber: data.phoneNumber,
+        isActive: (data as UpdateFormData).isActive,
+        roleIds: selectedRoles,
+      };
 
-      if (isEditMode && id) {
-        // Update user
-        const updateData: UpdateUserDto = {
-          firstName: data.firstName,
-          lastName: data.lastName,
-          email: data.email,
-          phoneNumber: data.phoneNumber,
-          isActive: (data as UpdateFormData).isActive,
-          roleIds: selectedRoles,
-        };
-
-        const result = await updateUser(parseInt(id), updateData);
-        if (result) {
-          toast({
-            title: 'Success',
-            description: 'User updated successfully',
-          });
-          navigate('/users');
+      updateUserMutation.mutate(
+        { id: parseInt(id), userData: updateData },
+        {
+          onSuccess: () => {
+            navigate('/users');
+          },
         }
-      } else {
-        // Create user
-        const createData: CreateUserDto = {
-          firstName: data.firstName,
-          lastName: data.lastName,
-          username: (data as CreateFormData).username,
-          email: data.email,
-          password: (data as CreateFormData).password,
-          phoneNumber: data.phoneNumber,
-          roleIds: selectedRoles,
-        };
+      );
+    } else {
+      // Create user
+      const createData: CreateUserDto = {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        username: (data as CreateFormData).username,
+        email: data.email,
+        password: (data as CreateFormData).password,
+        phoneNumber: data.phoneNumber,
+        roleIds: selectedRoles,
+      };
 
-        const result = await createUser(createData);
-        if (result) {
-          toast({
-            title: 'Success',
-            description: 'User created successfully',
-          });
+      createUserMutation.mutate(createData, {
+        onSuccess: () => {
           navigate('/users');
-        }
-      }
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: `Failed to ${isEditMode ? 'update' : 'create'} user`,
-        variant: 'destructive',
+        },
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const handleRoleChange = (roleId: number, checked: boolean) => {
     const newSelectedRoles = checked
       ? [...selectedRoles, roleId]
-      : selectedRoles.filter(id => id !== roleId);
-    
+      : selectedRoles.filter((id) => id !== roleId);
+
     setSelectedRoles(newSelectedRoles);
     setValue('roleIds', newSelectedRoles);
   };
 
+  // Check admin authorization
+  if (!isAdmin()) {
+    return (
+      <div className="container mx-auto py-6">
+        <div className="flex items-center justify-center h-64">
+          <Card className="w-96">
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <AlertTriangle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
+                <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
+                <p className="text-muted-foreground mb-4">
+                  You need administrator privileges to manage users.
+                </p>
+                <Button onClick={() => navigate('/dashboard')}>Return to Dashboard</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto py-6">
       <div className="mb-6">
-        <Button
-          variant="ghost"
-          onClick={() => navigate('/users')}
-          className="mb-4"
-        >
+        <Button variant="ghost" onClick={() => navigate('/users')} className="mb-4">
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Users
         </Button>
-        
-        <h1 className="text-3xl font-bold">
-          {isEditMode ? 'Edit User' : 'Create New User'}
-        </h1>
+
+        <h1 className="text-3xl font-bold">{isEditMode ? 'Edit User' : 'Create New User'}</h1>
         <p className="text-muted-foreground">
-          {isEditMode 
-            ? 'Update user information and permissions' 
-            : 'Add a new user to the system'
-          }
+          {isEditMode ? 'Update user information and permissions' : 'Add a new user to the system'}
         </p>
       </div>
 
@@ -207,10 +183,7 @@ const UserForm = () => {
             User Information
           </CardTitle>
           <CardDescription>
-            {isEditMode 
-              ? 'Modify the user details below' 
-              : 'Enter the details for the new user'
-            }
+            {isEditMode ? 'Modify the user details below' : 'Enter the details for the new user'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -218,11 +191,7 @@ const UserForm = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="firstName">First Name</Label>
-                <Input
-                  id="firstName"
-                  {...register('firstName')}
-                  placeholder="Enter first name"
-                />
+                <Input id="firstName" {...register('firstName')} placeholder="Enter first name" />
                 {errors.firstName && (
                   <p className="text-sm text-destructive">{errors.firstName.message}</p>
                 )}
@@ -230,11 +199,7 @@ const UserForm = () => {
 
               <div className="space-y-2">
                 <Label htmlFor="lastName">Last Name</Label>
-                <Input
-                  id="lastName"
-                  {...register('lastName')}
-                  placeholder="Enter last name"
-                />
+                <Input id="lastName" {...register('lastName')} placeholder="Enter last name" />
                 {errors.lastName && (
                   <p className="text-sm text-destructive">{errors.lastName.message}</p>
                 )}
@@ -244,13 +209,9 @@ const UserForm = () => {
             {!isEditMode && (
               <div className="space-y-2">
                 <Label htmlFor="username">Username</Label>
-                <Input
-                  id="username"
-                  {...register('username')}
-                  placeholder="Enter username"
-                />
-                {errors.username && (
-                  <p className="text-sm text-destructive">{errors.username.message}</p>
+                <Input id="username" {...register('username')} placeholder="Enter username" />
+                {(errors as any).username && (
+                  <p className="text-sm text-destructive">{(errors as any).username.message}</p>
                 )}
               </div>
             )}
@@ -267,9 +228,7 @@ const UserForm = () => {
                   className="pl-10"
                 />
               </div>
-              {errors.email && (
-                <p className="text-sm text-destructive">{errors.email.message}</p>
-              )}
+              {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
             </div>
 
             {!isEditMode && (
@@ -281,8 +240,8 @@ const UserForm = () => {
                   {...register('password')}
                   placeholder="Enter password"
                 />
-                {errors.password && (
-                  <p className="text-sm text-destructive">{errors.password.message}</p>
+                {(errors as any).password && (
+                  <p className="text-sm text-destructive">{(errors as any).password.message}</p>
                 )}
               </div>
             )}
@@ -327,9 +286,7 @@ const UserForm = () => {
                     <Label htmlFor={`role-${role.id}`} className="text-sm">
                       {role.name}
                       {role.description && (
-                        <span className="text-muted-foreground ml-1">
-                          - {role.description}
-                        </span>
+                        <span className="text-muted-foreground ml-1">- {role.description}</span>
                       )}
                     </Label>
                   </div>
@@ -341,15 +298,14 @@ const UserForm = () => {
             </div>
 
             <div className="flex justify-end space-x-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => navigate('/users')}
-              >
+              <Button type="button" variant="outline" onClick={() => navigate('/users')}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? (
+              <Button
+                type="submit"
+                disabled={createUserMutation.isPending || updateUserMutation.isPending}
+              >
+                {createUserMutation.isPending || updateUserMutation.isPending ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                     {isEditMode ? 'Updating...' : 'Creating...'}
