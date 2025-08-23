@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -7,157 +7,126 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiClient } from '@/lib/api';
+import { ArrowLeft, Save, User, Mail, Phone, Shield } from 'lucide-react';
+import type { CreateUserDto, UpdateUserDto, User } from '@/types/user';
+import type { Role } from '@/types/role';
 
-import { Checkbox } from '@/components/ui/checkbox';
-
-import { useUser, useRoles, useCreateUser, useUpdateUser } from '@/hooks/queries';
-import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, Save, User, Mail, Phone, Shield, AlertTriangle } from 'lucide-react';
-import type { CreateUserDto, UpdateUserDto, UserDto, RoleDto } from '@/types/auth';
-
-const createUserSchema = z.object({
-  firstName: z.string().min(1, 'First name is required'),
-  lastName: z.string().min(1, 'Last name is required'),
-  username: z.string().min(3, 'Username must be at least 3 characters'),
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-  phoneNumber: z.string().optional(),
-  roleIds: z.array(z.number()).min(1, 'At least one role must be selected'),
-});
-
-const updateUserSchema = z.object({
+const formSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
   lastName: z.string().min(1, 'Last name is required'),
   email: z.string().email('Invalid email address'),
+  password: z.string().optional(),
   phoneNumber: z.string().optional(),
-  isActive: z.boolean(),
-  roleIds: z.array(z.number()).min(1, 'At least one role must be selected'),
+  roleName: z.string().min(1, 'Role is required'),
 });
 
-type CreateFormData = z.infer<typeof createUserSchema>;
-type UpdateFormData = z.infer<typeof updateUserSchema>;
+type FormData = z.infer<typeof formSchema>;
+
+const fetchUser = async (id: number): Promise<User> => {
+  const response = await apiClient.get(`/User/${id}`);
+  return response.data;
+};
+
+const fetchRoles = async (): Promise<Role[]> => {
+  const response = await apiClient.get('/Role');
+  return response.data;
+};
+
+const createUser = async (data: CreateUserDto): Promise<User> => {
+  const response = await apiClient.post('/User', data);
+  return response.data;
+};
+
+const updateUser = async ({ id, data }: { id: number; data: UpdateUserDto }): Promise<User> => {
+  const response = await apiClient.put(`/User/${id}`, data);
+  return response.data;
+};
 
 const UserForm = () => {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { isAdmin } = useAuth();
-
-  // React Query hooks
-  const { data: roles = [] } = useRoles();
-  const { data: user } = useUser(id ? parseInt(id) : 0, !!id);
-  const createUserMutation = useCreateUser();
-  const updateUserMutation = useUpdateUser();
-
-  const [selectedRoles, setSelectedRoles] = useState<number[]>([]);
-
+  const queryClient = useQueryClient();
   const isEditMode = !!id;
-  const schema = isEditMode ? updateUserSchema : createUserSchema;
+
+  const { data: user, isLoading: isUserLoading } = useQuery<User>({
+    queryKey: ['user', id],
+    queryFn: () => fetchUser(parseInt(id!)),
+    enabled: isEditMode,
+  });
+
+  const { data: roles = [], isLoading: areRolesLoading } = useQuery<Role[]>({
+    queryKey: ['roles'],
+    queryFn: fetchRoles,
+  });
+
+  const { mutate: createUserMutation, isPending: isCreating } = useMutation({
+    mutationFn: createUser,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      navigate('/users');
+    },
+  });
+
+  const { mutate: updateUserMutation, isPending: isUpdating } = useMutation({
+    mutationFn: updateUser,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['user', id] });
+      navigate('/users');
+    },
+  });
 
   const {
     register,
     handleSubmit,
     formState: { errors },
     setValue,
-    watch,
-  } = useForm<CreateFormData | UpdateFormData>({
-    resolver: zodResolver(schema),
+    control,
+  } = useForm<FormData>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
       firstName: '',
       lastName: '',
-      username: '',
       email: '',
       password: '',
       phoneNumber: '',
-      roleIds: [],
-      isActive: true,
+      roleName: '',
     },
   });
 
-  // Load user data when editing
   useEffect(() => {
     if (user && isEditMode) {
       setValue('firstName', user.firstName);
       setValue('lastName', user.lastName);
       setValue('email', user.email);
       setValue('phoneNumber', user.phoneNumber || '');
-      setValue('isActive', !user.isLocked);
-
-      // Set selected roles
-      const userRoleIds = roles
-        .filter((role) => user.roles.includes(role.name))
-        .map((role) => role.id);
-      setSelectedRoles(userRoleIds);
-      setValue('roleIds', userRoleIds);
+      setValue('roleName', user.roleName);
     }
-  }, [user, roles, isEditMode, setValue]);
+  }, [user, isEditMode, setValue]);
 
-  const onSubmit = async (data: CreateFormData | UpdateFormData) => {
-    if (isEditMode && id) {
-      // Update user
-      const updateData: UpdateUserDto = {
-        firstName: data.firstName,
-        lastName: data.lastName,
-        email: data.email,
-        phoneNumber: data.phoneNumber,
-        isActive: (data as UpdateFormData).isActive,
-        roleIds: selectedRoles,
-      };
-
-      updateUserMutation.mutate(
-        { id: parseInt(id), userData: updateData },
-        {
-          onSuccess: () => {
-            navigate('/users');
-          },
-        }
-      );
+  const onSubmit = (data: FormData) => {
+    if (isEditMode) {
+      const updateData: UpdateUserDto = data;
+      updateUserMutation({ id: parseInt(id!), data: updateData });
     } else {
-      // Create user
-      const createData: CreateUserDto = {
-        firstName: data.firstName,
-        lastName: data.lastName,
-        username: (data as CreateFormData).username,
-        email: data.email,
-        password: (data as CreateFormData).password,
-        phoneNumber: data.phoneNumber,
-        roleIds: selectedRoles,
-      };
-
-      createUserMutation.mutate(createData, {
-        onSuccess: () => {
-          navigate('/users');
-        },
-      });
+      const createData: CreateUserDto = data as CreateUserDto;
+      createUserMutation(createData);
     }
   };
 
-  const handleRoleChange = (roleId: number, checked: boolean) => {
-    const newSelectedRoles = checked
-      ? [...selectedRoles, roleId]
-      : selectedRoles.filter((id) => id !== roleId);
-
-    setSelectedRoles(newSelectedRoles);
-    setValue('roleIds', newSelectedRoles);
-  };
-
-  // Check admin authorization
-  if (!isAdmin()) {
+  if (isUserLoading || areRolesLoading) {
     return (
-      <div className="container mx-auto py-6">
-        <div className="flex items-center justify-center h-64">
-          <Card className="w-96">
-            <CardContent className="pt-6">
-              <div className="text-center">
-                <AlertTriangle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
-                <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
-                <p className="text-muted-foreground mb-4">
-                  You need administrator privileges to manage users.
-                </p>
-                <Button onClick={() => navigate('/dashboard')}>Return to Dashboard</Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -169,10 +138,9 @@ const UserForm = () => {
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Users
         </Button>
-
         <h1 className="text-3xl font-bold">{isEditMode ? 'Edit User' : 'Create New User'}</h1>
         <p className="text-muted-foreground">
-          {isEditMode ? 'Update user information and permissions' : 'Add a new user to the system'}
+          {isEditMode ? 'Update user information and role' : 'Add a new user to the system'}
         </p>
       </div>
 
@@ -196,7 +164,6 @@ const UserForm = () => {
                   <p className="text-sm text-destructive">{errors.firstName.message}</p>
                 )}
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="lastName">Last Name</Label>
                 <Input id="lastName" {...register('lastName')} placeholder="Enter last name" />
@@ -205,16 +172,6 @@ const UserForm = () => {
                 )}
               </div>
             </div>
-
-            {!isEditMode && (
-              <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
-                <Input id="username" {...register('username')} placeholder="Enter username" />
-                {(errors as any).username && (
-                  <p className="text-sm text-destructive">{(errors as any).username.message}</p>
-                )}
-              </div>
-            )}
 
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -240,8 +197,8 @@ const UserForm = () => {
                   {...register('password')}
                   placeholder="Enter password"
                 />
-                {(errors as any).password && (
-                  <p className="text-sm text-destructive">{(errors as any).password.message}</p>
+                {errors.password && (
+                  <p className="text-sm text-destructive">{errors.password.message}</p>
                 )}
               </div>
             )}
@@ -259,41 +216,31 @@ const UserForm = () => {
               </div>
             </div>
 
-            {isEditMode && (
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="isActive"
-                  checked={watch('isActive')}
-                  onCheckedChange={(checked) => setValue('isActive', !!checked)}
-                />
-                <Label htmlFor="isActive">User is active</Label>
-              </div>
-            )}
-
             <div className="space-y-2">
               <Label className="flex items-center">
                 <Shield className="h-4 w-4 mr-2" />
-                Roles
+                Role
               </Label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                {roles.map((role) => (
-                  <div key={role.id} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`role-${role.id}`}
-                      checked={selectedRoles.includes(role.id)}
-                      onCheckedChange={(checked) => handleRoleChange(role.id, !!checked)}
-                    />
-                    <Label htmlFor={`role-${role.id}`} className="text-sm">
-                      {role.name}
-                      {role.description && (
-                        <span className="text-muted-foreground ml-1">- {role.description}</span>
-                      )}
-                    </Label>
-                  </div>
-                ))}
-              </div>
-              {errors.roleIds && (
-                <p className="text-sm text-destructive">{errors.roleIds.message}</p>
+              <Controller
+                name="roleName"
+                control={control}
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {roles.map((role) => (
+                        <SelectItem key={role.id} value={role.roleName}>
+                          {role.roleName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.roleName && (
+                <p className="text-sm text-destructive">{errors.roleName.message}</p>
               )}
             </div>
 
@@ -301,11 +248,8 @@ const UserForm = () => {
               <Button type="button" variant="outline" onClick={() => navigate('/users')}>
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                disabled={createUserMutation.isPending || updateUserMutation.isPending}
-              >
-                {createUserMutation.isPending || updateUserMutation.isPending ? (
+              <Button type="submit" disabled={isCreating || isUpdating}>
+                {isCreating || isUpdating ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                     {isEditMode ? 'Updating...' : 'Creating...'}

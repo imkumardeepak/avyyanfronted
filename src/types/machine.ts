@@ -6,12 +6,11 @@ export interface MachineManagerDto {
   needle: number;
   feeder: number;
   rpm: number;
-  slit: number;
-  constat?: string;
+  constat: number;
   efficiency: number;
-  description?: string;
+  description: string;
   createdAt: string;
-  updatedAt?: string;
+  updatedAt: string;
   isActive: boolean;
 }
 
@@ -22,10 +21,9 @@ export interface CreateMachineManagerDto {
   needle: number;
   feeder: number;
   rpm: number;
-  slit: number;
-  constat?: string;
+  constat: number;
   efficiency: number;
-  description?: string;
+  description: string;
 }
 
 export interface UpdateMachineManagerDto {
@@ -35,10 +33,9 @@ export interface UpdateMachineManagerDto {
   needle: number;
   feeder: number;
   rpm: number;
-  slit: number;
-  constat?: string;
+  constat: number;
   efficiency: number;
-  description?: string;
+  description: string;
   isActive: boolean;
 }
 

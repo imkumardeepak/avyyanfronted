@@ -5,7 +5,6 @@ import type {
   RegisterDto,
   UserDto,
   ChangePasswordDto,
-  RefreshTokenDto,
   CreateUserDto,
   UpdateUserDto,
   RoleDto,
@@ -18,15 +17,15 @@ class AuthService {
   private readonly REFRESH_TOKEN_KEY = 'auth_refresh_token';
   private readonly USER_KEY = 'auth_user';
 
+
   // Authentication Methods
   async login(credentials: LoginDto): Promise<LoginResponseDto> {
     const response = await apiClient.post<LoginResponseDto>('/api/auth/login', credentials);
     const data = response.data;
-
-    // Store tokens and user data
+    console.log("data", data)
     this.setTokens(data.token, data.refreshToken);
     this.setUser(data.user);
-
+    this.setPageAccesses(data.pageAccesses);
     return data;
   }
 
@@ -45,24 +44,6 @@ class AuthService {
     return response.data;
   }
 
-  async refreshToken(): Promise<LoginResponseDto> {
-    const token = this.getToken();
-    const refreshToken = this.getRefreshToken();
-    
-    if (!token || !refreshToken) {
-      throw new Error('No tokens available');
-    }
-
-    const refreshData: RefreshTokenDto = { token, refreshToken };
-    const response = await apiClient.post<LoginResponseDto>('/api/auth/refresh', refreshData);
-    const data = response.data;
-    
-    // Update stored tokens
-    this.setTokens(data.token, data.refreshToken);
-    this.setUser(data.user);
-    
-    return data;
-  }
 
   async changePassword(passwordData: ChangePasswordDto): Promise<boolean> {
     const response = await apiClient.post('/api/user/change-password', passwordData);
@@ -133,18 +114,7 @@ class AuthService {
     return response.status === 200;
   }
 
-  // Permission Methods
-  async getPermissions(): Promise<PageAccessDto[]> {
-    const response = await apiClient.get<PageAccessDto[]>('/api/user/permissions');
-    return response.data;
-  }
-
-  async checkPermission(pageUrl: string, permission: string = 'View'): Promise<boolean> {
-    const response = await apiClient.get<boolean>('/api/user/permissions/check', {
-      params: { pageUrl, permission }
-    });
-    return response.data;
-  }
+ 
 
   // Token Management
   getToken(): string | null {
@@ -154,6 +124,8 @@ class AuthService {
   getRefreshToken(): string | null {
     return localStorage.getItem(this.REFRESH_TOKEN_KEY);
   }
+
+
 
   getUser(): UserDto | null {
     const userData = localStorage.getItem(this.USER_KEY);
@@ -169,6 +141,15 @@ class AuthService {
     localStorage.setItem(this.USER_KEY, JSON.stringify(user));
   }
 
+  setPageAccesses(pageAccesses: PageAccessDto[]): void {
+    localStorage.setItem('page_access', JSON.stringify(pageAccesses));
+  }
+
+  getPageAccesses(): PageAccessDto[] | null {
+  const pageAccessJson = localStorage.getItem('page_access');
+  return pageAccessJson ? JSON.parse(pageAccessJson) as PageAccessDto[] : null;
+}
+
   clearAuth(): void {
     localStorage.removeItem(this.TOKEN_KEY);
     localStorage.removeItem(this.REFRESH_TOKEN_KEY);
@@ -183,13 +164,13 @@ class AuthService {
 
   hasRole(role: string): boolean {
     const user = this.getUser();
-    return user?.roles?.includes(role) || false;
+    return user?.roleName?.includes(role) || false;
   }
 
   hasAnyRole(roles: string[]): boolean {
     const user = this.getUser();
-    if (!user?.roles) return false;
-    return roles.some(role => user.roles.includes(role));
+    if (!user?.roleName) return false;
+    return roles.some(role => user.roleName.includes(role));
   }
 
   isAdmin(): boolean {

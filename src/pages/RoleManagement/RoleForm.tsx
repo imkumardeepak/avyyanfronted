@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -17,166 +17,177 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { ArrowLeft, Save, Shield } from 'lucide-react';
-import { useRole, useCreateRole, useUpdateRole } from '@/hooks/queries';
-import { useAuth } from '@/contexts/AuthContext';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiClient } from '@/lib/api';
+import type { Role, PageAccess } from '@/types/role';
 
 const roleFormSchema = z.object({
-  name: z
+  roleName: z
     .string()
     .min(1, 'Role name is required')
     .max(100, 'Role name must be less than 100 characters'),
   description: z.string().max(500, 'Description must be less than 500 characters').optional(),
-  isActive: z.boolean(),
 });
 
 type RoleFormValues = z.infer<typeof roleFormSchema>;
 
+const fetchRole = async (id: number): Promise<Role> => {
+  const response = await apiClient.get(`/Role/${id}`);
+  return response.data;
+};
+
+const fetchAllPageAccesses = async (): Promise<PageAccess[]> => {
+  const response = await apiClient.get('/Role/page-accesses');
+  return response.data;
+};
+
+const fetchRolePageAccesses = async (roleId: number): Promise<PageAccess[]> => {
+  const response = await apiClient.get(`/Role/${roleId}/page-accesses`);
+  return response.data;
+};
+
+const createRole = async (data: { role: RoleFormValues; pageAccesses: PageAccess[] }) => {
+  const roleResponse = await apiClient.post('/Role', data.role);
+  const newRole: Role = roleResponse.data;
+
+  const permissionPromises = data.pageAccesses.map((permission) =>
+    apiClient.post('/Role/page-accesses', { ...permission, roleId: newRole.id })
+  );
+  await Promise.all(permissionPromises);
+
+  return newRole;
+};
+
+const updateRole = async (data: {
+  id: number;
+  role: RoleFormValues;
+  pageAccesses: PageAccess[];
+}) => {
+  await apiClient.put(`/Role/${data.id}`, data.role);
+
+  const permissionPromises = data.pageAccesses.map((permission) =>
+    apiClient.put(`/Role/page-accesses/${permission.id}`, permission)
+  );
+  await Promise.all(permissionPromises);
+};
+
 const RoleForm = () => {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { isAdmin } = useAuth();
-  const isEditing = !!id && id !== 'new';
+  const queryClient = useQueryClient();
+  const isEditing = !!id;
 
-  // React Query hooks
-  const { data: role, isLoading: roleLoading } = useRole(isEditing ? parseInt(id!) : 0, isEditing);
-  // Temporarily disable page permission queries
-  const rolePagePermissions: any[] = [];
-  const pagePermissionsLoading = false;
-  const createRoleMutation = useCreateRole();
-  const updateRoleMutation = useUpdateRole();
-  const updatePagePermissionsMutation = useUpdateRolePagePermissions();
+  const { data: role, isLoading: roleLoading } = useQuery<Role>({
+    queryKey: ['role', id],
+    queryFn: () => fetchRole(parseInt(id!)),
+    enabled: isEditing,
+  });
 
-  // State for page permissions
-  const [permissionMatrix, setPermissionMatrix] = useState<NavigationPermissionMatrix>({});
-  const [isActiveState, setIsActiveState] = useState(true);
-  const formInitialized = useRef(false);
+  const { data: allPageAccesses, isLoading: allPageAccessesLoading } = useQuery<PageAccess[]>({
+    queryKey: ['allPageAccesses'],
+    queryFn: fetchAllPageAccesses,
+  });
+
+  const { data: rolePageAccesses, isLoading: rolePageAccessesLoading } = useQuery<PageAccess[]>({
+    queryKey: ['rolePageAccesses', id],
+    queryFn: () => fetchRolePageAccesses(parseInt(id!)),
+    enabled: isEditing,
+  });
+
+  const [permissions, setPermissions] = useState<
+    Record<number, Omit<PageAccess, 'id' | 'pageName' | 'path'>>
+  >({});
 
   const form = useForm<RoleFormValues>({
     resolver: zodResolver(roleFormSchema),
     defaultValues: {
-      name: '',
+      roleName: '',
       description: '',
-      isActive: true,
     },
   });
 
-  // Initialize form with role data when editing
   useEffect(() => {
-    if (isEditing && role && !formInitialized.current) {
+    if (isEditing && role) {
       form.reset({
-        name: role.name,
-        description: role.description || '',
-        isActive: role.isActive,
+        roleName: role.roleName,
+        description: role.description,
       });
-      setIsActiveState(role.isActive);
-      formInitialized.current = true;
-    } else if (!isEditing) {
-      formInitialized.current = false;
-      setIsActiveState(true);
     }
-  }, [role, isEditing]);
+  }, [role, isEditing, form]);
 
-  // Memoize permission matrix creation
-  const initialPermissionMatrix = useMemo(() => {
-    if (rolePagePermissions && Array.isArray(rolePagePermissions)) {
-      return createNavigationPermissionMatrix(rolePagePermissions);
-    }
-    return {};
-  }, [rolePagePermissions]);
-
-  // Initialize permission matrix
   useEffect(() => {
-    setPermissionMatrix(initialPermissionMatrix);
-  }, [initialPermissionMatrix]);
-
-  // Permission change handlers
-  const handlePermissionChange = useCallback(
-    (pageName: string, permission: keyof PagePermissions, value: boolean) => {
-      setPermissionMatrix((prev) => ({
-        ...prev,
-        [pageName]: {
-          ...prev[pageName],
-          permissions: {
-            ...prev[pageName]?.permissions,
-            [permission]: value,
-          },
-        },
-      }));
-    },
-    []
-  );
-
-  const handleBulkPermissionChange = useCallback(
-    (pageNames: string[], permission: keyof PagePermissions, value: boolean) => {
-      setPermissionMatrix((prev) => {
-        const updated = { ...prev };
-        pageNames.forEach((pageName) => {
-          if (updated[pageName]) {
-            updated[pageName] = {
-              ...updated[pageName],
-              permissions: {
-                ...updated[pageName].permissions,
-                [permission]: value,
-              },
-            };
-          }
-        });
-        return updated;
+    if (allPageAccesses) {
+      const initialPermissions: Record<number, Omit<PageAccess, 'id' | 'pageName' | 'path'>> = {};
+      allPageAccesses.forEach((p) => {
+        const existingPermission =
+          isEditing && rolePageAccesses
+            ? rolePageAccesses.find((rp) => rp.pageName === p.pageName)
+            : null;
+        initialPermissions[p.id] = {
+          isRead: existingPermission?.isRead || false,
+          isWrite: existingPermission?.isWrite || false,
+          isDelete: existingPermission?.isDelete || false,
+        };
       });
-    },
-    []
-  );
+      setPermissions(initialPermissions);
+    }
+  }, [allPageAccesses, rolePageAccesses, isEditing]);
 
-  // Loading state
-  const isLoading = roleLoading || pagePermissionsLoading;
-
-  // Check admin authorization
-  if (!isAdmin()) {
-    return (
-      <div className="container mx-auto py-6">
-        <div className="flex items-center justify-center h-64">
-          <Card className="w-96">
-            <CardContent className="pt-6">
-              <div className="text-center">
-                <Shield className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
-                <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
-                <p className="text-muted-foreground mb-4">
-                  You need administrator privileges to manage roles.
-                </p>
-                <Button onClick={() => navigate('/roles')}>Back to Roles</Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
-  const onSubmit = async (values: RoleFormValues) => {
-    try {
-      const roleData = {
-        name: values.name,
-        description: values.description || undefined,
-        isActive: isActiveState,
-      };
-
-      if (isEditing && role) {
-        // Update role basic info
-        await updateRoleMutation.mutateAsync({
-          id: role.id,
-          ...roleData,
-        });
-      } else {
-        // Create new role
-        await createRoleMutation.mutateAsync(roleData);
-      }
-
+  const createRoleMutation = useMutation({
+    mutationFn: createRole,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['roles'] });
       navigate('/roles');
-    } catch (error) {
-      console.error('Error saving role:', error);
+    },
+  });
+
+  const updateRoleMutation = useMutation({
+    mutationFn: updateRole,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['roles'] });
+      queryClient.invalidateQueries({ queryKey: ['role', id] });
+      navigate('/roles');
+    },
+  });
+
+  const handlePermissionChange = (
+    pageId: number,
+    permission: keyof Omit<PageAccess, 'id' | 'pageName' | 'path'>,
+    value: boolean
+  ) => {
+    setPermissions((prev) => ({
+      ...prev,
+      [pageId]: {
+        ...prev[pageId],
+        [permission]: value,
+      },
+    }));
+  };
+
+  const onSubmit = (values: RoleFormValues) => {
+    const pageAccesses =
+      allPageAccesses?.map((p) => ({
+        ...p,
+        ...permissions[p.id],
+      })) || [];
+
+    if (isEditing) {
+      updateRoleMutation.mutate({ id: parseInt(id!), role: values, pageAccesses });
+    } else {
+      createRoleMutation.mutate({ role: values, pageAccesses });
     }
   };
+
+  const isLoading = roleLoading || allPageAccessesLoading || rolePageAccessesLoading;
 
   if (isLoading) {
     return (
@@ -188,7 +199,6 @@ const RoleForm = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <Button variant="outline" onClick={() => navigate('/roles')}>
@@ -210,7 +220,6 @@ const RoleForm = () => {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          {/* Basic Information */}
           <Card>
             <CardHeader>
               <CardTitle>Basic Information</CardTitle>
@@ -218,7 +227,7 @@ const RoleForm = () => {
             <CardContent className="space-y-4">
               <FormField
                 control={form.control}
-                name="name"
+                name="roleName"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Role Name *</FormLabel>
@@ -254,46 +263,61 @@ const RoleForm = () => {
                   </FormItem>
                 )}
               />
-
-              <div className="flex flex-row items-center justify-between rounded-lg border p-4">
-                <div className="space-y-0.5">
-                  <label className="text-base font-medium">Active Status</label>
-                  <p className="text-sm text-muted-foreground">
-                    Enable this role for assignment to users
-                  </p>
-                </div>
-                <Checkbox
-                  checked={isActiveState}
-                  onCheckedChange={(checked) => {
-                    const isChecked = checked === true;
-                    setIsActiveState(isChecked);
-                    form.setValue('isActive', isChecked);
-                  }}
-                />
-              </div>
             </CardContent>
           </Card>
 
-          {/* Page Permissions - Temporarily Disabled */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Shield className="h-5 w-5" />
                 <span>Page Permissions</span>
               </CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Page-level permission management will be available once the backend API is
-                implemented.
-              </p>
             </CardHeader>
             <CardContent>
-              <p className="text-center text-muted-foreground py-8">
-                Permission matrix coming soon...
-              </p>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Page</TableHead>
+                    <TableHead className="text-center">Read</TableHead>
+                    <TableHead className="text-center">Write</TableHead>
+                    <TableHead className="text-center">Delete</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {allPageAccesses?.map((page) => (
+                    <TableRow key={page.id}>
+                      <TableCell className="font-medium">{page.pageName}</TableCell>
+                      <TableCell className="text-center">
+                        <Checkbox
+                          checked={permissions[page.id]?.isRead}
+                          onCheckedChange={(checked) =>
+                            handlePermissionChange(page.id, 'isRead', !!checked)
+                          }
+                        />
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Checkbox
+                          checked={permissions[page.id]?.isWrite}
+                          onCheckedChange={(checked) =>
+                            handlePermissionChange(page.id, 'isWrite', !!checked)
+                          }
+                        />
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Checkbox
+                          checked={permissions[page.id]?.isDelete}
+                          onCheckedChange={(checked) =>
+                            handlePermissionChange(page.id, 'isDelete', !!checked)
+                          }
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
 
-          {/* Actions */}
           <div className="flex justify-end space-x-4">
             <Button type="button" variant="outline" onClick={() => navigate('/roles')}>
               Cancel

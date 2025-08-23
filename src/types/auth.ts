@@ -1,6 +1,6 @@
 // Backend DTOs matching your API
 export interface LoginDto {
-  username: string;
+  email: string;
   password: string;
   rememberMe?: boolean;
 }
@@ -18,17 +18,11 @@ export interface UserDto {
   id: number;
   firstName: string;
   lastName: string;
-  username: string;
   email: string;
-  phoneNumber?: string;
-  profilePicture?: string;
-  isEmailVerified: boolean;
-  isLocked: boolean;
-  lastLoginAt?: string;
+  phoneNumber: string | null;
+  lastLoginAt: string;
   createdAt: string;
-  isOnline: boolean;
-  fullName: string;
-  roles: string[];
+  roleName: string;
 }
 
 export interface CreateUserDto {
@@ -73,13 +67,12 @@ export interface RefreshTokenDto {
 
 export interface PageAccessDto {
   id: number;
-  pageUrl: string;
+  roleId: number;
   pageName: string;
-  canView: boolean;
-  canCreate: boolean;
-  canEdit: boolean;
-  canDelete: boolean;
-  canExport: boolean;
+  isView: boolean;
+  isAdd: boolean;
+  isEdit: boolean;
+  isDelete: boolean;
 }
 
 export interface RoleDto {

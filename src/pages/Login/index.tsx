@@ -17,7 +17,7 @@ const Login = () => {
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
-    username: '',
+    email: '',
     password: '',
     rememberMe: false,
   });
@@ -41,7 +41,7 @@ const Login = () => {
 
     try {
       const result = await login({
-        username: formData.username,
+        email: formData.email,
         password: formData.password,
         rememberMe: formData.rememberMe,
       });
@@ -66,14 +66,6 @@ const Login = () => {
     }));
     // Clear error when user starts typing
     if (error) setError('');
-  };
-
-  const fillAdminCredentials = () => {
-    setFormData({
-      email: 'admin',
-      password: 'admin',
-    });
-    setError('');
   };
 
   if (isLoading) {
@@ -121,15 +113,15 @@ const Login = () => {
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="username">Username or Email</Label>
+                <Label htmlFor="username">Email</Label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
-                    id="username"
-                    name="username"
+                    id="email"
+                    name="email"
                     type="text"
-                    placeholder="Enter your username or email"
-                    value={formData.username}
+                    placeholder="Enter your email"
+                    value={formData.email}
                     onChange={handleInputChange}
                     className="pl-10"
                     required

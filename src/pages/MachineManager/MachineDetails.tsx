@@ -209,20 +209,10 @@ const MachineDetails = () => {
                 <div className="text-lg font-semibold">{machine.rpm}</div>
               </div>
               <div>
-                <Label className="text-sm font-medium text-muted-foreground">Slit</Label>
-                <div className="text-lg font-semibold">{machine.slit}</div>
+                <Label className="text-sm font-medium text-muted-foreground">Constat</Label>
+                <div className="text-lg font-semibold">{machine.constat}</div>
               </div>
             </div>
-
-            {machine.constat && (
-              <>
-                <Separator />
-                <div>
-                  <Label className="text-sm font-medium text-muted-foreground">Constat</Label>
-                  <div className="text-lg font-semibold">{machine.constat}</div>
-                </div>
-              </>
-            )}
           </CardContent>
         </Card>
 

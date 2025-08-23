@@ -21,13 +21,12 @@ const machineSchema = z.object({
   needle: z.number().int().min(1, 'Needle count must be at least 1'),
   feeder: z.number().int().min(1, 'Feeder count must be at least 1'),
   rpm: z.number().min(0, 'RPM must be positive'),
-  slit: z.number().int().min(0, 'Slit must be non-negative'),
-  constat: z.string().max(100, 'Constat too long').optional(),
+  constat: z.number().min(0, 'Constat must be positive'),
   efficiency: z
     .number()
     .min(0, 'Efficiency must be positive')
     .max(100, 'Efficiency cannot exceed 100%'),
-  description: z.string().max(500, 'Description too long').optional(),
+  description: z.string().min(1, 'Description is required').max(500, 'Description too long'),
   isActive: z.boolean().optional(),
 });
 
@@ -55,8 +54,7 @@ const MachineForm = () => {
       needle: 1,
       feeder: 1,
       rpm: 0,
-      slit: 0,
-      constat: '',
+      constat: 0,
       efficiency: 0,
       description: '',
       isActive: true,
@@ -81,8 +79,7 @@ const MachineForm = () => {
         setValue('needle', machine.needle);
         setValue('feeder', machine.feeder);
         setValue('rpm', machine.rpm);
-        setValue('slit', machine.slit);
-        setValue('constat', machine.constat || '');
+        setValue('constat', machine.constat || 0);
         setValue('efficiency', machine.efficiency);
         setValue('description', machine.description || '');
         setValue('isActive', machine.isActive);
@@ -110,7 +107,6 @@ const MachineForm = () => {
           needle: data.needle,
           feeder: data.feeder,
           rpm: data.rpm,
-          slit: data.slit,
           constat: data.constat,
           efficiency: data.efficiency,
           description: data.description,
@@ -230,17 +226,6 @@ const MachineForm = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="slit">Slit *</Label>
-                <Input
-                  id="slit"
-                  type="number"
-                  {...register('slit', { valueAsNumber: true })}
-                  placeholder="Enter slit value"
-                />
-                {errors.slit && <p className="text-sm text-red-500">{errors.slit.message}</p>}
-              </div>
-
-              <div className="space-y-2">
                 <Label htmlFor="efficiency">Efficiency (%) *</Label>
                 <Input
                   id="efficiency"
@@ -258,21 +243,23 @@ const MachineForm = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="constat">Constat</Label>
+              <Label htmlFor="constat">Constat *</Label>
               <Input
                 id="constat"
-                {...register('constat')}
-                placeholder="Enter constat value (optional)"
+                type="number"
+                step="0.01"
+                {...register('constat', { valueAsNumber: true })}
+                placeholder="Enter constat value"
               />
               {errors.constat && <p className="text-sm text-red-500">{errors.constat.message}</p>}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description">Description *</Label>
               <Textarea
                 id="description"
                 {...register('description')}
-                placeholder="Enter machine description (optional)"
+                placeholder="Enter machine description"
                 rows={3}
               />
               {errors.description && (

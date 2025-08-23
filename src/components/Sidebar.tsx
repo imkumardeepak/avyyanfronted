@@ -1,36 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, type JSX } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
-import { usePermissions } from '@/contexts/PermissionContext';
-import { useSidebar } from '@/contexts/SidebarContext'; // Import useSidebar
+import { useSidebar } from '@/contexts/SidebarContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import {
-  User,
-  Settings,
-  Folder,
-  ChevronLeft,
-  ChevronRight,
-  Cog,
-  Users,
-  MessageSquare,
-  Bell,
-  BarChart3,
-  Shield,
-} from 'lucide-react';
-import type { MainNavItem, SubNavItem } from '@/types/navigation';
+import { Folder, ChevronLeft, ChevronRight, Cog, Users, BarChart3, Shield } from 'lucide-react';
 
-const navItems: MainNavItem[] = [
+interface NavItem {
+  title: string;
+  href: string;
+  icon: Icon;
+  description: string;
+  isParentOnly?: boolean;
+  children?: NavItem[];
+  badge?: string;
+}
+
+const navConfig: NavItem[] = [
   {
     title: 'Dashboard',
     href: '/dashboard',
     icon: BarChart3,
     description: 'Main dashboard with overview and analytics',
-    permissionRequirement: {
-      pageName: '/dashboard',
-      requiredActions: ['read'],
-    },
   },
   {
     title: 'Master',
@@ -40,15 +32,10 @@ const navItems: MainNavItem[] = [
     isParentOnly: true,
     children: [
       {
-        title: 'Machine Manager',
+        title: 'Machine Master',
         href: '/machines',
         icon: Cog,
         description: 'Manage manufacturing machines and equipment',
-        parentPath: '#master',
-        permissionRequirement: {
-          pageName: '/machines',
-          requiredActions: ['read'],
-        },
       },
     ],
   },
@@ -60,77 +47,32 @@ const navItems: MainNavItem[] = [
     isParentOnly: true,
     children: [
       {
-        title: 'Role Management',
+        title: 'Role Master',
         href: '/roles',
         icon: Shield,
         description: 'Manage user roles and permissions',
-        parentPath: '#user-management',
-        permissionRequirement: {
-          pageName: '/roles',
-          requiredActions: ['read'],
-        },
       },
       {
-        title: 'Users',
+        title: 'User Management',
         href: '/users',
         icon: Users,
         description: 'Manage user accounts and profiles',
-        parentPath: '#user-management',
-        permissionRequirement: {
-          pageName: '/users',
-          requiredActions: ['read'],
-        },
       },
     ],
-  },
-  {
-    title: 'Chat',
-    href: '/chat',
-    icon: MessageSquare,
-    description: 'Internal communication and messaging',
-    permissionRequirement: {
-      pageName: '/chat',
-      requiredActions: ['read'],
-    },
-  },
-  {
-    title: 'Notifications',
-    href: '/notifications',
-    icon: Bell,
-    description: 'System notifications and alerts',
-    permissionRequirement: {
-      pageName: '/notifications',
-      requiredActions: ['read'],
-    },
-  },
-];
-
-const bottomNavItems: MainNavItem[] = [
-  {
-    title: 'Profile',
-    href: '/profile',
-    icon: User,
-    description: 'User profile and account settings',
-    isPublic: true, // Profile is accessible to all authenticated users
-  },
-  {
-    title: 'Settings',
-    href: '/settings',
-    icon: Settings,
-    description: 'System configuration and preferences',
-    permissionRequirement: {
-      pageName: '/settings',
-      requiredActions: ['read'],
-    },
   },
 ];
 
 export const Sidebar: React.FC = () => {
   const location = useLocation();
-  const { user } = useAuth();
-  const { hasPermission } = usePermissions();
-  const { isSidebarCollapsed, toggleSidebar } = useSidebar(); // Use isSidebarCollapsed and toggleSidebar from context
+  const { user, pageAccesses } = useAuth();
+  const { isSidebarCollapsed, toggleSidebar } = useSidebar();
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
+
+  const hasAccess = (href: string) => {
+    const page = pageAccesses.find((p) => href.toLowerCase().includes(p.pageName.toLowerCase()));
+    console.log(pageAccesses.map((p) => p.pageName));
+    return page?.isView ?? false;
+  };
 
   const toggleExpanded = (href: string) => {
     setExpandedItems((prev) =>
@@ -139,71 +81,28 @@ export const Sidebar: React.FC = () => {
   };
 
   const isActive = (href: string) => {
-    return location.pathname === href || (href !== '/' && location.pathname.startsWith(href));
+    return location.pathname.toLowerCase() === href.toLowerCase();
   };
 
-  // Permission checking functions
-  const hasItemPermission = (item: MainNavItem | SubNavItem): boolean => {
-    // If item is marked as public, allow access
-    if (item.isPublic) {
-      return true;
-    }
+  const renderNavItem = (item: NavItem, level = 0): JSX.Element | null => {
+    const accessibleChildren = item.children?.filter((child) => hasAccess(child.title)) ?? [];
+    const hasChildren = accessibleChildren.length > 0;
 
-    // If no permission requirement specified, allow access (backward compatibility)
-    if (!item.permissionRequirement) {
-      return true;
-    }
-
-    // Check if user has any of the required permissions for this page
-    // For now, we'll use the old permission system until we implement the new page-based system
-    const pageName = item.permissionRequirement.pageName;
-    const requiredActions = item.permissionRequirement.requiredActions;
-
-    // Convert page name to resource name for backward compatibility
-    let resource = 'dashboard';
-    if (pageName.includes('/users')) resource = 'users';
-    else if (pageName.includes('/roles')) resource = 'roles';
-    else if (pageName.includes('/machines')) resource = 'machines';
-    else if (pageName.includes('/chat')) resource = 'chat';
-    else if (pageName.includes('/notifications')) resource = 'notifications';
-    else if (pageName.includes('/settings')) resource = 'settings';
-
-    // Check if user has any of the required actions
-    return requiredActions.some((action) => hasPermission(resource, action));
-  };
-
-  const getAccessibleChildren = (children: SubNavItem[] | undefined): SubNavItem[] => {
-    if (!children) return [];
-    return children.filter((child) => hasItemPermission(child));
-  };
-
-  const shouldShowParentMenu = (item: MainNavItem): boolean => {
-    // If item has no children, check its own permission
-    if (!item.children || item.children.length === 0) {
-      return hasItemPermission(item);
-    }
-
-    // If item has children, show parent only if at least one child is accessible
-    const accessibleChildren = getAccessibleChildren(item.children);
-    return accessibleChildren.length > 0;
-  };
-
-  const renderNavItem = (item: MainNavItem | SubNavItem, level = 0) => {
-    // Check if user has permission to see this item
-    if (!shouldShowParentMenu(item as MainNavItem)) {
+    if (!hasAccess(item.title) && !hasChildren) {
       return null;
     }
 
-    // Get accessible children for parent menus
-    const accessibleChildren = getAccessibleChildren((item as MainNavItem).children);
-    const hasChildren = accessibleChildren.length > 0;
+    if (item.isParentOnly && !hasChildren) {
+      return null;
+    }
+
     const isExpanded = expandedItems.includes(item.href);
     const active = isActive(item.href);
 
     return (
       <div key={item.href}>
         <NavLink
-          to={item.href}
+          to={item.isParentOnly ? '#' : item.href}
           className={cn(
             'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent',
             active && 'bg-accent text-accent-foreground',
@@ -259,7 +158,7 @@ export const Sidebar: React.FC = () => {
         <Button
           variant="ghost"
           size="sm"
-          onClick={toggleSidebar} // Use toggleSidebar from context
+          onClick={toggleSidebar}
           className={cn('ml-auto h-8 w-8 p-0', isSidebarCollapsed && 'mx-auto')}
         >
           {isSidebarCollapsed ? (
@@ -272,15 +171,7 @@ export const Sidebar: React.FC = () => {
 
       {/* Navigation */}
       <div className="flex-1 overflow-auto py-4">
-        <nav className="space-y-1 px-3">
-          {navItems.filter((item) => shouldShowParentMenu(item)).map((item) => renderNavItem(item))}
-        </nav>
-
-        <nav className="space-y-1 px-3">
-          {bottomNavItems
-            .filter((item) => shouldShowParentMenu(item))
-            .map((item) => renderNavItem(item))}
-        </nav>
+        <nav className="space-y-1 px-3">{navConfig.map((item) => renderNavItem(item))}</nav>
       </div>
 
       {/* Footer */}

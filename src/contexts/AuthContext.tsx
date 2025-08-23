@@ -7,11 +7,11 @@ interface AuthContextType {
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  permissions: PageAccessDto[];
+  pageAccesses: PageAccessDto[];
   login: (credentials: LoginDto) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   hasRole: (role: string) => boolean;
-  hasPermission: (pageUrl: string, permission?: string) => boolean;
+  hasPermission: (pageName: string, action: 'View' | 'Add' | 'Edit' | 'Delete') => boolean;
   isAdmin: () => boolean;
   refreshUser: () => Promise<void>;
 }
@@ -34,7 +34,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<UserDto | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [permissions, setPermissions] = useState<PageAccessDto[]>([]);
+  const [pageAccesses, setPageAccesses] = useState<PageAccessDto[]>([]);
 
   // Check for existing session on mount
   useEffect(() => {
@@ -42,18 +42,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       try {
         const savedUser = authService.getUser();
         const savedToken = authService.getToken();
+        const pageAccesses = authService.getPageAccesses();
 
         if (savedUser && savedToken) {
           setUser(savedUser);
           setToken(savedToken);
-
+          setPageAccesses(pageAccesses || []);
           // Load user permissions
-          try {
-            const userPermissions = await authService.getPermissions();
-            setPermissions(userPermissions);
-          } catch (error) {
-            console.error('Error loading permissions:', error);
-          }
         }
       } catch (error) {
         console.error('Error checking auth:', error);
@@ -74,7 +69,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       setUser(response.user);
       setToken(response.token);
-      setPermissions(response.pageAccesses);
+      setPageAccesses(response.pageAccesses);
 
       return { success: true };
     } catch (error: any) {
@@ -96,7 +91,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } finally {
       setUser(null);
       setToken(null);
-      setPermissions([]);
+      setPageAccesses([]);
       setIsLoading(false);
     }
   };
@@ -105,22 +100,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return authService.hasRole(role);
   };
 
-  const hasPermission = (pageUrl: string, permission: string = 'View'): boolean => {
-    return permissions.some(
-      (p) =>
-        p.pageUrl === pageUrl &&
-        (permission === 'View'
-          ? p.canView
-          : permission === 'Create'
-            ? p.canCreate
-            : permission === 'Edit'
-              ? p.canEdit
-              : permission === 'Delete'
-                ? p.canDelete
-                : permission === 'Export'
-                  ? p.canExport
-                  : false)
-    );
+  const hasPermission = (
+    pageName: string,
+    action: 'View' | 'Add' | 'Edit' | 'Delete' = 'View'
+  ): boolean => {
+    const page = pageAccesses.find((p) => p.pageName === pageName);
+    if (!page) return false;
+
+    switch (action) {
+      case 'View':
+        return page.isView;
+      case 'Add':
+        return page.isAdd;
+      case 'Edit':
+        return page.isEdit;
+      case 'Delete':
+        return page.isDelete;
+      default:
+        return false;
+    }
   };
 
   const isAdmin = (): boolean => {
@@ -141,7 +139,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     token,
     isLoading,
     isAuthenticated: !!user,
-    permissions,
+    pageAccesses,
     login,
     logout,
     hasRole,

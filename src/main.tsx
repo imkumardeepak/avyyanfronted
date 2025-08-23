@@ -7,7 +7,6 @@ import App from './App';
 import './index.css';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider } from './contexts/AuthContext';
-import { PermissionProvider } from './contexts/PermissionContext';
 import { Toaster } from 'sonner';
 import { registerSW } from 'virtual:pwa-register';
 
@@ -40,11 +39,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <ThemeProvider>
       <AuthProvider>
         <QueryClientProvider client={queryClient}>
-          <PermissionProvider>
-            <App />
-            <Toaster position="top-right" richColors />
-            <ReactQueryDevtools initialIsOpen={false} />
-          </PermissionProvider>
+          <App />
+          <Toaster position="top-right" richColors />
+          <ReactQueryDevtools initialIsOpen={false} />
         </QueryClientProvider>
       </AuthProvider>
     </ThemeProvider>

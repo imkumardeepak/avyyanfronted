@@ -4,26 +4,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import {
-  ChevronDown,
-  ChevronRight,
-  Shield,
-  Users,
-  Folder,
-  BarChart3,
-  MessageSquare,
-  Bell,
-  Settings,
-  User,
-} from 'lucide-react';
+import { ChevronDown, ChevronRight, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type {
-  MainNavItem,
-  SubNavItem,
-  PagePermissions,
-  NavigationPermissionMatrix,
-  PagePermissionRecord,
-} from '@/types/navigation';
+import type { PagePermissions, NavigationPermissionMatrix } from '@/types/navigation';
 
 interface PagePermissionMatrixProps {
   permissions: NavigationPermissionMatrix;
