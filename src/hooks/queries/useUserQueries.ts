@@ -1,7 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { userApi, roleApi } from '@/lib/api';
+import { userApi, roleApi, apiUtils } from '@/lib/api-client';
 import { toast } from '@/lib/toast';
-import type { UserDto, CreateUserDto, UpdateUserDto, RoleDto, AssignRoleDto } from '@/types/auth';
+import type {
+  AdminUserResponseDto,
+  CreateUserRequestDto,
+  UpdateUserRequestDto,
+  RoleResponseDto
+} from '@/types/api-types';
 
 // Query Keys
 export const userKeys = {
@@ -28,7 +33,7 @@ export const useUsers = () => {
     queryKey: userKeys.lists(),
     queryFn: async () => {
       const response = await userApi.getAllUsers();
-      return response.data as UserDto[];
+      return apiUtils.extractData(response) as AdminUserResponseDto[];
     },
   });
 };
@@ -38,22 +43,13 @@ export const useUser = (id: number, enabled = true) => {
     queryKey: userKeys.detail(id),
     queryFn: async () => {
       const response = await userApi.getUser(id);
-      return response.data as UserDto;
+      return apiUtils.extractData(response) as AdminUserResponseDto;
     },
     enabled: enabled && !!id,
   });
 };
 
-export const useUserRoles = (userId: number, enabled = true) => {
-  return useQuery({
-    queryKey: userKeys.roles(userId),
-    queryFn: async () => {
-      const response = await userApi.getUserRoles(userId);
-      return response.data as RoleDto[];
-    },
-    enabled: enabled && !!userId,
-  });
-};
+// getUserRoles is not available in the current API
 
 // Role Queries
 export const useRoles = () => {
@@ -61,7 +57,7 @@ export const useRoles = () => {
     queryKey: roleKeys.lists(),
     queryFn: async () => {
       const response = await roleApi.getAllRoles();
-      return response.data as RoleDto[];
+      return apiUtils.extractData(response) as RoleResponseDto[];
     },
   });
 };
@@ -71,7 +67,7 @@ export const useRole = (id: number, enabled = true) => {
     queryKey: roleKeys.detail(id),
     queryFn: async () => {
       const response = await roleApi.getRole(id);
-      return response.data as RoleDto;
+      return apiUtils.extractData(response) as RoleResponseDto;
     },
     enabled: enabled && !!id,
   });
@@ -81,8 +77,12 @@ export const usePageAccesses = () => {
   return useQuery({
     queryKey: roleKeys.pageAccesses(),
     queryFn: async () => {
-      const response = await roleApi.getAllPageAccesses();
-      return response.data;
+      // Get page accesses from roles
+      const response = await roleApi.getAllRoles();
+      const roles = apiUtils.extractData(response) as RoleResponseDto[];
+      // Extract all page accesses from all roles
+      const allPageAccesses = roles.flatMap(role => role.pageAccesses || []);
+      return allPageAccesses;
     },
   });
 };
@@ -92,9 +92,9 @@ export const useCreateUser = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (userData: CreateUserDto) => {
+    mutationFn: async (userData: CreateUserRequestDto) => {
       const response = await userApi.createUser(userData);
-      return response.data as UserDto;
+      return apiUtils.extractData(response) as AdminUserResponseDto;
     },
     onSuccess: (newUser) => {
       // Invalidate and refetch users list
@@ -106,7 +106,8 @@ export const useCreateUser = () => {
       toast.success('Success', 'User created successfully');
     },
     onError: (error: any) => {
-      toast.error('Error', error?.response?.data?.message || 'Failed to create user');
+      const errorMessage = apiUtils.handleError(error);
+      toast.error('Error', errorMessage);
     },
   });
 };
@@ -115,9 +116,9 @@ export const useUpdateUser = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, userData }: { id: number; userData: UpdateUserDto }) => {
+    mutationFn: async ({ id, userData }: { id: number; userData: UpdateUserRequestDto }) => {
       const response = await userApi.updateUser(id, userData);
-      return response.data as UserDto;
+      return apiUtils.extractData(response) as AdminUserResponseDto;
     },
     onSuccess: (updatedUser) => {
       // Update the user in the cache
@@ -129,7 +130,7 @@ export const useUpdateUser = () => {
       toast.success('Success', 'User updated successfully');
     },
     onError: (error: unknown) => {
-      const errorMessage = (error as any)?.response?.data?.message || 'Failed to update user';
+      const errorMessage = apiUtils.handleError(error);
       toast.error('Error', errorMessage);
     },
   });
@@ -153,98 +154,12 @@ export const useDeleteUser = () => {
       toast.success('Success', 'User deleted successfully');
     },
     onError: (error: unknown) => {
-      const errorMessage = (error as any)?.response?.data?.message || 'Failed to delete user';
+      const errorMessage = apiUtils.handleError(error);
       toast.error('Error', errorMessage);
     },
   });
 };
 
-export const useLockUser = () => {
-  const queryClient = useQueryClient();
+// Lock/Unlock user functions are not available in the current API
 
-  return useMutation({
-    mutationFn: async (id: number) => {
-      await userApi.lockUser(id);
-      return id;
-    },
-    onSuccess: (userId) => {
-      // Invalidate user details and list
-      queryClient.invalidateQueries({ queryKey: userKeys.detail(userId) });
-      queryClient.invalidateQueries({ queryKey: userKeys.lists() });
 
-      toast.success('Success', 'User locked successfully');
-    },
-    onError: (error: unknown) => {
-      const errorMessage = (error as any)?.response?.data?.message || 'Failed to lock user';
-      toast.error('Error', errorMessage);
-    },
-  });
-};
-
-export const useUnlockUser = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (id: number) => {
-      await userApi.unlockUser(id);
-      return id;
-    },
-    onSuccess: (userId) => {
-      // Invalidate user details and list
-      queryClient.invalidateQueries({ queryKey: userKeys.detail(userId) });
-      queryClient.invalidateQueries({ queryKey: userKeys.lists() });
-
-      toast.success('Success', 'User unlocked successfully');
-    },
-    onError: (error: unknown) => {
-      const errorMessage = (error as any)?.response?.data?.message || 'Failed to unlock user';
-      toast.error('Error', errorMessage);
-    },
-  });
-};
-
-export const useAssignUserRole = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ userId, roleData }: { userId: number; roleData: { roleId: number; expiresAt?: string } }) => {
-      await userApi.assignUserRole(userId, roleData);
-      return { userId, roleData };
-    },
-    onSuccess: ({ userId }) => {
-      // Invalidate user details and roles
-      queryClient.invalidateQueries({ queryKey: userKeys.detail(userId) });
-      queryClient.invalidateQueries({ queryKey: userKeys.roles(userId) });
-      queryClient.invalidateQueries({ queryKey: userKeys.lists() });
-
-      toast.success('Success', 'Role assigned successfully');
-    },
-    onError: (error: unknown) => {
-      const errorMessage = (error as any)?.response?.data?.message || 'Failed to assign role';
-      toast.error('Error', errorMessage);
-    },
-  });
-};
-
-export const useRemoveUserRole = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ userId, roleId }: { userId: number; roleId: number }) => {
-      await userApi.removeUserRole(userId, roleId);
-      return { userId, roleId };
-    },
-    onSuccess: ({ userId }) => {
-      // Invalidate user details and roles
-      queryClient.invalidateQueries({ queryKey: userKeys.detail(userId) });
-      queryClient.invalidateQueries({ queryKey: userKeys.roles(userId) });
-      queryClient.invalidateQueries({ queryKey: userKeys.lists() });
-
-      toast.success('Success', 'Role removed successfully');
-    },
-    onError: (error: unknown) => {
-      const errorMessage = (error as any)?.response?.data?.message || 'Failed to remove role';
-      toast.error('Error', errorMessage);
-    },
-  });
-};

@@ -1,13 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import { authService } from '@/services/authService';
+import { userApi, apiUtils } from '@/lib/api-client';
 import type {
-  UserDto,
-  CreateUserDto,
-  UpdateUserDto,
-  ChangePasswordDto,
-  RoleDto,
-  AssignRoleDto
-} from '@/types/auth';
+  AdminUserResponseDto,
+  CreateUserRequestDto,
+  UpdateUserRequestDto,
+  ChangePasswordRequestDto,
+  RoleResponseDto,
+} from '@/types/api-types';
 import { AxiosError } from 'axios';
 
 // Helper function to handle errors
@@ -22,7 +21,7 @@ const handleError = (err: unknown, defaultMessage: string): string => {
 };
 
 export const useUsers = () => {
-  const [users, setUsers] = useState<UserDto[]>([]);
+  const [users, setUsers] = useState<AdminUserResponseDto[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,8 +30,9 @@ export const useUsers = () => {
     try {
       setLoading(true);
       setError(null);
-      const users = await authService.getAllUsers();
-      setUsers(users);
+      const response = await userApi.getAllUsers();
+      const usersData = apiUtils.extractData(response);
+      setUsers(usersData);
     } catch (err) {
       console.error('Error fetching users:', err);
       setError(handleError(err, 'Failed to fetch users'));
@@ -43,12 +43,13 @@ export const useUsers = () => {
   }, []);
 
   // Get single user
-  const getUser = async (id: number): Promise<UserDto | null> => {
+  const getUser = async (id: number): Promise<AdminUserResponseDto | null> => {
     try {
       setLoading(true);
       setError(null);
-      const user = await authService.getUserById(id);
-      return user;
+      const response = await userApi.getUser(id);
+      const userData = apiUtils.extractData(response);
+      return userData;
     } catch (err) {
       setError(handleError(err, 'Failed to fetch user'));
       return null;
@@ -58,11 +59,12 @@ export const useUsers = () => {
   };
 
   // Create user
-  const createUser = async (data: CreateUserDto): Promise<UserDto | null> => {
+  const createUser = async (data: CreateUserRequestDto): Promise<AdminUserResponseDto | null> => {
     try {
       setLoading(true);
       setError(null);
-      const newUser = await authService.createUser(data);
+      const response = await userApi.createUser(data);
+      const newUser = apiUtils.extractData(response);
       setUsers(prev => [...prev, newUser]);
       return newUser;
     } catch (err) {
@@ -74,11 +76,12 @@ export const useUsers = () => {
   };
 
   // Update user
-  const updateUser = async (id: number, data: UpdateUserDto): Promise<UserDto | null> => {
+  const updateUser = async (id: number, data: UpdateUserRequestDto): Promise<AdminUserResponseDto | null> => {
     try {
       setLoading(true);
       setError(null);
-      const updatedUser = await authService.updateUser(id, data);
+      const response = await userApi.updateUser(id, data);
+      const updatedUser = apiUtils.extractData(response);
       setUsers(prev => prev.map(u => u.id === id ? updatedUser : u));
       return updatedUser;
     } catch (err) {
@@ -94,11 +97,9 @@ export const useUsers = () => {
     try {
       setLoading(true);
       setError(null);
-      const success = await authService.deleteUser(id);
-      if (success) {
-        setUsers(prev => prev.filter(u => u.id !== id));
-      }
-      return success;
+      await userApi.deleteUser(id);
+      setUsers(prev => prev.filter(u => u.id !== id));
+      return true;
     } catch (err) {
       setError(handleError(err, 'Failed to delete user'));
       return false;
@@ -107,49 +108,13 @@ export const useUsers = () => {
     }
   };
 
-  // Lock user account
-  const lockUser = async (id: number): Promise<boolean> => {
-    try {
-      setLoading(true);
-      setError(null);
-      const success = await authService.lockUser(id);
-      if (success) {
-        setUsers(prev => prev.map(u => u.id === id ? { ...u, isLocked: true } : u));
-      }
-      return success;
-    } catch (err) {
-      setError(handleError(err, 'Failed to lock user'));
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Unlock user account
-  const unlockUser = async (id: number): Promise<boolean> => {
-    try {
-      setLoading(true);
-      setError(null);
-      const success = await authService.unlockUser(id);
-      if (success) {
-        setUsers(prev => prev.map(u => u.id === id ? { ...u, isLocked: false } : u));
-      }
-      return success;
-    } catch (err) {
-      setError(handleError(err, 'Failed to unlock user'));
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Change password (for current user)
-  const changePassword = async (passwordData: ChangePasswordDto): Promise<boolean> => {
+  const changePassword = async (passwordData: ChangePasswordRequestDto): Promise<boolean> => {
     try {
       setLoading(true);
       setError(null);
-      const success = await authService.changePassword(passwordData);
-      return success;
+      await userApi.changePassword(passwordData);
+      return true;
     } catch (err) {
       setError(handleError(err, 'Failed to change password'));
       return false;
@@ -158,48 +123,13 @@ export const useUsers = () => {
     }
   };
 
-  // Assign role to user
-  const assignRole = async (userId: number, roleId: number): Promise<boolean> => {
-    try {
-      setLoading(true);
-      setError(null);
-      const assignData: AssignRoleDto = { userId, roleId, expiresAt: null };
-      const success = await authService.assignRole(assignData);
-      if (success) {
-        await fetchUsers(); // Refresh user data
-      }
-      return success;
-    } catch (err) {
-      setError(handleError(err, 'Failed to assign role'));
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Remove role from user
-  const removeRole = async (userId: number, roleId: number): Promise<boolean> => {
-    try {
-      setLoading(true);
-      setError(null);
-      const success = await authService.removeRole(userId, roleId);
-      if (success) {
-        await fetchUsers(); // Refresh user data
-      }
-      return success;
-    } catch (err) {
-      setError(handleError(err, 'Failed to remove role'));
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Get all roles
-  const getAllRoles = async (): Promise<RoleDto[]> => {
+  const getAllRoles = async (): Promise<RoleResponseDto[]> => {
     try {
-      const roles = await authService.getAllRoles();
-      return roles;
+      const response = await userApi.getPermissions();
+      // This is a placeholder since we don't have a direct API for getting all roles
+      // In a real implementation, you would call the role API
+      return [];
     } catch (err) {
       setError(handleError(err, 'Failed to fetch roles'));
       return [];
@@ -207,15 +137,14 @@ export const useUsers = () => {
   };
 
   // Search users (local search for now)
-  const searchUsers = async (query: string): Promise<UserDto[]> => {
+  const searchUsers = async (query: string): Promise<AdminUserResponseDto[]> => {
     try {
       setLoading(true);
       setError(null);
       // Filter current users by query
       const filtered = users.filter(user =>
-        user.username.toLowerCase().includes(query.toLowerCase()) ||
         user.email.toLowerCase().includes(query.toLowerCase()) ||
-        user.fullName.toLowerCase().includes(query.toLowerCase())
+        `${user.firstName} ${user.lastName}`.toLowerCase().includes(query.toLowerCase())
       );
       return filtered;
     } catch (err) {
@@ -231,25 +160,11 @@ export const useUsers = () => {
     try {
       return {
         totalUsers: users.length,
-        activeUsers: users.filter(u => !u.isLocked).length,
-        onlineUsers: users.filter(u => u.isOnline).length,
-        lockedUsers: users.filter(u => u.isLocked).length,
+        activeUsers: users.filter(u => u.isActive).length,
       };
     } catch (err) {
       setError(handleError(err, 'Failed to fetch user statistics'));
       return null;
-    }
-  };
-
-  // Get online users
-  const getOnlineUsers = async (): Promise<UserDto[]> => {
-    try {
-      return users.filter(u => u.isOnline);
-    } catch (err) {
-      setError(handleError(err, 'Failed to fetch online users'));
-      return [];
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -267,14 +182,9 @@ export const useUsers = () => {
     createUser,
     updateUser,
     deleteUser,
-    lockUser,
-    unlockUser,
     changePassword,
-    assignRole,
-    removeRole,
     getAllRoles,
     searchUsers,
     getUserStats,
-    getOnlineUsers,
   };
 };

@@ -21,7 +21,7 @@ const LayoutContent = () => {
       <div className="flex h-screen overflow-hidden">
         {/* Desktop Sidebar */}
         <aside className="hidden md:flex">
-          <Sidebar isCollapsed={isSidebarCollapsed} onToggle={toggleSidebar} />
+          <Sidebar />
         </aside>
 
         {/* Mobile Sidebar Overlay */}
@@ -32,7 +32,7 @@ const LayoutContent = () => {
               onClick={toggleMobileSidebar}
             />
             <aside className="absolute left-0 top-0 h-full w-64 bg-card border-r">
-              <Sidebar isCollapsed={false} onToggle={toggleMobileSidebar} />
+              <Sidebar />
             </aside>
           </div>
         )}
@@ -40,10 +40,7 @@ const LayoutContent = () => {
         {/* Main Content Area */}
         <div className="flex flex-1 flex-col overflow-hidden">
           {/* Top Header */}
-          <TopHeader
-            onMenuToggle={toggleMobileSidebar}
-            isSidebarCollapsed={isSidebarCollapsed}
-          />
+          <TopHeader />
 
           {/* Main Content */}
           <main className="flex-1 overflow-auto">

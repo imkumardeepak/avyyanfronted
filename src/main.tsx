@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -38,6 +37,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ThemeProvider>
       <AuthProvider>
+        {/* Removed WebSocketProvider as part of WebSocket removal */}
         <QueryClientProvider client={queryClient}>
           <App />
           <Toaster position="top-right" richColors />

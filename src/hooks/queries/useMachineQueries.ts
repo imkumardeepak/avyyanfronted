@@ -1,25 +1,31 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { machineApi } from '@/lib/api';
+import { machineApi, apiUtils } from '@/lib/api-client';
 import { toast } from '@/lib/toast';
-import type { MachineManagerDto, CreateMachineManagerDto, UpdateMachineManagerDto } from '@/types/machine';
+import type {
+  MachineResponseDto,
+  CreateMachineRequestDto,
+  UpdateMachineRequestDto,
+  MachineSearchRequestDto,
+  BulkCreateMachineRequestDto
+} from '@/types/api-types';
 
 // Query Keys
 export const machineKeys = {
   all: ['machines'] as const,
   lists: () => [...machineKeys.all, 'list'] as const,
-  list: (filters: Record<string, any>) => [...machineKeys.lists(), { filters }] as const,
+  list: (filters: string) => [...machineKeys.lists(), { filters }] as const,
   details: () => [...machineKeys.all, 'detail'] as const,
   detail: (id: number) => [...machineKeys.details(), id] as const,
-  search: (params: { machineName?: string; dia?: number }) => [...machineKeys.all, 'search', params] as const,
+  search: (params: MachineSearchRequestDto) => [...machineKeys.lists(), 'search', params] as const,
 };
 
 // Machine Queries
-export const useMachines = (filters?: Record<string, any>) => {
+export const useMachines = () => {
   return useQuery({
-    queryKey: machineKeys.list(filters || {}),
+    queryKey: machineKeys.lists(),
     queryFn: async () => {
       const response = await machineApi.getAllMachines();
-      return response.data as MachineManagerDto[];
+      return apiUtils.extractData(response) as MachineResponseDto[];
     },
   });
 };
@@ -29,20 +35,20 @@ export const useMachine = (id: number, enabled = true) => {
     queryKey: machineKeys.detail(id),
     queryFn: async () => {
       const response = await machineApi.getMachine(id);
-      return response.data as MachineManagerDto;
+      return apiUtils.extractData(response) as MachineResponseDto;
     },
     enabled: enabled && !!id,
   });
 };
 
-export const useSearchMachines = (searchParams: { machineName?: string; dia?: number }, enabled = true) => {
+export const useSearchMachines = (params: MachineSearchRequestDto, enabled = true) => {
   return useQuery({
-    queryKey: machineKeys.search(searchParams),
+    queryKey: machineKeys.search(params),
     queryFn: async () => {
-      const response = await machineApi.searchMachines(searchParams.machineName, searchParams.dia);
-      return response.data as MachineManagerDto[];
+      const response = await machineApi.searchMachines(params);
+      return apiUtils.extractData(response) as MachineResponseDto[];
     },
-    enabled: enabled && (!!searchParams.machineName || !!searchParams.dia),
+    enabled,
   });
 };
 
@@ -51,9 +57,9 @@ export const useCreateMachine = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (machineData: CreateMachineManagerDto) => {
+    mutationFn: async (machineData: CreateMachineRequestDto) => {
       const response = await machineApi.createMachine(machineData);
-      return response.data as MachineManagerDto;
+      return apiUtils.extractData(response) as MachineResponseDto;
     },
     onSuccess: (newMachine) => {
       // Invalidate and refetch machines list
@@ -64,34 +70,8 @@ export const useCreateMachine = () => {
 
       toast.success('Success', 'Machine created successfully');
     },
-    onError: (error: unknown) => {
-      const errorMessage = (error as any)?.response?.data?.message || 'Failed to create machine';
-      toast.error('Error', errorMessage);
-    },
-  });
-};
-
-export const useCreateMultipleMachines = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (machinesData: CreateMachineManagerDto[]) => {
-      const response = await machineApi.createMultipleMachines(machinesData);
-      return response.data as MachineManagerDto[];
-    },
-    onSuccess: (newMachines) => {
-      // Invalidate machines list
-      queryClient.invalidateQueries({ queryKey: machineKeys.lists() });
-
-      // Add new machines to cache
-      newMachines.forEach(machine => {
-        queryClient.setQueryData(machineKeys.detail(machine.id), machine);
-      });
-
-      toast.success('Success', `${newMachines.length} machines created successfully`);
-    },
-    onError: (error: unknown) => {
-      const errorMessage = (error as any)?.response?.data?.message || 'Failed to create machines';
+    onError: (error: any) => {
+      const errorMessage = apiUtils.handleError(error);
       toast.error('Error', errorMessage);
     },
   });
@@ -101,9 +81,9 @@ export const useUpdateMachine = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, machineData }: { id: number; machineData: UpdateMachineManagerDto }) => {
+    mutationFn: async ({ id, machineData }: { id: number; machineData: UpdateMachineRequestDto }) => {
       const response = await machineApi.updateMachine(id, machineData);
-      return response.data as MachineManagerDto;
+      return apiUtils.extractData(response) as MachineResponseDto;
     },
     onSuccess: (updatedMachine) => {
       // Update the machine in the cache
@@ -115,7 +95,7 @@ export const useUpdateMachine = () => {
       toast.success('Success', 'Machine updated successfully');
     },
     onError: (error: unknown) => {
-      const errorMessage = (error as any)?.response?.data?.message || 'Failed to update machine';
+      const errorMessage = apiUtils.handleError(error);
       toast.error('Error', errorMessage);
     },
   });
@@ -139,85 +119,29 @@ export const useDeleteMachine = () => {
       toast.success('Success', 'Machine deleted successfully');
     },
     onError: (error: unknown) => {
-      const errorMessage = (error as any)?.response?.data?.message || 'Failed to delete machine';
+      const errorMessage = apiUtils.handleError(error);
       toast.error('Error', errorMessage);
     },
   });
 };
 
-// Optimistic Updates for Machine Status
-export const useUpdateMachineStatus = () => {
+export const useBulkCreateMachines = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, status }: { id: number; status: string }) => {
-      // This would be an API call to update machine status
-      // For now, we'll simulate it
-      const response = await machineApi.updateMachine(id, { status } as UpdateMachineManagerDto);
-      return response.data as MachineManagerDto;
-    },
-    onMutate: async ({ id, status }) => {
-      // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: machineKeys.detail(id) });
-
-      // Snapshot the previous value
-      const previousMachine = queryClient.getQueryData(machineKeys.detail(id));
-
-      // Optimistically update to the new value
-      queryClient.setQueryData(machineKeys.detail(id), (old: MachineManagerDto | undefined) => {
-        if (!old) return old;
-        return { ...old, status };
-      });
-
-      // Return a context object with the snapshotted value
-      return { previousMachine, id };
-    },
-    onError: (err, { id }, context) => {
-      // If the mutation fails, use the context returned from onMutate to roll back
-      if (context?.previousMachine) {
-        queryClient.setQueryData(machineKeys.detail(id), context.previousMachine);
-      }
-
-      toast.error('Error', 'Failed to update machine status');
-    },
-    onSettled: (data, error, { id }) => {
-      // Always refetch after error or success
-      queryClient.invalidateQueries({ queryKey: machineKeys.detail(id) });
-      queryClient.invalidateQueries({ queryKey: machineKeys.lists() });
+    mutationFn: async (bulkData: BulkCreateMachineRequestDto) => {
+      const response = await machineApi.createBulkMachines(bulkData);
+      return apiUtils.extractData(response) as MachineResponseDto[];
     },
     onSuccess: () => {
-      toast.success('Success', 'Machine status updated successfully');
+      // Invalidate machines list to reflect changes
+      queryClient.invalidateQueries({ queryKey: machineKeys.lists() });
+
+      toast.success('Success', 'Machines created successfully');
     },
-  });
-};
-
-// Prefetch machine details
-export const usePrefetchMachine = () => {
-  const queryClient = useQueryClient();
-
-  return (id: number) => {
-    queryClient.prefetchQuery({
-      queryKey: machineKeys.detail(id),
-      queryFn: async () => {
-        const response = await machineApi.getMachine(id);
-        return response.data as MachineManagerDto;
-      },
-      staleTime: 5 * 60 * 1000, // 5 minutes
-    });
-  };
-};
-
-// Infinite query for large machine lists (if needed)
-export const useInfiniteMachines = (pageSize = 20) => {
-  return useQuery({
-    queryKey: [...machineKeys.lists(), 'infinite'],
-    queryFn: async () => {
-      // This would need pagination support in the API
-      const response = await machineApi.getAllMachines();
-      return {
-        data: response.data as MachineManagerDto[],
-        nextCursor: null, // Would be provided by API
-      };
+    onError: (error: unknown) => {
+      const errorMessage = apiUtils.handleError(error);
+      toast.error('Error', errorMessage);
     },
   });
 };

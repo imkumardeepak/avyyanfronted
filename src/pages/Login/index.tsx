@@ -10,7 +10,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Eye, EyeOff, AlertTriangle, User, Lock } from 'lucide-react';
-import { GrokLoginWrapper } from '@/components/GrokAnimations';
+import { authApi, apiUtils } from '@/lib/api-client';
+import { toast } from '@/lib/toast';
+import type { LoginRequestDto } from '@/types/api-types';
 
 const Login = () => {
   const { login, isAuthenticated, isLoading } = useAuth();
@@ -40,19 +42,34 @@ const Login = () => {
     setIsSubmitting(true);
 
     try {
-      const result = await login({
+      const loginData: LoginRequestDto = {
         email: formData.email,
         password: formData.password,
         rememberMe: formData.rememberMe,
-      });
+      };
 
-      if (result.success) {
-        navigate('/', { replace: true });
-      } else {
-        setError(result.error || 'Login failed');
+      const response = await authApi.login(loginData);
+      console.log('Login response:', response);
+      const loginResult = apiUtils.extractData(response);
+
+      console.log('Login result:', loginResult);
+
+      // Store auth data
+      apiUtils.setAuthToken(loginResult.token);
+      localStorage.setItem('auth_refresh_token', loginResult.refreshToken);
+      localStorage.setItem('auth_user', JSON.stringify(loginResult.user));
+
+      // Call context login if needed
+      if (login) {
+        await login(loginData);
       }
+
+      toast.success('Login Successful', 'Welcome back! You have been successfully logged in.');
+      navigate('/', { replace: true });
     } catch (err) {
-      setError('An unexpected error occurred');
+      const errorMessage = apiUtils.handleError(err);
+      setError(errorMessage);
+      toast.error('Login Failed', errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -77,7 +94,7 @@ const Login = () => {
   }
 
   return (
-    <GrokLoginWrapper>
+    <div className="flex items-center justify-center bg-background p-4">
       {/* Theme Toggle - Top Right */}
       {/* <div className="absolute top-4 right-4 z-10">
         <ThemeToggle />
@@ -195,7 +212,7 @@ const Login = () => {
           </CardContent>
         </Card>
       </div>
-    </GrokLoginWrapper>
+    </div>
   );
 };
 

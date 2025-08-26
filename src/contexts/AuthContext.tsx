@@ -1,14 +1,14 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { authService } from '@/services/authService';
-import type { UserDto, LoginDto, PageAccessDto } from '@/types/auth';
+import { authApi, userApi, apiUtils } from '@/lib/api-client';
+import type { LoginRequestDto, AuthUserDto, AuthPageAccessDto } from '@/types/api-types';
 
 interface AuthContextType {
-  user: UserDto | null;
+  user: AuthUserDto | null;
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  pageAccesses: PageAccessDto[];
-  login: (credentials: LoginDto) => Promise<{ success: boolean; error?: string }>;
+  pageAccesses: AuthPageAccessDto[];
+  login: (credentials: LoginRequestDto) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   hasRole: (role: string) => boolean;
   hasPermission: (pageName: string, action: 'View' | 'Add' | 'Edit' | 'Delete') => boolean;
@@ -31,28 +31,47 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<UserDto | null>(null);
+  const [user, setUser] = useState<AuthUserDto | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [pageAccesses, setPageAccesses] = useState<PageAccessDto[]>([]);
+  const [pageAccesses, setPageAccesses] = useState<AuthPageAccessDto[]>([]);
+
+  // Helper function to get page accesses from localStorage
+  const getPageAccessesFromStorage = (): AuthPageAccessDto[] => {
+    try {
+      const stored = localStorage.getItem('auth_page_accesses');
+      return stored ? JSON.parse(stored) : [];
+    } catch (error) {
+      console.error('Error reading page accesses from localStorage:', error);
+      return [];
+    }
+  };
+
+  // Helper function to save page accesses to localStorage
+  const savePageAccessesToStorage = (accesses: AuthPageAccessDto[]): void => {
+    try {
+      localStorage.setItem('auth_page_accesses', JSON.stringify(accesses));
+    } catch (error) {
+      console.error('Error saving page accesses to localStorage:', error);
+    }
+  };
 
   // Check for existing session on mount
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const savedUser = authService.getUser();
-        const savedToken = authService.getToken();
-        const pageAccesses = authService.getPageAccesses();
+        const savedUser = localStorage.getItem('auth_user');
+        const savedToken = apiUtils.getAuthToken();
+        const savedPageAccesses = getPageAccessesFromStorage();
 
         if (savedUser && savedToken) {
-          setUser(savedUser);
+          setUser(JSON.parse(savedUser));
           setToken(savedToken);
-          setPageAccesses(pageAccesses || []);
-          // Load user permissions
+          setPageAccesses(savedPageAccesses);
         }
       } catch (error) {
         console.error('Error checking auth:', error);
-        authService.clearAuth();
+        apiUtils.clearAuth();
       } finally {
         setIsLoading(false);
       }
@@ -61,21 +80,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     checkAuth();
   }, []);
 
-  const login = async (credentials: LoginDto): Promise<{ success: boolean; error?: string }> => {
+  const login = async (
+    credentials: LoginRequestDto
+  ): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
 
     try {
-      const response = await authService.login(credentials);
+      const response = await authApi.login(credentials);
+      const loginResult = apiUtils.extractData(response);
 
-      setUser(response.user);
-      setToken(response.token);
-      setPageAccesses(response.pageAccesses);
+      setUser(loginResult.user);
+      setToken(loginResult.token);
+      setPageAccesses(loginResult.pageAccesses);
+
+      // Store auth data
+      apiUtils.setAuthToken(loginResult.token);
+      localStorage.setItem('auth_refresh_token', loginResult.refreshToken);
+      localStorage.setItem('auth_user', JSON.stringify(loginResult.user));
+      savePageAccessesToStorage(loginResult.pageAccesses);
 
       return { success: true };
     } catch (error: any) {
       console.error('Login error:', error);
-      const errorMessage =
-        error.response?.data?.message || error.message || 'An unexpected error occurred';
+      const errorMessage = apiUtils.handleError(error);
       return { success: false, error: errorMessage };
     } finally {
       setIsLoading(false);
@@ -85,19 +112,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = async (): Promise<void> => {
     setIsLoading(true);
     try {
-      await authService.logout();
+      await authApi.logout();
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
       setUser(null);
       setToken(null);
       setPageAccesses([]);
+      apiUtils.clearAuth();
+      // Clear page accesses from localStorage on logout
+      localStorage.removeItem('auth_page_accesses');
       setIsLoading(false);
     }
   };
 
   const hasRole = (role: string): boolean => {
-    return authService.hasRole(role);
+    return user?.roleName === role;
   };
 
   const hasPermission = (
@@ -122,13 +152,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const isAdmin = (): boolean => {
-    return authService.isAdmin();
+    return user?.roleName === 'Admin' || user?.roleName === 'admin';
   };
 
   const refreshUser = async (): Promise<void> => {
     try {
-      const updatedUser = await authService.getProfile();
-      setUser(updatedUser);
+      const response = await userApi.getProfile();
+      const userData = apiUtils.extractData(response);
+      setUser(userData);
+      localStorage.setItem('auth_user', JSON.stringify(userData));
     } catch (error) {
       console.error('Error refreshing user:', error);
     }

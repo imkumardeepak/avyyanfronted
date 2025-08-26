@@ -6,22 +6,22 @@ import { Badge } from '@/components/ui/badge';
 import { DataTable } from '@/components/DataTable';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DeleteConfirmationDialog } from '@/components/ui/confirmation-dialog';
-import { Plus, Users } from 'lucide-react';
+import { Plus, Users, UserCheck, UserX, Clock } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/lib/api';
+import { userApi, apiUtils } from '@/lib/api-client';
 import { formatDate } from '@/lib/utils';
 import type { Row } from '@tanstack/react-table';
-import type { User } from '@/types/user';
+import type { AdminUserResponseDto } from '@/types/api-types';
 
-type UserCellProps = { row: Row<User> };
+type UserCellProps = { row: Row<AdminUserResponseDto> };
 
-const fetchUsers = async (): Promise<User[]> => {
-  const response = await apiClient.get('/User');
-  return response.data;
+const fetchUsers = async (): Promise<AdminUserResponseDto[]> => {
+  const response = await userApi.getAllUsers();
+  return apiUtils.extractData(response);
 };
 
 const deleteUser = async (id: number): Promise<void> => {
-  await apiClient.delete(`/User/${id}`);
+  await userApi.deleteUser(id);
 };
 
 const UserManagement = () => {
@@ -32,7 +32,10 @@ const UserManagement = () => {
     data: users = [],
     isLoading,
     error,
-  } = useQuery<User[]>({ queryKey: ['users'], queryFn: fetchUsers });
+  } = useQuery<AdminUserResponseDto[]>({
+    queryKey: ['users'],
+    queryFn: fetchUsers,
+  });
 
   const { mutate: deleteUserMutation, isPending: isDeleting } = useMutation({
     mutationFn: deleteUser,
@@ -43,7 +46,7 @@ const UserManagement = () => {
 
   const [deleteDialog, setDeleteDialog] = useState<{
     open: boolean;
-    user: User | null;
+    user: AdminUserResponseDto | null;
   }>({
     open: false,
     user: null,
@@ -66,6 +69,11 @@ const UserManagement = () => {
             <div>
               <div className="font-medium">{`${user.firstName} ${user.lastName}`}</div>
               <div className="text-sm text-muted-foreground">{user.email}</div>
+              {!user.isActive && (
+                <Badge variant="destructive" className="text-xs mt-1">
+                  Inactive
+                </Badge>
+              )}
             </div>
           </div>
         );
@@ -141,8 +149,23 @@ const UserManagement = () => {
   }
 
   if (error) {
-    return <div className="text-center text-red-500 p-4">Error loading users: {error.message}</div>;
+    const errorMessage = apiUtils.handleError(error);
+    return <div className="text-center text-red-500 p-4">Error loading users: {errorMessage}</div>;
   }
+
+  const activeUsers = users.filter((user) => user.isActive).length;
+  const inactiveUsers = users.length - activeUsers;
+  const recentUsers = users.filter((user) => {
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    return new Date(user.createdAt) > oneWeekAgo;
+  }).length;
+  const usersWithRecentLogin = users.filter((user) => {
+    if (!user.lastLoginAt) return false;
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    return new Date(user.lastLoginAt) > oneWeekAgo;
+  }).length;
 
   return (
     <div className="space-y-6">
@@ -157,7 +180,7 @@ const UserManagement = () => {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Users</CardTitle>
@@ -165,6 +188,44 @@ const UserManagement = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{users.length}</div>
+            <p className="text-xs text-muted-foreground">
+              {activeUsers} active, {inactiveUsers} inactive
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Users</CardTitle>
+            <UserCheck className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{activeUsers}</div>
+            <p className="text-xs text-muted-foreground">
+              {Math.round((activeUsers / users.length) * 100)}% of total
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">New Users (7 days)</CardTitle>
+            <UserX className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{recentUsers}</div>
+            <p className="text-xs text-muted-foreground">Recently registered</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Recent Logins</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{usersWithRecentLogin}</div>
+            <p className="text-xs text-muted-foreground">Last 7 days</p>
           </CardContent>
         </Card>
       </div>

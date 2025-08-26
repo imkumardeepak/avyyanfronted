@@ -3,193 +3,119 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { ArrowLeft, Save, Shield } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/lib/api';
-import type { Role, PageAccess } from '@/types/role';
+import { roleApi, apiUtils } from '@/lib/api-client';
+import { toast } from '@/lib/toast';
+import { ArrowLeft, Save, Shield } from 'lucide-react';
+import type {
+  CreateRoleRequestDto,
+  UpdateRoleRequestDto,
+  RoleResponseDto,
+} from '@/types/api-types';
 
-const roleFormSchema = z.object({
-  roleName: z
+const formSchema = z.object({
+  name: z
     .string()
     .min(1, 'Role name is required')
     .max(100, 'Role name must be less than 100 characters'),
   description: z.string().max(500, 'Description must be less than 500 characters').optional(),
+  isActive: z.boolean().optional(),
 });
 
-type RoleFormValues = z.infer<typeof roleFormSchema>;
+type FormData = z.infer<typeof formSchema>;
 
-const fetchRole = async (id: number): Promise<Role> => {
-  const response = await apiClient.get(`/Role/${id}`);
-  return response.data;
+const fetchRole = async (id: number): Promise<RoleResponseDto> => {
+  const response = await roleApi.getRole(id);
+  return apiUtils.extractData(response);
 };
 
-const fetchAllPageAccesses = async (): Promise<PageAccess[]> => {
-  const response = await apiClient.get('/Role/page-accesses');
-  return response.data;
+const createRole = async (data: CreateRoleRequestDto): Promise<RoleResponseDto> => {
+  const response = await roleApi.createRole(data);
+  return apiUtils.extractData(response);
 };
 
-const fetchRolePageAccesses = async (roleId: number): Promise<PageAccess[]> => {
-  const response = await apiClient.get(`/Role/${roleId}/page-accesses`);
-  return response.data;
-};
-
-const createRole = async (data: { role: RoleFormValues; pageAccesses: PageAccess[] }) => {
-  const roleResponse = await apiClient.post('/Role', data.role);
-  const newRole: Role = roleResponse.data;
-
-  const permissionPromises = data.pageAccesses.map((permission) =>
-    apiClient.post('/Role/page-accesses', { ...permission, roleId: newRole.id })
-  );
-  await Promise.all(permissionPromises);
-
-  return newRole;
-};
-
-const updateRole = async (data: {
+const updateRole = async ({
+  id,
+  data,
+}: {
   id: number;
-  role: RoleFormValues;
-  pageAccesses: PageAccess[];
-}) => {
-  await apiClient.put(`/Role/${data.id}`, data.role);
-
-  const permissionPromises = data.pageAccesses.map((permission) =>
-    apiClient.put(`/Role/page-accesses/${permission.id}`, permission)
-  );
-  await Promise.all(permissionPromises);
+  data: UpdateRoleRequestDto;
+}): Promise<RoleResponseDto> => {
+  const response = await roleApi.updateRole(id, data);
+  return apiUtils.extractData(response);
 };
 
 const RoleForm = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const queryClient = useQueryClient();
-  const isEditing = !!id;
+  const isEditMode = !!id;
 
-  const { data: role, isLoading: roleLoading } = useQuery<Role>({
+  const { data: role, isLoading: isRoleLoading } = useQuery<RoleResponseDto>({
     queryKey: ['role', id],
     queryFn: () => fetchRole(parseInt(id!)),
-    enabled: isEditing,
+    enabled: isEditMode,
   });
 
-  const { data: allPageAccesses, isLoading: allPageAccessesLoading } = useQuery<PageAccess[]>({
-    queryKey: ['allPageAccesses'],
-    queryFn: fetchAllPageAccesses,
-  });
-
-  const { data: rolePageAccesses, isLoading: rolePageAccessesLoading } = useQuery<PageAccess[]>({
-    queryKey: ['rolePageAccesses', id],
-    queryFn: () => fetchRolePageAccesses(parseInt(id!)),
-    enabled: isEditing,
-  });
-
-  const [permissions, setPermissions] = useState<
-    Record<number, Omit<PageAccess, 'id' | 'pageName' | 'path'>>
-  >({});
-
-  const form = useForm<RoleFormValues>({
-    resolver: zodResolver(roleFormSchema),
-    defaultValues: {
-      roleName: '',
-      description: '',
-    },
-  });
-
-  useEffect(() => {
-    if (isEditing && role) {
-      form.reset({
-        roleName: role.roleName,
-        description: role.description,
-      });
-    }
-  }, [role, isEditing, form]);
-
-  useEffect(() => {
-    if (allPageAccesses) {
-      const initialPermissions: Record<number, Omit<PageAccess, 'id' | 'pageName' | 'path'>> = {};
-      allPageAccesses.forEach((p) => {
-        const existingPermission =
-          isEditing && rolePageAccesses
-            ? rolePageAccesses.find((rp) => rp.pageName === p.pageName)
-            : null;
-        initialPermissions[p.id] = {
-          isRead: existingPermission?.isRead || false,
-          isWrite: existingPermission?.isWrite || false,
-          isDelete: existingPermission?.isDelete || false,
-        };
-      });
-      setPermissions(initialPermissions);
-    }
-  }, [allPageAccesses, rolePageAccesses, isEditing]);
-
-  const createRoleMutation = useMutation({
+  const { mutate: createRoleMutation, isPending: isCreating } = useMutation({
     mutationFn: createRole,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['roles'] });
+      toast.success('Success', 'Role created successfully');
       navigate('/roles');
+    },
+    onError: (error) => {
+      const errorMessage = apiUtils.handleError(error);
+      toast.error('Error', errorMessage);
     },
   });
 
-  const updateRoleMutation = useMutation({
+  const { mutate: updateRoleMutation, isPending: isUpdating } = useMutation({
     mutationFn: updateRole,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['roles'] });
       queryClient.invalidateQueries({ queryKey: ['role', id] });
+      toast.success('Success', 'Role updated successfully');
       navigate('/roles');
+    },
+    onError: (error) => {
+      const errorMessage = apiUtils.handleError(error);
+      toast.error('Error', errorMessage);
     },
   });
 
-  const handlePermissionChange = (
-    pageId: number,
-    permission: keyof Omit<PageAccess, 'id' | 'pageName' | 'path'>,
-    value: boolean
-  ) => {
-    setPermissions((prev) => ({
-      ...prev,
-      [pageId]: {
-        ...prev[pageId],
-        [permission]: value,
-      },
-    }));
-  };
+  const form = useForm<FormData>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: '',
+      description: '',
+      isActive: true,
+    },
+  });
 
-  const onSubmit = (values: RoleFormValues) => {
-    const pageAccesses =
-      allPageAccesses?.map((p) => ({
-        ...p,
-        ...permissions[p.id],
-      })) || [];
+  useEffect(() => {
+    if (role && isEditMode) {
+      form.setValue('name', role.roleName);
+      form.setValue('description', role.description || '');
+      form.setValue('isActive', role.isActive);
+    }
+  }, [role, isEditMode, form]);
 
-    if (isEditing) {
-      updateRoleMutation.mutate({ id: parseInt(id!), role: values, pageAccesses });
+  const onSubmit = (data: FormData) => {
+    if (isEditMode) {
+      updateRoleMutation({ id: parseInt(id!), data: data as UpdateRoleRequestDto });
     } else {
-      createRoleMutation.mutate({ role: values, pageAccesses });
+      createRoleMutation(data as CreateRoleRequestDto);
     }
   };
 
-  const isLoading = roleLoading || allPageAccessesLoading || rolePageAccessesLoading;
-
-  if (isLoading) {
+  if (isRoleLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -198,140 +124,125 @@ const RoleForm = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <Button variant="outline" onClick={() => navigate('/roles')}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold font-display">
-              {isEditing ? 'Edit Role' : 'Create Role'}
-            </h1>
-            <p className="text-muted-foreground">
-              {isEditing
-                ? 'Modify role details and permissions'
-                : 'Create a new role with specific permissions'}
-            </p>
-          </div>
-        </div>
+    <div className="container mx-auto py-6 max-w-2xl">
+      <div className="mb-6">
+        <Button variant="ghost" onClick={() => navigate('/roles')} className="mb-4">
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Roles
+        </Button>
+        <h1 className="text-3xl font-bold">{isEditMode ? 'Edit Role' : 'Create New Role'}</h1>
+        <p className="text-muted-foreground">
+          {isEditMode ? 'Update role information and settings' : 'Add a new role to the system'}
+        </p>
       </div>
 
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Basic Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <FormField
-                control={form.control}
-                name="roleName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Role Name *</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter role name" {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      A unique name for this role (e.g., "Machine Operator", "Administrator")
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <Shield className="h-5 w-5 mr-2" />
+            Role Information
+          </CardTitle>
+          <CardDescription>
+            {isEditMode ? 'Modify the role details below' : 'Enter the details for the new role'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="name">Role Name</Label>
+              <Input
+                id="name"
+                {...form.register('name')}
+                placeholder="Enter role name (e.g., Admin, Manager, User)"
               />
+              {form.formState.errors.name && (
+                <p className="text-sm text-destructive">{form.formState.errors.name.message}</p>
+              )}
+            </div>
 
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Enter role description"
-                        className="resize-none"
-                        rows={3}
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Optional description explaining the purpose of this role
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                {...form.register('description')}
+                placeholder="Enter role description and responsibilities"
+                rows={4}
               />
-            </CardContent>
-          </Card>
+              {form.formState.errors.description && (
+                <p className="text-sm text-destructive">
+                  {form.formState.errors.description.message}
+                </p>
+              )}
+            </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Shield className="h-5 w-5" />
-                <span>Page Permissions</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Page</TableHead>
-                    <TableHead className="text-center">Read</TableHead>
-                    <TableHead className="text-center">Write</TableHead>
-                    <TableHead className="text-center">Delete</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {allPageAccesses?.map((page) => (
-                    <TableRow key={page.id}>
-                      <TableCell className="font-medium">{page.pageName}</TableCell>
-                      <TableCell className="text-center">
-                        <Checkbox
-                          checked={permissions[page.id]?.isRead}
-                          onCheckedChange={(checked) =>
-                            handlePermissionChange(page.id, 'isRead', !!checked)
-                          }
-                        />
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Checkbox
-                          checked={permissions[page.id]?.isWrite}
-                          onCheckedChange={(checked) =>
-                            handlePermissionChange(page.id, 'isWrite', !!checked)
-                          }
-                        />
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Checkbox
-                          checked={permissions[page.id]?.isDelete}
-                          onCheckedChange={(checked) =>
-                            handlePermissionChange(page.id, 'isDelete', !!checked)
-                          }
-                        />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="isActive"
+                checked={form.watch('isActive')}
+                onCheckedChange={(checked) => form.setValue('isActive', checked)}
+              />
+              <Label htmlFor="isActive">Active Role</Label>
+            </div>
 
-          <div className="flex justify-end space-x-4">
-            <Button type="button" variant="outline" onClick={() => navigate('/roles')}>
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={createRoleMutation.isPending || updateRoleMutation.isPending}
-            >
-              <Save className="h-4 w-4 mr-2" />
-              {isEditing ? 'Update Role' : 'Create Role'}
-            </Button>
-          </div>
-        </form>
-      </Form>
+            <div className="flex justify-end space-x-4 pt-6">
+              <Button type="button" variant="outline" onClick={() => navigate('/roles')}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isCreating || isUpdating}>
+                {isCreating || isUpdating ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    {isEditMode ? 'Updating...' : 'Creating...'}
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    {isEditMode ? 'Update Role' : 'Create Role'}
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      {isEditMode && role && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Role Details</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="font-medium">Created:</span>
+                <span className="ml-2 text-muted-foreground">
+                  {new Date(role.createdAt).toLocaleDateString()}
+                </span>
+              </div>
+              {role.updatedAt && (
+                <div>
+                  <span className="font-medium">Last Updated:</span>
+                  <span className="ml-2 text-muted-foreground">
+                    {new Date(role.updatedAt).toLocaleDateString()}
+                  </span>
+                </div>
+              )}
+              <div>
+                <span className="font-medium">Permissions:</span>
+                <span className="ml-2 text-muted-foreground">
+                  {role.pageAccesses?.length || 0} page access rules
+                </span>
+              </div>
+              <div>
+                <span className="font-medium">Status:</span>
+                <span className={`ml-2 ${role.isActive ? 'text-green-600' : 'text-red-600'}`}>
+                  {role.isActive ? 'Active' : 'Inactive'}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

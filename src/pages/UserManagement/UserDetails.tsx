@@ -7,18 +7,19 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { DeleteConfirmationDialog } from '@/components/ui/confirmation-dialog';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/lib/api';
+import { userApi, apiUtils } from '@/lib/api-client';
+import { toast } from '@/lib/toast';
 import { formatDate, formatRelativeTime } from '@/lib/utils';
 import { ArrowLeft, Edit, Mail, Phone, Calendar, Clock, Shield, User, Trash2 } from 'lucide-react';
-import type { User as UserType } from '@/types/user';
+import type { AdminUserResponseDto } from '@/types/api-types';
 
-const fetchUser = async (id: number): Promise<UserType> => {
-  const response = await apiClient.get(`/User/${id}`);
-  return response.data;
+const fetchUser = async (id: number): Promise<AdminUserResponseDto> => {
+  const response = await userApi.getUser(id);
+  return apiUtils.extractData(response);
 };
 
 const deleteUser = async (id: number): Promise<void> => {
-  await apiClient.delete(`/User/${id}`);
+  await userApi.deleteUser(id);
 };
 
 const UserDetails = () => {
@@ -26,7 +27,7 @@ const UserDetails = () => {
   const { id } = useParams();
   const queryClient = useQueryClient();
 
-  const { data: user, isLoading } = useQuery<UserType>({
+  const { data: user, isLoading } = useQuery<AdminUserResponseDto>({
     queryKey: ['user', id],
     queryFn: () => fetchUser(parseInt(id!)),
     enabled: !!id,
@@ -36,7 +37,12 @@ const UserDetails = () => {
     mutationFn: deleteUser,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
+      toast.success('Success', 'User deleted successfully');
       navigate('/users');
+    },
+    onError: (error) => {
+      const errorMessage = apiUtils.handleError(error);
+      toast.error('Error', errorMessage);
     },
   });
 
@@ -135,37 +141,37 @@ const UserDetails = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="flex items-center text-sm font-medium">
+                <div className="flex items-center text-sm font-medium">
                   <Mail className="h-4 w-4 mr-2" />
                   Email
-                </Label>
+                </div>
                 <p className="text-sm">{user.email}</p>
               </div>
 
               {user.phoneNumber && (
                 <div className="space-y-2">
-                  <Label className="flex items-center text-sm font-medium">
+                  <div className="flex items-center text-sm font-medium">
                     <Phone className="h-4 w-4 mr-2" />
                     Phone
-                  </Label>
+                  </div>
                   <p className="text-sm">{user.phoneNumber}</p>
                 </div>
               )}
 
               <div className="space-y-2">
-                <Label className="flex items-center text-sm font-medium">
+                <div className="flex items-center text-sm font-medium">
                   <Calendar className="h-4 w-4 mr-2" />
                   Created
-                </Label>
+                </div>
                 <p className="text-sm">{formatDate(user.createdAt)}</p>
               </div>
 
               {user.lastLoginAt && (
                 <div className="space-y-2">
-                  <Label className="flex items-center text-sm font-medium">
+                  <div className="flex items-center text-sm font-medium">
                     <Clock className="h-4 w-4 mr-2" />
                     Last Login
-                  </Label>
+                  </div>
                   <p className="text-sm">{formatRelativeTime(user.lastLoginAt)}</p>
                 </div>
               )}
@@ -199,9 +205,5 @@ const UserDetails = () => {
     </div>
   );
 };
-
-const Label = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
-  <div className={`text-sm font-medium ${className}`}>{children}</div>
-);
 
 export default UserDetails;

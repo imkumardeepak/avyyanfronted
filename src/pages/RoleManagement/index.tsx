@@ -1,46 +1,38 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { DataTable } from '@/components/DataTable';
 import { DeleteConfirmationDialog } from '@/components/ui/confirmation-dialog';
-import { Plus, Shield } from 'lucide-react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/lib/api';
+import { Plus, Shield, Users, Settings } from 'lucide-react';
+import { useRoles, useDeleteRole } from '@/hooks/queries';
+import { roleApi, apiUtils } from '@/lib/api-client';
+import { formatDate } from '@/lib/utils';
 import type { Row } from '@tanstack/react-table';
-import type { Role } from '@/types/role';
+import type { RoleResponseDto } from '@/types/api-types';
 
-type CellProps = { row: Row<Role> };
+type RoleCellProps = { row: Row<RoleResponseDto> };
 
-const fetchRoles = async (): Promise<Role[]> => {
-  const response = await apiClient.get('/Role');
-  return response.data;
+const fetchRoles = async (): Promise<RoleResponseDto[]> => {
+  const response = await roleApi.getAllRoles();
+  return apiUtils.extractData(response);
 };
 
 const deleteRole = async (id: number): Promise<void> => {
-  await apiClient.delete(`/Role/${id}`);
+  await roleApi.deleteRole(id);
 };
 
 const RoleManagement = () => {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
 
-  const {
-    data: roles = [],
-    isLoading,
-    error,
-  } = useQuery<Role[]>({ queryKey: ['roles'], queryFn: fetchRoles });
+  const { data: roles = [], isLoading, error } = useRoles();
 
-  const { mutate: deleteRoleMutation, isPending: isDeleting } = useMutation({
-    mutationFn: deleteRole,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['roles'] });
-    },
-  });
+  const { mutate: deleteRoleMutation, isPending: isDeleting } = useDeleteRole();
 
   const [deleteDialog, setDeleteDialog] = useState<{
     open: boolean;
-    role: Role | null;
+    role: RoleResponseDto | null;
   }>({
     open: false,
     role: null,
@@ -50,27 +42,94 @@ const RoleManagement = () => {
     {
       accessorKey: 'roleName',
       header: 'Role Name',
-      cell: ({ row }: CellProps) => <div className="font-medium">{row.getValue('roleName')}</div>,
+      cell: ({ row }: RoleCellProps) => {
+        const role = row.original;
+        return (
+          <div className="flex items-center space-x-3">
+            <div className="flex-shrink-0">
+              <Shield className="h-8 w-8 text-primary" />
+            </div>
+            <div>
+              <div className="font-medium">{role.roleName}</div>
+              <div className="text-sm text-muted-foreground">
+                {role.description || 'No description'}
+              </div>
+              {!role.isActive && (
+                <Badge variant="destructive" className="text-xs mt-1">
+                  Inactive
+                </Badge>
+              )}
+            </div>
+          </div>
+        );
+      },
     },
     {
-      accessorKey: 'description',
-      header: 'Description',
-      cell: ({ row }: CellProps) => (
-        <div className="text-muted-foreground">{row.getValue('description')}</div>
+      accessorKey: 'pageAccesses',
+      header: 'Permissions',
+      cell: ({ row }: RoleCellProps) => {
+        const role = row.original;
+        const totalPermissions = role.pageAccesses?.length || 0;
+        const activePermissions =
+          role.pageAccesses?.filter((p) => p.isView || p.isAdd || p.isEdit || p.isDelete).length ||
+          0;
+
+        return (
+          <div className="space-y-1">
+            <div className="text-sm font-medium">
+              {activePermissions} of {totalPermissions} pages
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {role.pageAccesses?.slice(0, 3).map((page, index) => (
+                <Badge key={index} variant="outline" className="text-xs">
+                  {page.pageName}
+                </Badge>
+              ))}
+              {(role.pageAccesses?.length || 0) > 3 && (
+                <Badge variant="outline" className="text-xs">
+                  +{(role.pageAccesses?.length || 0) - 3} more
+                </Badge>
+              )}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: 'createdAt',
+      header: 'Created',
+      cell: ({ row }: RoleCellProps) => (
+        <div className="text-sm">{formatDate(row.getValue('createdAt'))}</div>
       ),
+    },
+    {
+      accessorKey: 'isActive',
+      header: 'Status',
+      cell: ({ row }: RoleCellProps) => {
+        const isActive = row.getValue('isActive') as boolean;
+        return (
+          <Badge variant={isActive ? 'default' : 'secondary'}>
+            {isActive ? 'Active' : 'Inactive'}
+          </Badge>
+        );
+      },
     },
     {
       id: 'actions',
       header: 'Actions',
-      cell: ({ row }: CellProps) => {
+      cell: ({ row }: RoleCellProps) => {
         const role = row.original;
         return (
           <div className="flex space-x-2">
-            <Button variant="outline" size="sm" onClick={() => navigate(`/roles/${role.id}`)}>
-              View
-            </Button>
             <Button variant="outline" size="sm" onClick={() => navigate(`/roles/${role.id}/edit`)}>
               Edit
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate(`/roles/${role.id}/permissions`)}
+            >
+              Permissions
             </Button>
             <Button variant="destructive" size="sm" onClick={() => handleDelete(role.id)}>
               Delete
@@ -107,16 +166,22 @@ const RoleManagement = () => {
   }
 
   if (error) {
-    return <div className="text-center text-red-500 p-4">Error loading roles: {error.message}</div>;
+    const errorMessage = apiUtils.handleError(error);
+    return <div className="text-center text-red-500 p-4">Error loading roles: {errorMessage}</div>;
   }
+
+  const activeRoles = roles.filter((role) => role.isActive).length;
+  const totalPermissions = roles.reduce(
+    (total, role) => total + (role.pageAccesses?.length || 0),
+    0
+  );
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold font-display">Role Management</h1>
-          <p className="text-muted-foreground">Manage user roles and permissions</p>
+          <p className="text-muted-foreground">Manage system roles and permissions</p>
         </div>
         <Button onClick={() => navigate('/roles/create')}>
           <Plus className="h-4 w-4 mr-2" />
@@ -124,7 +189,6 @@ const RoleManagement = () => {
         </Button>
       </div>
 
-      {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -133,11 +197,33 @@ const RoleManagement = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{roles.length}</div>
+            <p className="text-xs text-muted-foreground">{activeRoles} active roles</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Roles</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{activeRoles}</div>
+            <p className="text-xs text-muted-foreground">{roles.length - activeRoles} inactive</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Permissions</CardTitle>
+            <Settings className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalPermissions}</div>
+            <p className="text-xs text-muted-foreground">Across all roles</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Roles Table */}
       <Card>
         <CardHeader>
           <CardTitle>All Roles</CardTitle>
@@ -147,11 +233,10 @@ const RoleManagement = () => {
         </CardContent>
       </Card>
 
-      {/* Delete Confirmation Dialog */}
       <DeleteConfirmationDialog
         open={deleteDialog.open}
         onOpenChange={(open) => setDeleteDialog({ open, role: null })}
-        itemName={deleteDialog.role?.roleName || ''}
+        itemName={deleteDialog.role ? deleteDialog.role.roleName : ''}
         itemType="Role"
         onConfirm={confirmDelete}
         isLoading={isDeleting}

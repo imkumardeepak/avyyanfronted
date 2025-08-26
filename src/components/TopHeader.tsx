@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ThemeToggle } from './ThemeToggle';
-import { Search, Bell, User, Settings, LogOut, Menu } from 'lucide-react';
+import { Search, User, Settings, LogOut, Menu, Bell } from 'lucide-react';
 
 export const TopHeader: React.FC = () => {
   const location = useLocation();
@@ -91,26 +91,27 @@ export const TopHeader: React.FC = () => {
 
         {/* Right side actions */}
         <div className="flex items-center gap-2">
+          {/* Removed WebSocket Status and NotificationBadge as part of WebSocket removal */}
+
+          {/* Notifications - Simplified */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0 relative"
+            onClick={() => navigate('/notifications')}
+          >
+            <Bell className="h-4 w-4" />
+            {/* Removed NotificationBadge as part of WebSocket removal */}
+          </Button>
+
           {/* Theme Toggle */}
           <ThemeToggle />
-
-          {/* Notifications */}
-          <Button variant="ghost" size="sm" className="relative h-8 w-8 p-0">
-            <Bell className="h-4 w-4" />
-            <Badge
-              variant="destructive"
-              className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center"
-            >
-              3
-            </Badge>
-          </Button>
 
           {/* User Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 w-8 rounded-full p-0">
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src={user?.profilePicture} alt={user?.fullName} />
                   <AvatarFallback>
                     {user?.firstName && user?.lastName
                       ? `${user.firstName[0]}${user.lastName[0]}`.toUpperCase()
@@ -122,7 +123,11 @@ export const TopHeader: React.FC = () => {
             <DropdownMenuContent className="w-56" align="end" forceMount>
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">{user?.fullName}</p>
+                  <p className="text-sm font-medium leading-none">
+                    {user?.firstName && user?.lastName
+                      ? `${user.firstName} ${user.lastName}`
+                      : user?.firstName || 'User'}
+                  </p>
                   <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
                 </div>
               </DropdownMenuLabel>

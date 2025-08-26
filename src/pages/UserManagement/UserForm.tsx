@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
@@ -14,41 +14,63 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/lib/api';
-import { ArrowLeft, Save, User, Mail, Phone, Shield } from 'lucide-react';
-import type { CreateUserDto, UpdateUserDto, User } from '@/types/user';
-import type { Role } from '@/types/role';
+import { userApi, roleApi, apiUtils } from '@/lib/api-client';
+import { toast } from '@/lib/toast';
+import { ArrowLeft, Save, User as UserIcon, Mail, Phone, Shield } from 'lucide-react';
+import type {
+  CreateUserRequestDto,
+  UpdateUserRequestDto,
+  AdminUserResponseDto,
+  RoleResponseDto,
+} from '@/types/api-types';
 
 const formSchema = z.object({
-  firstName: z.string().min(1, 'First name is required'),
-  lastName: z.string().min(1, 'Last name is required'),
-  email: z.string().email('Invalid email address'),
-  password: z.string().optional(),
-  phoneNumber: z.string().optional(),
+  firstName: z
+    .string()
+    .min(1, 'First name is required')
+    .max(100, 'First name must be less than 100 characters'),
+  lastName: z
+    .string()
+    .min(1, 'Last name is required')
+    .max(100, 'Last name must be less than 100 characters'),
+  email: z
+    .string()
+    .email('Invalid email address')
+    .max(255, 'Email must be less than 255 characters'),
+  password: z.string().min(6, 'Password must be at least 6 characters').optional(),
+  phoneNumber: z.string().max(20, 'Phone number must be less than 20 characters').optional(),
+  isActive: z.boolean().optional(),
   roleName: z.string().min(1, 'Role is required'),
 });
 
 type FormData = z.infer<typeof formSchema>;
 
-const fetchUser = async (id: number): Promise<User> => {
-  const response = await apiClient.get(`/User/${id}`);
-  return response.data;
+const fetchUser = async (id: number): Promise<AdminUserResponseDto> => {
+  const response = await userApi.getUser(id);
+  return apiUtils.extractData(response);
 };
 
-const fetchRoles = async (): Promise<Role[]> => {
-  const response = await apiClient.get('/Role');
-  return response.data;
+const fetchRoles = async (): Promise<RoleResponseDto[]> => {
+  const response = await roleApi.getAllRoles();
+  return apiUtils.extractData(response);
 };
 
-const createUser = async (data: CreateUserDto): Promise<User> => {
-  const response = await apiClient.post('/User', data);
-  return response.data;
+const createUser = async (data: CreateUserRequestDto): Promise<AdminUserResponseDto> => {
+  const response = await userApi.createUser(data);
+  return apiUtils.extractData(response);
 };
 
-const updateUser = async ({ id, data }: { id: number; data: UpdateUserDto }): Promise<User> => {
-  const response = await apiClient.put(`/User/${id}`, data);
-  return response.data;
+const updateUser = async ({
+  id,
+  data,
+}: {
+  id: number;
+  data: UpdateUserRequestDto;
+}): Promise<AdminUserResponseDto> => {
+  const response = await userApi.updateUser(id, data);
+  return apiUtils.extractData(response);
 };
 
 const UserForm = () => {
@@ -57,69 +79,109 @@ const UserForm = () => {
   const queryClient = useQueryClient();
   const isEditMode = !!id;
 
-  const { data: user, isLoading: isUserLoading } = useQuery<User>({
+  const { data: user, isLoading: isUserLoading } = useQuery<AdminUserResponseDto>({
     queryKey: ['user', id],
     queryFn: () => fetchUser(parseInt(id!)),
     enabled: isEditMode,
   });
 
-  const { data: roles = [], isLoading: areRolesLoading } = useQuery<Role[]>({
+  const { data: roles = [], isLoading: areRolesLoading } = useQuery<RoleResponseDto[]>({
     queryKey: ['roles'],
     queryFn: fetchRoles,
   });
 
-  const { mutate: createUserMutation, isPending: isCreating } = useMutation({
+  const {
+    mutate: createUserMutation,
+    isPending: isCreating,
+    isError: isCreateError,
+    error: createError,
+  } = useMutation({
     mutationFn: createUser,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
+      toast.success('Success', 'User created successfully');
       navigate('/users');
     },
-  });
-
-  const { mutate: updateUserMutation, isPending: isUpdating } = useMutation({
-    mutationFn: updateUser,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-      queryClient.invalidateQueries({ queryKey: ['user', id] });
-      navigate('/users');
+    onError: (error) => {
+      console.error('Create user error:', error);
+      const errorMessage = apiUtils.handleError(error);
+      toast.error('Error', errorMessage);
     },
   });
 
   const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    setValue,
-    control,
-  } = useForm<FormData>({
+    mutate: updateUserMutation,
+    isPending: isUpdating,
+    isError: isUpdateError,
+    error: updateError,
+  } = useMutation({
+    mutationFn: updateUser,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['user', id] });
+      toast.success('Success', 'User updated successfully');
+      navigate('/users');
+    },
+    onError: (error) => {
+      console.error('Update user error:', error);
+      const errorMessage = apiUtils.handleError(error);
+      toast.error('Error', errorMessage);
+    },
+  });
+
+  const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       firstName: '',
       lastName: '',
       email: '',
-      password: '',
+      password: undefined,
       phoneNumber: '',
+      isActive: true,
       roleName: '',
     },
   });
 
   useEffect(() => {
     if (user && isEditMode) {
-      setValue('firstName', user.firstName);
-      setValue('lastName', user.lastName);
-      setValue('email', user.email);
-      setValue('phoneNumber', user.phoneNumber || '');
-      setValue('roleName', user.roleName);
+      form.setValue('firstName', user.firstName);
+      form.setValue('lastName', user.lastName);
+      form.setValue('email', user.email);
+      form.setValue('phoneNumber', user.phoneNumber || '');
+      form.setValue('roleName', user.roleName);
+      form.setValue('isActive', user.isActive);
     }
-  }, [user, isEditMode, setValue]);
+  }, [user, isEditMode]);
+
+  // Add useEffect to set default values for create mode
+  useEffect(() => {
+    if (!isEditMode) {
+      form.setValue('isActive', true);
+    }
+  }, [isEditMode]);
 
   const onSubmit = (data: FormData) => {
+    console.log('Form data submitted:', data);
     if (isEditMode) {
-      const updateData: UpdateUserDto = data;
+      // Create clean update data object without password
+      const updateData: UpdateUserRequestDto = {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        phoneNumber: data.phoneNumber,
+        roleName: data.roleName,
+        isActive: data.isActive,
+      };
+      console.log('Update data being sent:', updateData);
       updateUserMutation({ id: parseInt(id!), data: updateData });
     } else {
-      const createData: CreateUserDto = data as CreateUserDto;
-      createUserMutation(createData);
+      // Validate password is provided for creation
+      if (!data.password) {
+        form.setError('password', { message: 'Password is required for new users' });
+        return;
+      }
+      console.log('Create data being sent:', data);
+      createUserMutation(data as CreateUserRequestDto);
     }
   };
 
@@ -130,6 +192,19 @@ const UserForm = () => {
       </div>
     );
   }
+
+  // Update the getErrorMessage function to handle both create and update errors
+  const getErrorMessage = () => {
+    if (isCreateError) {
+      return apiUtils.handleError(createError);
+    }
+    if (isUpdateError) {
+      return apiUtils.handleError(updateError);
+    }
+    return null;
+  };
+
+  const errorMessage = getErrorMessage();
 
   return (
     <div className="container mx-auto py-6">
@@ -144,10 +219,16 @@ const UserForm = () => {
         </p>
       </div>
 
+      {errorMessage && (
+        <div className="mb-4 p-4 bg-destructive/20 text-destructive rounded-md">
+          Error: {errorMessage}
+        </div>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
-            <User className="h-5 w-5 mr-2" />
+            <UserIcon className="h-5 w-5 mr-2" />
             User Information
           </CardTitle>
           <CardDescription>
@@ -155,20 +236,28 @@ const UserForm = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="firstName">First Name</Label>
-                <Input id="firstName" {...register('firstName')} placeholder="Enter first name" />
-                {errors.firstName && (
-                  <p className="text-sm text-destructive">{errors.firstName.message}</p>
+                <Input
+                  id="firstName"
+                  {...form.register('firstName')}
+                  placeholder="Enter first name"
+                />
+                {form.formState.errors.firstName && (
+                  <p className="text-sm text-destructive">
+                    {form.formState.errors.firstName.message}
+                  </p>
                 )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="lastName">Last Name</Label>
-                <Input id="lastName" {...register('lastName')} placeholder="Enter last name" />
-                {errors.lastName && (
-                  <p className="text-sm text-destructive">{errors.lastName.message}</p>
+                <Input id="lastName" {...form.register('lastName')} placeholder="Enter last name" />
+                {form.formState.errors.lastName && (
+                  <p className="text-sm text-destructive">
+                    {form.formState.errors.lastName.message}
+                  </p>
                 )}
               </div>
             </div>
@@ -180,12 +269,14 @@ const UserForm = () => {
                 <Input
                   id="email"
                   type="email"
-                  {...register('email')}
+                  {...form.register('email')}
                   placeholder="Enter email address"
                   className="pl-10"
                 />
               </div>
-              {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
+              {form.formState.errors.email && (
+                <p className="text-sm text-destructive">{form.formState.errors.email.message}</p>
+              )}
             </div>
 
             {!isEditMode && (
@@ -194,11 +285,13 @@ const UserForm = () => {
                 <Input
                   id="password"
                   type="password"
-                  {...register('password')}
+                  {...form.register('password')}
                   placeholder="Enter password"
                 />
-                {errors.password && (
-                  <p className="text-sm text-destructive">{errors.password.message}</p>
+                {!isEditMode && form.formState.errors.password && (
+                  <p className="text-sm text-destructive">
+                    {form.formState.errors.password.message}
+                  </p>
                 )}
               </div>
             )}
@@ -209,12 +302,34 @@ const UserForm = () => {
                 <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="phoneNumber"
-                  {...register('phoneNumber')}
+                  {...form.register('phoneNumber')}
                   placeholder="Enter phone number"
                   className="pl-10"
                 />
               </div>
+              {form.formState.errors.phoneNumber && (
+                <p className="text-sm text-destructive">
+                  {form.formState.errors.phoneNumber.message}
+                </p>
+              )}
             </div>
+
+            {isEditMode && (
+              <div className="flex items-center space-x-2">
+                <Controller
+                  name="isActive"
+                  control={form.control}
+                  render={({ field }) => (
+                    <Checkbox
+                      id="isActive"
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  )}
+                />
+                <Label htmlFor="isActive">User is active</Label>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label className="flex items-center">
@@ -223,9 +338,9 @@ const UserForm = () => {
               </Label>
               <Controller
                 name="roleName"
-                control={control}
+                control={form.control}
                 render={({ field }) => (
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select a role" />
                     </SelectTrigger>
@@ -239,8 +354,8 @@ const UserForm = () => {
                   </Select>
                 )}
               />
-              {errors.roleName && (
-                <p className="text-sm text-destructive">{errors.roleName.message}</p>
+              {form.formState.errors.roleName && (
+                <p className="text-sm text-destructive">{form.formState.errors.roleName.message}</p>
               )}
             </div>
 

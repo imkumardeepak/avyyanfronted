@@ -1,69 +1,161 @@
-# React + TypeScript + Vite
+# Avyaan Knitfab Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This is the frontend application for the Avyaan Knitfab system, built with React, TypeScript, and Vite.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- User authentication and role-based access control
+- Real-time notifications via WebSocket
+- Real-time chat functionality via WebSocket
+- Dashboard with analytics
+- User and role management
+- Machine management
 
-## Expanding the ESLint configuration
+## WebSocket Implementation
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+This application implements real-time communication using WebSockets for both notifications and chat functionality.
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### Available Hooks
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
+1. `useWebSocket` - Combined hook for both notifications and chat
+2. `useNotifications` - Dedicated hook for notifications only
+3. `useChat` - Dedicated hook for chat functionality
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### Usage Examples
+
+#### Using the Combined Hook
+
+```tsx
+import { useWebSocket } from '@/hooks';
+
+const MyComponent = () => {
+  const { 
+    notifications, 
+    messages, 
+    connectionStatus, 
+    sendMessage, 
+    markNotificationAsRead,
+    unreadNotificationCount
+  } = useWebSocket();
+  
+  return (
+    <div>
+      <p>Unread notifications: {unreadNotificationCount}</p>
+      <div>
+        {notifications.map(notification => (
+          <div key={notification.id}>
+            <h3>{notification.title}</h3>
+            <p>{notification.message}</p>
+            <button onClick={() => markNotificationAsRead(notification.id)}>
+              Mark as read
+            </button>
+          </div>
+        ))}
+      </div>
+      <div>
+        {messages.map(message => (
+          <div key={message.id}>
+            <p>{message.message}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+#### Using Individual Hooks
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+```tsx
+import { useNotifications, useChat } from '@/hooks';
 
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+const MyComponent = () => {
+  const { notifications, unreadCount, connectionStatus: notificationStatus } = useNotifications();
+  const { messages, connectionStatus: chatStatus, sendMessage } = useChat();
+  
+  const handleSendMessage = (message: string) => {
+    sendMessage(message);
+  };
+  
+  return (
+    <div>
+      {/* Component JSX */}
+    </div>
+  );
+};
 ```
+
+### Environment Configuration
+
+To use WebSocket functionality, configure the following environment variables in your `.env.local` file:
+
+```env
+# WebSocket Configuration
+VITE_WS_NOTIFICATIONS_URL=wss://your-domain.com/notifications
+VITE_WS_CHAT_URL=wss://your-domain.com/chat
+```
+
+If these variables are not set, the application will construct WebSocket URLs from the `VITE_API_URL` by replacing `http` with `ws` and adjusting the path.
+
+## Development
+
+### Prerequisites
+
+- Node.js (version compatible with package.json)
+- npm or yarn
+
+### Installation
+
+```bash
+npm install
+```
+
+### Running the Development Server
+
+```bash
+npm run dev
+```
+
+### Building for Production
+
+```bash
+npm run build
+```
+
+### Linting
+
+```bash
+# Check for linting issues
+npm run lint:check
+
+# Fix linting issues
+npm run lint
+```
+
+## Project Structure
+
+```
+src/
+├── components/     # Reusable UI components
+├── contexts/       # React context providers
+├── hooks/          # Custom React hooks
+├── lib/            # Utility functions and API clients
+├── pages/          # Page components
+├── routes/         # Routing configuration
+├── schemas/        # Form validation schemas
+├── styles/         # CSS styles
+├── types/          # TypeScript types
+└── App.tsx         # Main application component
+```
+
+## Technology Stack
+
+- **Framework**: React 18
+- **Language**: TypeScript
+- **Build Tool**: Vite
+- **State Management**: React Context API, React Query
+- **Routing**: React Router DOM
+- **UI Library**: Radix UI, Tailwind CSS
+- **Form Handling**: React Hook Form, Zod
+- **HTTP Client**: Axios
+- **Real-time Communication**: WebSocket

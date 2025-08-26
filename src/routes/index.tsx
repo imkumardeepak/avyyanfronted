@@ -11,26 +11,29 @@ import { Loader } from '../components/loader';
 const Home = lazy(() => import('../pages/Home'));
 const Dashboard = lazy(() => import('../pages/Dashboard'));
 const Login = lazy(() => import('../pages/Login'));
-
-// Machine Manager Pages
-const MachineManager = lazy(() => import('../pages/MachineManager'));
-const MachineForm = lazy(() => import('../pages/MachineManager/MachineForm'));
-const MachineDetails = lazy(() => import('../pages/MachineManager/MachineDetails'));
+const Register = lazy(() => import('../pages/Register'));
+const PasswordReset = lazy(() => import('../pages/PasswordReset'));
 
 // User Management Pages
 const UserManagement = lazy(() => import('../pages/UserManagement'));
 const UserForm = lazy(() => import('../pages/UserManagement/UserForm'));
 const UserDetails = lazy(() => import('../pages/UserManagement/UserDetails'));
 
+// User Profile Pages
+const UserProfile = lazy(() => import('../pages/UserProfile'));
+const ChangePassword = lazy(() => import('../pages/UserProfile/ChangePassword'));
+
 // Role Management Pages
 const RoleManagement = lazy(() => import('../pages/RoleManagement'));
 const RoleForm = lazy(() => import('../pages/RoleManagement/RoleForm'));
-const RoleDetails = lazy(() => import('../pages/RoleManagement/RoleDetails'));
+const RolePermissions = lazy(() => import('../pages/RoleManagement/RolePermissions'));
 
-// Chat Pages
+// Machine Management Pages
+const MachineManagement = lazy(() => import('../pages/MachineManagement'));
+const MachineForm = lazy(() => import('../pages/MachineManagement/MachineForm'));
+
+// Chat and Notifications Pages
 const Chat = lazy(() => import('../pages/Chat'));
-
-// Notification Pages
 const Notifications = lazy(() => import('../pages/Notifications'));
 
 const Router = () => {
@@ -55,13 +58,33 @@ const Router = () => {
             />
           </Route>
 
-          {/* Redirect /login to /auth/login */}
+          {/* Public Auth Routes */}
           <Route
             path="/login"
             element={
               <PublicRoute>
                 <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
                   <Login />
+                </LazyRoute>
+              </PublicRoute>
+            }
+          />
+          <Route
+            path="/register"
+            element={
+              <PublicRoute>
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <Register />
+                </LazyRoute>
+              </PublicRoute>
+            }
+          />
+          <Route
+            path="/password-reset"
+            element={
+              <PublicRoute>
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <PasswordReset />
                 </LazyRoute>
               </PublicRoute>
             }
@@ -101,12 +124,45 @@ const Router = () => {
               }
             />
 
-            {/* Machine Manager Routes */}
+            <Route
+              path="roles"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <RoleManagement />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="roles/create"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <RoleForm />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="roles/:id/edit"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <RoleForm />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="roles/:id/permissions"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <RolePermissions />
+                </LazyRoute>
+              }
+            />
+
+            {/* Machine Management Routes */}
             <Route
               path="machines"
               element={
                 <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
-                  <MachineManager />
+                  <MachineManagement />
                 </LazyRoute>
               }
             />
@@ -115,14 +171,6 @@ const Router = () => {
               element={
                 <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
                   <MachineForm />
-                </LazyRoute>
-              }
-            />
-            <Route
-              path="machines/:id"
-              element={
-                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
-                  <MachineDetails />
                 </LazyRoute>
               }
             />
@@ -169,36 +217,20 @@ const Router = () => {
               }
             />
 
-            {/* Role Management Routes */}
+            {/* User Profile Routes */}
             <Route
-              path="roles"
+              path="profile"
               element={
                 <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
-                  <RoleManagement />
+                  <UserProfile />
                 </LazyRoute>
               }
             />
             <Route
-              path="roles/new"
+              path="profile/change-password"
               element={
                 <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
-                  <RoleForm />
-                </LazyRoute>
-              }
-            />
-            <Route
-              path="roles/:id"
-              element={
-                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
-                  <RoleDetails />
-                </LazyRoute>
-              }
-            />
-            <Route
-              path="roles/:id/edit"
-              element={
-                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
-                  <RoleForm />
+                  <ChangePassword />
                 </LazyRoute>
               }
             />
@@ -213,7 +245,7 @@ const Router = () => {
               }
             />
 
-            {/* Notification Routes */}
+            {/* Notifications Routes */}
             <Route
               path="notifications"
               element={

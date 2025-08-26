@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 interface SidebarContextType {
   isSidebarCollapsed: boolean;
@@ -22,8 +22,28 @@ interface SidebarProviderProps {
 }
 
 export const SidebarProvider: React.FC<SidebarProviderProps> = ({ children }) => {
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  // Get initial sidebar collapse state from localStorage
+  const getInitialSidebarState = (): boolean => {
+    try {
+      const stored = localStorage.getItem('sidebar_collapsed');
+      return stored ? JSON.parse(stored) : false;
+    } catch (error) {
+      console.error('Error reading sidebar state from localStorage:', error);
+      return false;
+    }
+  };
+
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(getInitialSidebarState);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+  // Save sidebar collapse state to localStorage whenever it changes
+  useEffect(() => {
+    try {
+      localStorage.setItem('sidebar_collapsed', JSON.stringify(isSidebarCollapsed));
+    } catch (error) {
+      console.error('Error saving sidebar state to localStorage:', error);
+    }
+  }, [isSidebarCollapsed]);
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed((prev) => !prev);

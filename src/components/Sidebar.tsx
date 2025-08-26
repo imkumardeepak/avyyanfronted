@@ -1,11 +1,24 @@
-import React, { useState, type JSX } from 'react';
+import React, { useState, useEffect, type JSX } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSidebar } from '@/contexts/SidebarContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Folder, ChevronLeft, ChevronRight, Cog, Users, BarChart3, Shield } from 'lucide-react';
+import {
+  Folder,
+  ChevronLeft,
+  ChevronRight,
+  Cog,
+  Users,
+  BarChart3,
+  Shield,
+  MessageSquare,
+  Bell,
+  type LucideIcon,
+} from 'lucide-react';
+
+type Icon = LucideIcon;
 
 interface NavItem {
   title: string;
@@ -40,10 +53,31 @@ const navConfig: NavItem[] = [
     ],
   },
   {
-    title: 'User Management',
-    href: '#user-management',
-    icon: Users,
-    description: 'User and role management',
+    title: 'Communication',
+    href: '#communication',
+    icon: MessageSquare,
+    description: 'Chat and notifications',
+    isParentOnly: true,
+    children: [
+      {
+        title: 'Chat',
+        href: '/chat',
+        icon: MessageSquare,
+        description: 'Real-time messaging and communication',
+      },
+      {
+        title: 'Notifications',
+        href: '/notifications',
+        icon: Bell,
+        description: 'View and manage notifications',
+      },
+    ],
+  },
+  {
+    title: 'Administration',
+    href: '#administration',
+    icon: Shield,
+    description: 'User and role administration',
     isParentOnly: true,
     children: [
       {
@@ -62,15 +96,39 @@ const navConfig: NavItem[] = [
   },
 ];
 
+// Helper function to get expanded items from localStorage
+const getExpandedItemsFromStorage = (): string[] => {
+  try {
+    const stored = localStorage.getItem('sidebar_expanded_items');
+    return stored ? JSON.parse(stored) : [];
+  } catch (error) {
+    console.error('Error reading expanded items from localStorage:', error);
+    return [];
+  }
+};
+
+// Helper function to save expanded items to localStorage
+const saveExpandedItemsToStorage = (items: string[]): void => {
+  try {
+    localStorage.setItem('sidebar_expanded_items', JSON.stringify(items));
+  } catch (error) {
+    console.error('Error saving expanded items to localStorage:', error);
+  }
+};
+
 export const Sidebar: React.FC = () => {
   const location = useLocation();
   const { user, pageAccesses } = useAuth();
   const { isSidebarCollapsed, toggleSidebar } = useSidebar();
-  const [expandedItems, setExpandedItems] = useState<string[]>([]);
+  const [expandedItems, setExpandedItems] = useState<string[]>(() => getExpandedItemsFromStorage());
 
-  const hasAccess = (href: string) => {
-    const page = pageAccesses.find((p) => href.toLowerCase().includes(p.pageName.toLowerCase()));
-    console.log(pageAccesses.map((p) => p.pageName));
+  // Save expanded items to localStorage whenever they change
+  useEffect(() => {
+    saveExpandedItemsToStorage(expandedItems);
+  }, [expandedItems]);
+
+  const hasAccess = (pageTitle: string) => {
+    const page = pageAccesses.find((p) => p.pageName.toLowerCase() === pageTitle.toLowerCase());
     return page?.isView ?? false;
   };
 
@@ -176,25 +234,13 @@ export const Sidebar: React.FC = () => {
 
       {/* Footer */}
       {!isSidebarCollapsed && (
-        <div className="border-t p-4">
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center">
-              <span className="text-xs font-medium text-primary-foreground">
-                {user?.firstName && user?.lastName
-                  ? `${user.firstName[0]}${user.lastName[0]}`.toUpperCase()
-                  : user?.firstName?.[0]?.toUpperCase() || 'U'}
-              </span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">
-                {user?.firstName && user?.lastName
-                  ? `${user.firstName} ${user.lastName}`
-                  : user?.firstName || 'User'}
-              </p>
-              <p className="text-xs text-muted-foreground truncate">
-                {user?.email || 'user@example.com'}
-              </p>
-            </div>
+        <div className="border-t px-4 py-3 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <div className="h-2 w-2 rounded-full bg-green-500"></div>
+            <span>Online</span>
+          </div>
+          <div className="mt-1 truncate">
+            {user?.firstName} {user?.lastName}
           </div>
         </div>
       )}

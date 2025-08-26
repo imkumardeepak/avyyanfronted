@@ -18,16 +18,19 @@ import {
   ArrowDownRight,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useMachines } from '@/hooks/useMachines';
-import { useNotifications } from '@/hooks/useNotifications';
-import { useChat } from '@/hooks/useChat';
+
 import { formatDate } from '@/lib/utils';
 
 const Dashboard = () => {
   const { user } = useAuth();
-  const { machines, loading: machinesLoading } = useMachines();
-  const { unreadCount } = useNotifications();
-  const { chatRooms } = useChat();
+  
+  // Mock data for simplified dashboard without machine management
+  const machines = [];
+  const machinesLoading = false;
+  
+  // Mock values for removed chat/notification features
+  const unreadCount = 0;
+  const chatRoomsLength = 0;
 
   // Calculate statistics
   const totalMachines = machines.length;
@@ -124,7 +127,7 @@ const Dashboard = () => {
             <MessageSquare className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{chatRooms.length}</div>
+            <div className="text-2xl font-bold">{chatRoomsLength}</div>
             <p className="text-xs text-muted-foreground">Chat rooms available</p>
           </CardContent>
         </Card>
