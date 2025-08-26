@@ -335,6 +335,35 @@ export interface ValidationErrorResponse {
 }
 
 // ============================================
+// FABRIC STRUCTURE DTOs (AvyyanBackend.DTOs.FabricStructure)
+// ============================================
+
+export interface FabricStructureResponseDto {
+    id: number;
+    fabricstr: string;
+    standardeffencny: number;
+    createdAt: string;
+    updatedAt?: string;
+    isActive: boolean;
+}
+
+export interface CreateFabricStructureRequestDto {
+    fabricstr: string;
+    standardeffencny: number;
+}
+
+export interface UpdateFabricStructureRequestDto {
+    fabricstr: string;
+    standardeffencny: number;
+    isActive: boolean;
+}
+
+export interface FabricStructureSearchRequestDto {
+    fabricstr?: string;
+    isActive?: boolean;
+}
+
+// ============================================
 // LEGACY COMPATIBILITY TYPES
 // ============================================
 

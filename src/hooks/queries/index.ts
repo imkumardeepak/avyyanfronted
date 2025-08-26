@@ -33,6 +33,17 @@ export {
   useBulkCreateMachines,
 } from './useMachineQueries';
 
+// Fabric Structure Queries
+export {
+  fabricStructureKeys,
+  useFabricStructures,
+  useFabricStructure,
+  useSearchFabricStructures,
+  useCreateFabricStructure,
+  useUpdateFabricStructure,
+  useDeleteFabricStructure,
+} from './useFabricStructureQueries';
+
 // Additional Role Queries - Removed
 
 // Chat Management Queries - Removed
@@ -52,6 +63,10 @@ export const queryUtils = {
   
   invalidateMachineQueries: (queryClient: any) => {
     queryClient.invalidateQueries({ queryKey: ['machines'] });
+  },
+  
+  invalidateFabricStructureQueries: (queryClient: any) => {
+    queryClient.invalidateQueries({ queryKey: ['fabricStructures'] });
   },
 
   // Clear all caches
@@ -84,6 +99,14 @@ export const createQueryKeys = {
     list: (filters: any) => [...createQueryKeys.machines.lists(), { filters }] as const,
     details: () => [...createQueryKeys.machines.all, 'detail'] as const,
     detail: (id: number) => [...createQueryKeys.machines.details(), id] as const,
+  },
+  
+  fabricStructures: {
+    all: ['fabricStructures'] as const,
+    lists: () => [...createQueryKeys.fabricStructures.all, 'list'] as const,
+    list: (filters: any) => [...createQueryKeys.fabricStructures.lists(), { filters }] as const,
+    details: () => [...createQueryKeys.fabricStructures.all, 'detail'] as const,
+    detail: (id: number) => [...createQueryKeys.fabricStructures.details(), id] as const,
   },
 };
 

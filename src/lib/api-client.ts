@@ -22,6 +22,10 @@ import type {
   UserPermissionsResponseDto,
   PageAccessResponseDto,
   MessageResponseDto,
+  FabricStructureResponseDto,
+  CreateFabricStructureRequestDto,
+  UpdateFabricStructureRequestDto,
+  FabricStructureSearchRequestDto
 } from '@/types/api-types';
 
 // API Configuration
@@ -182,83 +186,68 @@ export const roleApi = {
   // DELETE /api/Role/{id} - Delete role
   deleteRole: (id: number): Promise<AxiosResponse<void>> =>
     apiClient.delete(`/Role/${id}`),
-
-  // GET /api/Role/{roleId}/page-accesses - Get role page accesses
-  getRolePageAccesses: (roleId: number): Promise<AxiosResponse<PageAccessResponseDto[]>> =>
-    apiClient.get(`/Role/${roleId}/page-accesses`),
 };
 
 // ============================================
-// MACHINE MANAGEMENT API (/api/Machine)
+// MACHINE MANAGEMENT API (/api/MachineManager)
 // ============================================
 
 export const machineApi = {
-  // GET /api/Machine - Get all machines
+  // GET /api/MachineManager - Get all machines
   getAllMachines: (): Promise<AxiosResponse<MachineResponseDto[]>> =>
-    apiClient.get('/Machine'),
+    apiClient.get('/MachineManager'),
 
-  // GET /api/Machine/{id} - Get machine by ID
+  // GET /api/MachineManager/{id} - Get machine by ID
   getMachine: (id: number): Promise<AxiosResponse<MachineResponseDto>> =>
-    apiClient.get(`/Machine/${id}`),
+    apiClient.get(`/MachineManager/${id}`),
 
-  // GET /api/Machine/search - Search machines
-  searchMachines: (params: MachineSearchRequestDto): Promise<AxiosResponse<MachineResponseDto[]>> => {
-    const queryParams = new URLSearchParams();
-    if (params.machineName) queryParams.append('machineName', params.machineName);
-    if (params.dia !== undefined) queryParams.append('dia', params.dia.toString());
-    if (params.isActive !== undefined) queryParams.append('isActive', params.isActive.toString());
-
-    return apiClient.get(`/Machine/search?${queryParams.toString()}`);
-  },
-
-  // POST /api/Machine - Create new machine
+  // POST /api/MachineManager - Create new machine
   createMachine: (data: CreateMachineRequestDto): Promise<AxiosResponse<MachineResponseDto>> =>
-    apiClient.post('/Machine', data),
+    apiClient.post('/MachineManager', data),
 
-  // PUT /api/Machine/{id} - Update machine
+  // PUT /api/MachineManager/{id} - Update machine
   updateMachine: (id: number, data: UpdateMachineRequestDto): Promise<AxiosResponse<MachineResponseDto>> =>
-    apiClient.put(`/Machine/${id}`, data),
+    apiClient.put(`/MachineManager/${id}`, data),
 
-  // DELETE /api/Machine/{id} - Delete machine (soft delete)
+  // DELETE /api/MachineManager/{id} - Delete machine
   deleteMachine: (id: number): Promise<AxiosResponse<void>> =>
-    apiClient.delete(`/Machine/${id}`),
+    apiClient.delete(`/MachineManager/${id}`),
 
-  // POST /api/Machine/bulk - Create multiple machines
+  // GET /api/MachineManager/search - Search machines
+  searchMachines: (params: MachineSearchRequestDto): Promise<AxiosResponse<MachineResponseDto[]>> =>
+    apiClient.get('/MachineManager/search', { params }),
+
+  // POST /api/MachineManager/bulk-create - Bulk create machines
   createBulkMachines: (data: BulkCreateMachineRequestDto): Promise<AxiosResponse<MachineResponseDto[]>> =>
-    apiClient.post('/Machine/bulk', data),
+    apiClient.post('/MachineManager/bulk-create', data),
 };
 
 // ============================================
-// UTILITY FUNCTIONS
+// FABRIC STRUCTURE API (/api/FabricStructure)
 // ============================================
 
-export const apiUtils = {
-  // Check if user is authenticated
-  isAuthenticated: (): boolean => !!getToken(),
+export const fabricStructureApi = {
+  // GET /api/FabricStructure - Get all fabric structures
+  getAllFabricStructures: (): Promise<AxiosResponse<FabricStructureResponseDto[]>> =>
+    apiClient.get('/FabricStructure'),
 
-  // Get current token
-  getAuthToken: (): string | null => getToken(),
+  // GET /api/FabricStructure/{id} - Get fabric structure by ID
+  getFabricStructure: (id: number): Promise<AxiosResponse<FabricStructureResponseDto>> =>
+    apiClient.get(`/FabricStructure/${id}`),
 
-  // Set authentication token
-  setAuthToken: (token: string): void => setToken(token),
+  // POST /api/FabricStructure - Create new fabric structure
+  createFabricStructure: (data: CreateFabricStructureRequestDto): Promise<AxiosResponse<FabricStructureResponseDto>> =>
+    apiClient.post('/FabricStructure', data),
 
-  // Clear authentication
-  clearAuth: (): void => removeToken(),
+  // PUT /api/FabricStructure/{id} - Update fabric structure
+  updateFabricStructure: (id: number, data: UpdateFabricStructureRequestDto): Promise<AxiosResponse<FabricStructureResponseDto>> =>
+    apiClient.put(`/FabricStructure/${id}`, data),
 
-  // Handle API errors
-  handleError: (error: any): string => {
-    if (error.response?.data?.error) {
-      return error.response.data.error;
-    }
-    if (error.response?.data?.message) {
-      return error.response.data.message;
-    }
-    if (error.message) {
-      return error.message;
-    }
-    return 'An unexpected error occurred';
-  },
+  // DELETE /api/FabricStructure/{id} - Delete fabric structure
+  deleteFabricStructure: (id: number): Promise<AxiosResponse<void>> =>
+    apiClient.delete(`/FabricStructure/${id}`),
 
-  // Extract data from API response
-  extractData: <T>(response: AxiosResponse<T>): T => response.data,
+  // GET /api/FabricStructure/search - Search fabric structures
+  searchFabricStructures: (params: FabricStructureSearchRequestDto): Promise<AxiosResponse<FabricStructureResponseDto[]>> =>
+    apiClient.get('/FabricStructure/search', { params }),
 };

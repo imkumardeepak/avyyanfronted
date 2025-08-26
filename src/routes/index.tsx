@@ -32,6 +32,12 @@ const RolePermissions = lazy(() => import('../pages/RoleManagement/RolePermissio
 const MachineManagement = lazy(() => import('../pages/MachineManagement'));
 const MachineForm = lazy(() => import('../pages/MachineManagement/MachineForm'));
 
+// Fabric Structure Management Pages
+const FabricStructureManagement = lazy(() => import('../pages/FabricStructureManagement'));
+const FabricStructureForm = lazy(
+  () => import('../pages/FabricStructureManagement/FabricStructureForm')
+);
+
 // Chat and Notifications Pages
 const Chat = lazy(() => import('../pages/Chat'));
 const Notifications = lazy(() => import('../pages/Notifications'));
@@ -179,6 +185,32 @@ const Router = () => {
               element={
                 <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
                   <MachineForm />
+                </LazyRoute>
+              }
+            />
+
+            {/* Fabric Structure Management Routes */}
+            <Route
+              path="fabric-structures"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <FabricStructureManagement />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="fabric-structures/create"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <FabricStructureForm />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="fabric-structures/:id/edit"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <FabricStructureForm />
                 </LazyRoute>
               }
             />
