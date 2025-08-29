@@ -5,28 +5,26 @@ This is the frontend application for the Avyaan Knitfab system, built with React
 ## Features
 
 - User authentication and role-based access control
-- Real-time notifications via WebSocket
-- Real-time chat functionality via WebSocket
+- Real-time notifications via SignalR
+- Real-time chat functionality via SignalR
 - Dashboard with analytics
 - User and role management
 - Machine management
 
-## WebSocket Implementation
+## SignalR Implementation
 
-This application implements real-time communication using WebSockets for both notifications and chat functionality.
+This application implements real-time communication using SignalR for both notifications and chat functionality.
 
 ### Available Hooks
 
-1. `useWebSocket` - Combined hook for both notifications and chat
-2. `useNotifications` - Dedicated hook for notifications only
-3. `useChat` - Dedicated hook for chat functionality
+1. `useSignalR` - Combined hook for both notifications and chat
 
 ### Usage Examples
 
-#### Using the Combined Hook
+#### Using the SignalR Hook
 
 ```tsx
-import { useWebSocket } from '@/hooks';
+import { useSignalR } from '@/hooks';
 
 const MyComponent = () => {
   const { 
@@ -36,7 +34,7 @@ const MyComponent = () => {
     sendMessage, 
     markNotificationAsRead,
     unreadNotificationCount
-  } = useWebSocket();
+  } = useSignalR();
   
   return (
     <div>
@@ -64,38 +62,20 @@ const MyComponent = () => {
 };
 ```
 
-#### Using Individual Hooks
-
-```tsx
-import { useNotifications, useChat } from '@/hooks';
-
-const MyComponent = () => {
-  const { notifications, unreadCount, connectionStatus: notificationStatus } = useNotifications();
-  const { messages, connectionStatus: chatStatus, sendMessage } = useChat();
-  
-  const handleSendMessage = (message: string) => {
-    sendMessage(message);
-  };
-  
-  return (
-    <div>
-      {/* Component JSX */}
-    </div>
-  );
-};
-```
-
 ### Environment Configuration
 
-To use WebSocket functionality, configure the following environment variables in your `.env.local` file:
+To use SignalR functionality, configure the following environment variables in your `.env.local` file:
 
 ```env
-# WebSocket Configuration
-VITE_WS_NOTIFICATIONS_URL=wss://your-domain.com/notifications
-VITE_WS_CHAT_URL=wss://your-domain.com/chat
+# API Configuration
+VITE_API_URL=https://your-domain.com/api
 ```
 
-If these variables are not set, the application will construct WebSocket URLs from the `VITE_API_URL` by replacing `http` with `ws` and adjusting the path.
+The SignalR connections will be established to:
+- Notification Hub: `https://your-domain.com/notificationhub`
+- Chat Hub: `https://your-domain.com/chathub`
+
+If `VITE_API_URL` is not set, the application will default to `http://localhost:5000`.
 
 ## Development
 
@@ -158,4 +138,4 @@ src/
 - **UI Library**: Radix UI, Tailwind CSS
 - **Form Handling**: React Hook Form, Zod
 - **HTTP Client**: Axios
-- **Real-time Communication**: WebSocket
+- **Real-time Communication**: SignalR

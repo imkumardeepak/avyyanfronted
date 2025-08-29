@@ -44,9 +44,31 @@ export {
   useDeleteFabricStructure,
 } from './useFabricStructureQueries';
 
+// Location Queries
+export {
+  locationKeys,
+  useLocations,
+  useLocation,
+  useSearchLocations,
+  useCreateLocation,
+  useUpdateLocation,
+  useDeleteLocation,
+} from './useLocationQueries';
+
 // Additional Role Queries - Removed
 
 // Chat Management Queries - Removed
+
+// Yarn Type Queries
+export {
+  yarnTypeKeys,
+  useYarnTypes,
+  useYarnType,
+  useSearchYarnTypes,
+  useCreateYarnType,
+  useUpdateYarnType,
+  useDeleteYarnType,
+} from './useYarnTypeQueries';
 
 // Notification Management Queries - Removed
 
@@ -67,6 +89,10 @@ export const queryUtils = {
   
   invalidateFabricStructureQueries: (queryClient: any) => {
     queryClient.invalidateQueries({ queryKey: ['fabricStructures'] });
+  },
+  
+  invalidateLocationQueries: (queryClient: any) => {
+    queryClient.invalidateQueries({ queryKey: ['locations'] });
   },
 
   // Clear all caches
@@ -107,6 +133,14 @@ export const createQueryKeys = {
     list: (filters: any) => [...createQueryKeys.fabricStructures.lists(), { filters }] as const,
     details: () => [...createQueryKeys.fabricStructures.all, 'detail'] as const,
     detail: (id: number) => [...createQueryKeys.fabricStructures.details(), id] as const,
+  },
+  
+  locations: {
+    all: ['locations'] as const,
+    lists: () => [...createQueryKeys.locations.all, 'list'] as const,
+    list: (filters: any) => [...createQueryKeys.locations.lists(), { filters }] as const,
+    details: () => [...createQueryKeys.locations.all, 'detail'] as const,
+    detail: (id: number) => [...createQueryKeys.locations.details(), id] as const,
   },
 };
 

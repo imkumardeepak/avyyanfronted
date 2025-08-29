@@ -25,7 +25,15 @@ import type {
   FabricStructureResponseDto,
   CreateFabricStructureRequestDto,
   UpdateFabricStructureRequestDto,
-  FabricStructureSearchRequestDto
+  FabricStructureSearchRequestDto,
+  LocationResponseDto,
+  CreateLocationRequestDto,
+  UpdateLocationRequestDto,
+  LocationSearchRequestDto,
+  YarnTypeResponseDto,
+  CreateYarnTypeRequestDto,
+  UpdateYarnTypeRequestDto,
+  YarnTypeSearchRequestDto,
 } from '@/types/api-types';
 
 // API Configuration
@@ -85,6 +93,46 @@ apiClient.interceptors.response.use(
 
 // Export the main API client
 export default apiClient;
+
+// Add apiUtils object with helper functions
+export const apiUtils = {
+  // Extract data from Axios response
+  extractData: <T>(response: AxiosResponse<T>): T => {
+    return response.data;
+  },
+
+  // Handle API errors and return user-friendly messages
+  handleError: (error: any): string => {
+    if (error?.response?.data?.message) {
+      return error.response.data.message;
+    }
+    
+    if (error?.response?.data?.error) {
+      return error.response.data.error;
+    }
+    
+    if (error?.message) {
+      return error.message;
+    }
+    
+    return 'An unexpected error occurred';
+  },
+
+  // Auth token management
+  getAuthToken: (): string | null => {
+    return localStorage.getItem('auth_token');
+  },
+
+  setAuthToken: (token: string): void => {
+    localStorage.setItem('auth_token', token);
+  },
+
+  clearAuth: (): void => {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('auth_refresh_token');
+    localStorage.removeItem('auth_user');
+  },
+};
 
 // ============================================
 // AUTHENTICATION API (/api/Auth)
@@ -175,6 +223,10 @@ export const roleApi = {
   getRole: (id: number): Promise<AxiosResponse<RoleResponseDto>> =>
     apiClient.get(`/Role/${id}`),
 
+  // GET /api/Role/{id}/page-accesses - Get role page accesses
+  getRolePageAccesses: (id: number): Promise<AxiosResponse<PageAccessResponseDto[]>> =>
+    apiClient.get(`/Role/${id}/page-accesses`),
+
   // POST /api/Role - Create new role
   createRole: (data: CreateRoleRequestDto): Promise<AxiosResponse<RoleResponseDto>> =>
     apiClient.post('/Role', data),
@@ -189,37 +241,67 @@ export const roleApi = {
 };
 
 // ============================================
-// MACHINE MANAGEMENT API (/api/MachineManager)
+// MACHINE MANAGEMENT API (/api/Machine)
 // ============================================
 
 export const machineApi = {
-  // GET /api/MachineManager - Get all machines
+  // GET /api/Machine - Get all machines
   getAllMachines: (): Promise<AxiosResponse<MachineResponseDto[]>> =>
-    apiClient.get('/MachineManager'),
+    apiClient.get('/Machine'),
 
-  // GET /api/MachineManager/{id} - Get machine by ID
+  // GET /api/Machine/{id} - Get machine by ID
   getMachine: (id: number): Promise<AxiosResponse<MachineResponseDto>> =>
-    apiClient.get(`/MachineManager/${id}`),
+    apiClient.get(`/Machine/${id}`),
 
-  // POST /api/MachineManager - Create new machine
+  // POST /api/Machine - Create new machine
   createMachine: (data: CreateMachineRequestDto): Promise<AxiosResponse<MachineResponseDto>> =>
-    apiClient.post('/MachineManager', data),
+    apiClient.post('/Machine', data),
 
-  // PUT /api/MachineManager/{id} - Update machine
+  // PUT /api/Machine/{id} - Update machine
   updateMachine: (id: number, data: UpdateMachineRequestDto): Promise<AxiosResponse<MachineResponseDto>> =>
-    apiClient.put(`/MachineManager/${id}`, data),
+    apiClient.put(`/Machine/${id}`, data),
 
-  // DELETE /api/MachineManager/{id} - Delete machine
+  // DELETE /api/Machine/{id} - Delete machine
   deleteMachine: (id: number): Promise<AxiosResponse<void>> =>
-    apiClient.delete(`/MachineManager/${id}`),
+    apiClient.delete(`/Machine/${id}`),
 
-  // GET /api/MachineManager/search - Search machines
+  // GET /api/Machine/search - Search machines
   searchMachines: (params: MachineSearchRequestDto): Promise<AxiosResponse<MachineResponseDto[]>> =>
-    apiClient.get('/MachineManager/search', { params }),
+    apiClient.get('/Machine/search', { params }),
 
-  // POST /api/MachineManager/bulk-create - Bulk create machines
+  // POST /api/Machine/bulk - Bulk create machines
   createBulkMachines: (data: BulkCreateMachineRequestDto): Promise<AxiosResponse<MachineResponseDto[]>> =>
-    apiClient.post('/MachineManager/bulk-create', data),
+    apiClient.post('/Machine/bulk', data),
+};
+
+// ============================================
+// LOCATION API (/api/Location)
+// ============================================
+
+export const locationApi = {
+  // GET /api/Location - Get all locations
+  getAllLocations: (): Promise<AxiosResponse<LocationResponseDto[]>> =>
+    apiClient.get('/Location'),
+
+  // GET /api/Location/{id} - Get location by ID
+  getLocation: (id: number): Promise<AxiosResponse<LocationResponseDto>> =>
+    apiClient.get(`/Location/${id}`),
+
+  // POST /api/Location - Create new location
+  createLocation: (data: CreateLocationRequestDto): Promise<AxiosResponse<LocationResponseDto>> =>
+    apiClient.post('/Location', data),
+
+  // PUT /api/Location/{id} - Update location
+  updateLocation: (id: number, data: UpdateLocationRequestDto): Promise<AxiosResponse<LocationResponseDto>> =>
+    apiClient.put(`/Location/${id}`, data),
+
+  // DELETE /api/Location/{id} - Delete location
+  deleteLocation: (id: number): Promise<AxiosResponse<void>> =>
+    apiClient.delete(`/Location/${id}`),
+
+  // GET /api/Location/search - Search locations
+  searchLocations: (params: LocationSearchRequestDto): Promise<AxiosResponse<LocationResponseDto[]>> =>
+    apiClient.get('/Location/search', { params }),
 };
 
 // ============================================
@@ -250,4 +332,34 @@ export const fabricStructureApi = {
   // GET /api/FabricStructure/search - Search fabric structures
   searchFabricStructures: (params: FabricStructureSearchRequestDto): Promise<AxiosResponse<FabricStructureResponseDto[]>> =>
     apiClient.get('/FabricStructure/search', { params }),
+};
+
+// ============================================
+// YARN TYPE API (/api/YarnType)
+// ============================================
+
+export const yarnTypeApi = {
+  // GET /api/YarnType - Get all yarn types
+  getAllYarnTypes: (): Promise<AxiosResponse<YarnTypeResponseDto[]>> =>
+    apiClient.get('/YarnType'),
+
+  // GET /api/YarnType/{id} - Get yarn type by ID
+  getYarnType: (id: number): Promise<AxiosResponse<YarnTypeResponseDto>> =>
+    apiClient.get(`/YarnType/${id}`),
+
+  // POST /api/YarnType - Create new yarn type
+  createYarnType: (data: CreateYarnTypeRequestDto): Promise<AxiosResponse<YarnTypeResponseDto>> =>
+    apiClient.post('/YarnType', data),
+
+  // PUT /api/YarnType/{id} - Update yarn type
+  updateYarnType: (id: number, data: UpdateYarnTypeRequestDto): Promise<AxiosResponse<YarnTypeResponseDto>> =>
+    apiClient.put(`/YarnType/${id}`, data),
+
+  // DELETE /api/YarnType/{id} - Delete yarn type
+  deleteYarnType: (id: number): Promise<AxiosResponse<void>> =>
+    apiClient.delete(`/YarnType/${id}`),
+
+  // POST /api/YarnType/search - Search yarn types
+  searchYarnTypes: (data: YarnTypeSearchRequestDto): Promise<AxiosResponse<YarnTypeResponseDto[]>> =>
+    apiClient.post('/YarnType/search', data),
 };

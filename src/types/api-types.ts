@@ -342,6 +342,7 @@ export interface FabricStructureResponseDto {
     id: number;
     fabricstr: string;
     standardeffencny: number;
+    fabricCode?: string; // Added new optional FabricCode property
     createdAt: string;
     updatedAt?: string;
     isActive: boolean;
@@ -350,16 +351,19 @@ export interface FabricStructureResponseDto {
 export interface CreateFabricStructureRequestDto {
     fabricstr: string;
     standardeffencny: number;
+    fabricCode?: string; // Added new optional FabricCode property
 }
 
 export interface UpdateFabricStructureRequestDto {
     fabricstr: string;
     standardeffencny: number;
+    fabricCode?: string; // Added new optional FabricCode property
     isActive: boolean;
 }
 
 export interface FabricStructureSearchRequestDto {
     fabricstr?: string;
+    fabricCode?: string; // Added new optional FabricCode property
     isActive?: boolean;
 }
 
@@ -486,4 +490,76 @@ export interface MachineFormData {
     efficiency: number;
     description?: string;
     isActive: boolean;
+}
+
+// ============================================
+// LOCATION DTOs (AvyyanBackend.DTOs.Location)
+// ============================================
+
+export interface LocationResponseDto {
+    id: number;
+    warehousename: string;
+    location: string;
+    sublocation: string;
+    locationcode: string;
+    createdAt: string;
+    updatedAt?: string;
+    isActive: boolean;
+}
+
+export interface CreateLocationRequestDto {
+    warehousename: string;
+    location: string;
+    sublocation: string;
+    locationcode: string;
+}
+
+export interface UpdateLocationRequestDto {
+    warehousename: string;
+    location: string;
+    sublocation: string;
+    locationcode: string;
+    isActive: boolean;
+}
+
+export interface LocationSearchRequestDto {
+    warehousename?: string;
+    location?: string;
+    sublocation?: string;
+    locationcode?: string;
+    isActive?: boolean;
+}
+
+// ============================================
+// YARN TYPE DTOs (AvyyanBackend.DTOs.YarnType)
+// ============================================
+
+export interface YarnTypeResponseDto {
+    id: number;
+    yarnType: string;
+    yarnCode: string;
+    shortCode: string;
+    createdAt: string;
+    updatedAt?: string;
+    isActive: boolean;
+}
+
+export interface CreateYarnTypeRequestDto {
+    yarnType: string;
+    yarnCode: string;
+    shortCode: string;
+}
+
+export interface UpdateYarnTypeRequestDto {
+    yarnType: string;
+    yarnCode: string;
+    shortCode: string;
+    isActive: boolean;
+}
+
+export interface YarnTypeSearchRequestDto {
+    yarnType?: string;
+    yarnCode?: string;
+    shortCode?: string;
+    isActive?: boolean;
 }

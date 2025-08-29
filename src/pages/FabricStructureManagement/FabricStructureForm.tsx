@@ -23,6 +23,10 @@ const fabricStructureSchema = z.object({
     .string()
     .min(1, 'Fabric structure name is required')
     .max(200, 'Fabric structure name must be less than 200 characters'),
+  fabricCode: z
+    .string()
+    .max(4, 'Fabric code must be less than 4 characters')
+    .min(1, 'Fabric code is required'),
   standardeffencny: z
     .number()
     .min(0.01, 'Standard efficiency must be greater than 0')
@@ -92,6 +96,7 @@ const FabricStructureForm = () => {
     resolver: zodResolver(fabricStructureSchema),
     defaultValues: {
       fabricstr: '',
+      fabricCode: null, // Initialize fabricCode as null
       standardeffencny: 0,
       isActive: true,
     },
@@ -100,6 +105,7 @@ const FabricStructureForm = () => {
   useEffect(() => {
     if (isEdit && fabricStructure) {
       form.setValue('fabricstr', fabricStructure.fabricstr);
+      form.setValue('fabricCode', fabricStructure.fabricCode || null); // Set fabricCode value
       form.setValue('standardeffencny', fabricStructure.standardeffencny);
       form.setValue('isActive', fabricStructure.isActive);
     }
@@ -107,10 +113,18 @@ const FabricStructureForm = () => {
 
   const onSubmit = (data: FabricStructureFormData) => {
     if (isEdit) {
-      updateMutation({ id: parseInt(id!), data: { ...data, isActive: data.isActive ?? true } });
+      updateMutation({
+        id: parseInt(id!),
+        data: {
+          ...data,
+          fabricCode: data.fabricCode || undefined, // Convert null to undefined for API
+          isActive: data.isActive ?? true,
+        },
+      });
     } else {
       createMutation({
         fabricstr: data.fabricstr,
+        fabricCode: data.fabricCode || undefined, // Convert null to undefined for API
         standardeffencny: data.standardeffencny,
       });
     }
@@ -154,6 +168,20 @@ const FabricStructureForm = () => {
               {form.formState.errors.fabricstr && (
                 <p className="text-sm text-destructive">
                   {form.formState.errors.fabricstr.message}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="fabricCode">Fabric Code (Optional)</Label>
+              <Input
+                id="fabricCode"
+                {...form.register('fabricCode')}
+                placeholder="Enter fabric code (optional)"
+              />
+              {form.formState.errors.fabricCode && (
+                <p className="text-sm text-destructive">
+                  {form.formState.errors.fabricCode.message}
                 </p>
               )}
             </div>

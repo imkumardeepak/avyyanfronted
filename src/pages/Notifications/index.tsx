@@ -1,55 +1,27 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { Bell, Check, Trash2, Eye } from 'lucide-react';
+import { useNotifications } from '@/hooks/useNotifications';
+import type { NotificationDto } from '@/types/api-types';
 
 const Notifications = () => {
-  // Mock notification data
-  const notifications = [
-    {
-      id: 1,
-      title: 'New Message',
-      content: 'You have a new message from John Doe',
-      timestamp: '10 minutes ago',
-      type: 'message',
-      isRead: false,
-    },
-    {
-      id: 2,
-      title: 'System Update',
-      content: 'The system has been updated to version 2.1.0',
-      timestamp: '1 hour ago',
-      type: 'system',
-      isRead: true,
-    },
-    {
-      id: 3,
-      title: 'Task Completed',
-      content: 'Your task "Update documentation" has been completed',
-      timestamp: '2 hours ago',
-      type: 'task',
-      isRead: false,
-    },
-    {
-      id: 4,
-      title: 'New User Registered',
-      content: 'A new user has registered: Jane Smith',
-      timestamp: '1 day ago',
-      type: 'user',
-      isRead: true,
-    },
-  ];
+  const {
+    notifications,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification,
+    unreadCount,
+    connectionStatus,
+  } = useNotifications();
 
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
-
-  const markAsRead = (id: number) => {
-    console.log(`Marking notification ${id} as read`);
+  const markAsReadHandler = (id: string) => {
+    markAsRead(id);
   };
 
-  const deleteNotification = (id: number) => {
-    console.log(`Deleting notification ${id}`);
+  const deleteNotificationHandler = (id: string) => {
+    deleteNotification(id);
   };
 
   return (
@@ -59,7 +31,7 @@ const Notifications = () => {
           <h2 className="text-3xl font-bold tracking-tight">Notifications</h2>
           <div className="flex items-center space-x-2">
             <Badge variant="secondary">{unreadCount} unread</Badge>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={markAllAsRead}>
               <Bell className="mr-2 h-4 w-4" />
               Mark all as read
             </Button>
@@ -69,6 +41,14 @@ const Notifications = () => {
         <Card>
           <CardHeader>
             <CardTitle>All Notifications</CardTitle>
+            {connectionStatus === 'connecting' && (
+              <div className="text-sm text-muted-foreground">
+                Connecting to notification service...
+              </div>
+            )}
+            {connectionStatus === 'error' && (
+              <div className="text-sm text-red-500">Connection error. Reconnecting...</div>
+            )}
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -87,10 +67,10 @@ const Notifications = () => {
                           </Badge>
                         )}
                       </div>
-                      <p className="text-sm text-muted-foreground mt-1">{notification.content}</p>
+                      <p className="text-sm text-muted-foreground mt-1">{notification.message}</p>
                       <div className="flex items-center space-x-2 mt-2">
                         <span className="text-xs text-muted-foreground">
-                          {notification.timestamp}
+                          {new Date(notification.timestamp).toLocaleString()}
                         </span>
                         <Badge variant="outline" className="text-xs">
                           {notification.type}
@@ -102,7 +82,7 @@ const Notifications = () => {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => markAsRead(notification.id)}
+                          onClick={() => markAsReadHandler(notification.id)}
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -110,7 +90,7 @@ const Notifications = () => {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => deleteNotification(notification.id)}
+                        onClick={() => deleteNotificationHandler(notification.id)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

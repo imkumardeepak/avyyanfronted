@@ -30,10 +30,7 @@ const formSchema = z.object({
   feeder: z.number().positive('Feeder count must be greater than 0'),
   rpm: z.number().positive('RPM must be greater than 0'),
   constat: z.number().min(0, 'Constant must be 0 or greater').optional(),
-  efficiency: z
-    .number()
-    .min(0.01, 'Efficiency must be at least 0.01')
-    .max(100, 'Efficiency must be 100 or less'),
+  // Removed efficiency field as requested
   description: z.string().max(500, 'Description must be less than 500 characters').optional(),
   isActive: z.boolean().optional(),
 });
@@ -117,7 +114,7 @@ const MachineForm = () => {
       feeder: 0,
       rpm: 0,
       constat: undefined,
-      efficiency: 0,
+      // Removed efficiency field as requested
       description: '',
       isActive: true,
     },
@@ -132,7 +129,7 @@ const MachineForm = () => {
       form.setValue('feeder', machine.feeder);
       form.setValue('rpm', machine.rpm);
       form.setValue('constat', machine.constat);
-      form.setValue('efficiency', machine.efficiency);
+      // Removed efficiency field as requested
       form.setValue('description', machine.description || '');
       form.setValue('isActive', machine.isActive);
     }
@@ -285,21 +282,7 @@ const MachineForm = () => {
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="efficiency">Efficiency (%)</Label>
-                <Input
-                  id="efficiency"
-                  type="number"
-                  step="0.01"
-                  {...form.register('efficiency', { valueAsNumber: true })}
-                  placeholder="Enter efficiency percentage"
-                />
-                {form.formState.errors.efficiency && (
-                  <p className="text-sm text-destructive">
-                    {form.formState.errors.efficiency.message}
-                  </p>
-                )}
-              </div>
+              {/* Removed efficiency field as requested */}
             </div>
 
             <div className="space-y-2">

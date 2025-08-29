@@ -38,6 +38,14 @@ const FabricStructureForm = lazy(
   () => import('../pages/FabricStructureManagement/FabricStructureForm')
 );
 
+// Location Management Pages
+const LocationManagement = lazy(() => import('../pages/LocationManagement'));
+const LocationForm = lazy(() => import('../pages/LocationManagement/LocationForm'));
+
+// Yarn Type Management Pages
+const YarnTypeManagement = lazy(() => import('../pages/YarnTypeManagement'));
+const YarnTypeForm = lazy(() => import('../pages/YarnTypeManagement/YarnTypeForm'));
+
 // Chat and Notifications Pages
 const Chat = lazy(() => import('../pages/Chat'));
 const Notifications = lazy(() => import('../pages/Notifications'));
@@ -211,6 +219,58 @@ const Router = () => {
               element={
                 <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
                   <FabricStructureForm />
+                </LazyRoute>
+              }
+            />
+
+            {/* Location Management Routes */}
+            <Route
+              path="locations"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <LocationManagement />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="locations/create"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <LocationForm />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="locations/:id/edit"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <LocationForm />
+                </LazyRoute>
+              }
+            />
+
+            {/* Yarn Type Management Routes */}
+            <Route
+              path="yarn-types"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <YarnTypeManagement />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="yarn-types/create"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <YarnTypeForm />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="yarn-types/:id/edit"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <YarnTypeForm />
                 </LazyRoute>
               }
             />
