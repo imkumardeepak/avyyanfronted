@@ -11,6 +11,7 @@ export const PAGE_NAMES = {
     YARNTYPE_MASTER: 'Yarn Type',
     ROLE_MASTER: 'Role Master',
     MACHINE_MASTER: 'Machine Master',
+    SALES_ORDERS: 'Sales Orders',
     CHAT: 'Chat',
     NOTIFICATIONS: 'Notifications',
 } as const;

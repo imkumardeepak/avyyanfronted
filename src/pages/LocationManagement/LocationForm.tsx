@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { locationApi, apiUtils } from '@/lib/api-client';
 import { toast } from '@/lib/toast';
 import { ArrowLeft, Save, MapPin } from 'lucide-react';
@@ -62,6 +62,7 @@ const updateLocation = async (
 const LocationForm = () => {
   const navigate = useNavigate();
   const { id } = useParams();
+  const queryClient = useQueryClient();
   const isEdit = !!id;
   const skipAutoGeneration = useRef(false);
 
@@ -75,6 +76,8 @@ const LocationForm = () => {
     mutationFn: createLocation,
     onSuccess: () => {
       toast.success('Success', 'Location created successfully');
+      // Invalidate queries to refresh the list
+      queryClient.invalidateQueries({ queryKey: ['locations'] });
       navigate('/locations');
     },
     onError: (error) => {
@@ -88,6 +91,9 @@ const LocationForm = () => {
       updateLocation(id, data),
     onSuccess: () => {
       toast.success('Success', 'Location updated successfully');
+      // Invalidate queries to refresh the list
+      queryClient.invalidateQueries({ queryKey: ['locations'] });
+      queryClient.invalidateQueries({ queryKey: ['location', id] });
       navigate('/locations');
     },
     onError: (error) => {

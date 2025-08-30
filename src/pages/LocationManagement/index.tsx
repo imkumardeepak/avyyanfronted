@@ -1,16 +1,16 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DataTable } from '@/components/DataTable';
 import { DeleteConfirmationDialog } from '@/components/ui/confirmation-dialog';
-import { Plus, MapPin, Edit, Trash2 } from 'lucide-react';
-import { useLocations, useDeleteLocation, useSearchLocations } from '@/hooks/queries';
+import { Plus, Edit, Trash2 } from 'lucide-react';
+import { useLocations, useDeleteLocation } from '@/hooks/queries';
 import { apiUtils } from '@/lib/api-client';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Row } from '@tanstack/react-table';
-import type { LocationResponseDto, LocationSearchRequestDto } from '@/types/api-types';
+import type { LocationResponseDto } from '@/types/api-types';
 
 type LocationCellProps = { row: Row<LocationResponseDto> };
 
@@ -105,6 +105,8 @@ const LocationManagement = () => {
   const confirmDelete = () => {
     if (deleteDialog.location) {
       deleteLocationMutation(deleteDialog.location.id);
+      // Add query invalidation to refresh the list after delete
+      queryClient.invalidateQueries({ queryKey: ['locations'] });
       setDeleteDialog({ open: false, location: null });
     }
   };

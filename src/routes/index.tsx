@@ -46,6 +46,9 @@ const LocationForm = lazy(() => import('../pages/LocationManagement/LocationForm
 const YarnTypeManagement = lazy(() => import('../pages/YarnTypeManagement'));
 const YarnTypeForm = lazy(() => import('../pages/YarnTypeManagement/YarnTypeForm'));
 
+// Sales Order Management Pages
+const SalesOrderManagement = lazy(() => import('../pages/SalesOrderManagement'));
+
 // Chat and Notifications Pages
 const Chat = lazy(() => import('../pages/Chat'));
 const Notifications = lazy(() => import('../pages/Notifications'));
@@ -271,6 +274,16 @@ const Router = () => {
               element={
                 <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
                   <YarnTypeForm />
+                </LazyRoute>
+              }
+            />
+
+            {/* Sales Order Management Routes */}
+            <Route
+              path="sales-orders"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <SalesOrderManagement />
                 </LazyRoute>
               }
             />

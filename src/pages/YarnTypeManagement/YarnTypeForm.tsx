@@ -11,6 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useYarnType, useCreateYarnType, useUpdateYarnType } from '@/hooks/queries';
 import { yarnTypeApi, apiUtils } from '@/lib/api-client';
 import { toast } from '@/lib/toast';
+import { useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Save } from 'lucide-react';
 import type {
   YarnTypeResponseDto,
@@ -43,6 +44,7 @@ const fetchYarnType = async (id: number): Promise<YarnTypeResponseDto> => {
 
 const YarnTypeForm = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { id } = useParams();
   const isEdit = !!id;
 
@@ -82,6 +84,8 @@ const YarnTypeForm = () => {
         {
           onSuccess: () => {
             toast.success('Success', 'Yarn type updated successfully');
+            // Refetch the yarn types list after successful update
+            queryClient.invalidateQueries({ queryKey: ['yarnTypes', 'list'] });
             navigate('/yarn-types');
           },
           onError: (error) => {
@@ -94,6 +98,8 @@ const YarnTypeForm = () => {
       createMutation(data, {
         onSuccess: () => {
           toast.success('Success', 'Yarn type created successfully');
+          // Refetch the yarn types list after successful creation
+          queryClient.invalidateQueries({ queryKey: ['yarnTypes', 'list'] });
           navigate('/yarn-types');
         },
         onError: (error) => {

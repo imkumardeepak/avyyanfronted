@@ -8,6 +8,7 @@ import { DeleteConfirmationDialog } from '@/components/ui/confirmation-dialog';
 import { Plus, Edit, Trash2 } from 'lucide-react';
 import { useFabricStructures, useDeleteFabricStructure } from '@/hooks/queries';
 import { apiUtils } from '@/lib/api-client';
+import { useQueryClient } from '@tanstack/react-query';
 import type { Row } from '@tanstack/react-table';
 import type { FabricStructureResponseDto } from '@/types/api-types';
 
@@ -15,6 +16,7 @@ type FabricStructureCellProps = { row: Row<FabricStructureResponseDto> };
 
 const FabricStructureManagement = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { data: fabricStructures = [], isLoading, error } = useFabricStructures();
   const { mutate: deleteFabricStructureMutation, isPending: isDeleting } =
     useDeleteFabricStructure();
@@ -104,6 +106,8 @@ const FabricStructureManagement = () => {
   const confirmDelete = () => {
     if (deleteDialog.fabricStructure) {
       deleteFabricStructureMutation(deleteDialog.fabricStructure.id);
+      // Add query invalidation to refresh the list after delete
+      queryClient.invalidateQueries({ queryKey: ['fabricStructures'] });
       setDeleteDialog({ open: false, fabricStructure: null });
     }
   };

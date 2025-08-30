@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fabricStructureApi, apiUtils } from '@/lib/api-client';
 import { toast } from '@/lib/toast';
 import { ArrowLeft, Save } from 'lucide-react';
@@ -23,10 +23,7 @@ const fabricStructureSchema = z.object({
     .string()
     .min(1, 'Fabric structure name is required')
     .max(200, 'Fabric structure name must be less than 200 characters'),
-  fabricCode: z
-    .string()
-    .max(4, 'Fabric code must be less than 4 characters')
-    .min(1, 'Fabric code is required'),
+  fabricCode: z.string().max(4, 'Fabric code must be less than 4 characters').optional().nullable(),
   standardeffencny: z
     .number()
     .min(0.01, 'Standard efficiency must be greater than 0')
@@ -59,6 +56,7 @@ const updateFabricStructure = async (
 const FabricStructureForm = () => {
   const navigate = useNavigate();
   const { id } = useParams();
+  const queryClient = useQueryClient();
   const isEdit = !!id;
 
   const { data: fabricStructure } = useQuery<FabricStructureResponseDto>({
@@ -71,6 +69,8 @@ const FabricStructureForm = () => {
     mutationFn: createFabricStructure,
     onSuccess: () => {
       toast.success('Success', 'Fabric structure created successfully');
+      // Invalidate queries to refresh the list
+      queryClient.invalidateQueries({ queryKey: ['fabricStructures'] });
       navigate('/fabric-structures');
     },
     onError: (error) => {
@@ -84,6 +84,9 @@ const FabricStructureForm = () => {
       updateFabricStructure(id, data),
     onSuccess: () => {
       toast.success('Success', 'Fabric structure updated successfully');
+      // Invalidate queries to refresh the list
+      queryClient.invalidateQueries({ queryKey: ['fabricStructures'] });
+      queryClient.invalidateQueries({ queryKey: ['fabricStructure', id] });
       navigate('/fabric-structures');
     },
     onError: (error) => {
@@ -96,7 +99,7 @@ const FabricStructureForm = () => {
     resolver: zodResolver(fabricStructureSchema),
     defaultValues: {
       fabricstr: '',
-      fabricCode: null, // Initialize fabricCode as null
+      fabricCode: undefined, // Initialize fabricCode as undefined
       standardeffencny: 0,
       isActive: true,
     },
@@ -105,7 +108,7 @@ const FabricStructureForm = () => {
   useEffect(() => {
     if (isEdit && fabricStructure) {
       form.setValue('fabricstr', fabricStructure.fabricstr);
-      form.setValue('fabricCode', fabricStructure.fabricCode || null); // Set fabricCode value
+      form.setValue('fabricCode', fabricStructure.fabricCode || undefined); // Set fabricCode value
       form.setValue('standardeffencny', fabricStructure.standardeffencny);
       form.setValue('isActive', fabricStructure.isActive);
     }

@@ -8,6 +8,7 @@ import { DeleteConfirmationDialog } from '@/components/ui/confirmation-dialog';
 import { Plus, Edit, Trash2 } from 'lucide-react';
 import { useYarnTypes, useDeleteYarnType } from '@/hooks/queries';
 import { apiUtils } from '@/lib/api-client';
+import { useQueryClient } from '@tanstack/react-query';
 import type { Row } from '@tanstack/react-table';
 import type { YarnTypeResponseDto } from '@/types/api-types';
 
@@ -15,6 +16,7 @@ type YarnTypeCellProps = { row: Row<YarnTypeResponseDto> };
 
 const YarnTypeManagement = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { data: yarnTypes = [], isLoading, error } = useYarnTypes();
   const { mutate: deleteYarnTypeMutation, isPending: isDeleting } = useDeleteYarnType();
 
@@ -98,7 +100,12 @@ const YarnTypeManagement = () => {
 
   const confirmDelete = () => {
     if (deleteDialog.yarnType) {
-      deleteYarnTypeMutation(deleteDialog.yarnType.id);
+      deleteYarnTypeMutation(deleteDialog.yarnType.id, {
+        onSuccess: () => {
+          // Refetch the yarn types list after successful deletion
+          queryClient.invalidateQueries({ queryKey: ['yarnTypes', 'list'] });
+        },
+      });
       setDeleteDialog({ open: false, yarnType: null });
     }
   };

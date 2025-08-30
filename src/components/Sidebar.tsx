@@ -71,6 +71,21 @@ const navConfig: NavItem[] = [
     ],
   },
   {
+    title: 'Sales',
+    href: '#sales',
+    icon: BarChart3,
+    description: 'Sales management',
+    isParentOnly: true,
+    children: [
+      {
+        title: 'Sales Orders',
+        href: '/sales-orders',
+        icon: BarChart3,
+        description: 'Manage unprocessed sales orders',
+      },
+    ],
+  },
+  {
     title: 'Communication',
     href: '#communication',
     icon: MessageSquare,

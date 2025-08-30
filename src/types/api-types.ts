@@ -23,6 +23,10 @@ export interface LoginResponseDto {
     pageAccesses: AuthPageAccessDto[];
 }
 
+export interface RefreshTokenRequestDto {
+    refreshToken: string;
+}
+
 export interface RegisterRequestDto {
     firstName: string;      // Required, max 100 chars
     lastName: string;       // Required, max 100 chars
@@ -562,4 +566,88 @@ export interface YarnTypeSearchRequestDto {
     yarnCode?: string;
     shortCode?: string;
     isActive?: boolean;
+}
+
+// ============================================
+// VOUCHER DTOs
+// ============================================
+
+export interface VoucherDto {
+  id: number;
+  vchType: string;
+  date: string; // ISO 8601 datetime
+  guid: string;
+  gstRegistrationType: string;
+  stateName: string;
+  partyName: string;
+  partyLedgerName: string;
+  voucherNumber: string;
+  reference: string;
+  companyAddress: string;
+  buyerAddress: string;
+  orderTerms: string;
+  ledgerEntries: string;
+  processFlag: number;
+  processDate: string; // ISO 8601 datetime
+  createdAt: string; // ISO 8601 datetime
+  createdBy: string;
+  updatedAt: string; // ISO 8601 datetime
+  updatedBy: string;
+  items: VoucherItemDto[];
+}
+
+export interface VoucherItemDto {
+  id: number;
+  voucherId: number;
+  stockItemName: string;
+  rate: string;
+  amount: string;
+  actualQty: string;
+  billedQty: string;
+  descriptions: string;
+  batchName: string;
+  orderNo: string;
+  orderDueDate: string;
+}
+
+// ============================================
+// SALES ORDER DTOs
+// ============================================
+
+export interface SalesOrderItemDto {
+  id: number;
+  salesOrderId: number;
+  stockItemName: string;
+  rate: string;
+  amount: string;
+  actualQty: string;
+  billedQty: string;
+  descriptions: string;
+  batchName: string;
+  orderNo: string;
+  orderDueDate: string;
+}
+
+export interface SalesOrderDto {
+  id: number;
+  vchType: string;
+  salesDate: string; // ISO 8601 datetime
+  guid: string;
+  gstRegistrationType: string;
+  stateName: string;
+  partyName: string;
+  partyLedgerName: string;
+  voucherNumber: string;
+  reference: string;
+  companyAddress: string;
+  buyerAddress: string;
+  orderTerms: string;
+  ledgerEntries: string;
+  processFlag: number;
+  processDate: string; // ISO 8601 datetime
+  createdAt: string; // ISO 8601 datetime
+  createdBy: string;
+  updatedAt: string; // ISO 8601 datetime
+  updatedBy: string;
+  items: SalesOrderItemDto[];
 }

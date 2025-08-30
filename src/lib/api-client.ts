@@ -1,6 +1,6 @@
 import axios from 'axios';
-import type { AxiosResponse } from 'axios';
-import { getToken, setToken, removeToken } from '@/lib/auth';
+import type { AxiosResponse, AxiosError } from 'axios';
+import { getToken } from '@/lib/auth';
 import type {
   LoginRequestDto,
   LoginResponseDto,
@@ -34,6 +34,9 @@ import type {
   CreateYarnTypeRequestDto,
   UpdateYarnTypeRequestDto,
   YarnTypeSearchRequestDto,
+  RefreshTokenRequestDto,
+  SalesOrderDto,
+  VoucherDto,
 } from '@/types/api-types';
 
 // API Configuration
@@ -45,6 +48,26 @@ const API_CONFIG = {
 // Determine base URL based on environment
 const getBaseUrl = () => {
   return import.meta.env.DEV ? API_CONFIG.DEVELOPMENT_URL : API_CONFIG.PRODUCTION_URL;
+};
+
+// Create a separate axios instance for auth refresh to avoid circular dependencies
+const authRefreshClient = axios.create({
+  baseURL: getBaseUrl(),
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Helper function to refresh token without using authApi (to avoid circular dependency)
+const refreshAuthToken = async (refreshToken: string): Promise<any> => {
+  try {
+    const response = await authRefreshClient.post('/Auth/refresh', { refreshToken });
+    return response.data;
+  } catch (error) {
+    console.error('Failed to refresh token:', error);
+    throw error;
+  }
 };
 
 // Create axios instance
@@ -78,16 +101,10 @@ apiClient.interceptors.response.use(
 
     // Handle 401 Unauthorized errors (token expired)
     if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-      
-      // TODO: Implement token refresh logic if needed
-      // For now, redirect to login
-      removeToken();
-      window.location.href = '/login';
-      return Promise.reject(error);
+          apiUtils.clearAuth();
+          window.location.href = '/login';
+          return Promise.reject(error);
     }
-
-    return Promise.reject(error);
   }
 );
 
@@ -102,16 +119,19 @@ export const apiUtils = {
   },
 
   // Handle API errors and return user-friendly messages
-  handleError: (error: any): string => {
-    if (error?.response?.data?.message) {
-      return error.response.data.message;
+  handleError: (error: unknown): string => {
+    if (error && typeof error === 'object' && 'response' in error) {
+      const axiosError = error as AxiosError<{ message?: string; error?: string }>;
+      if (axiosError.response?.data?.message) {
+        return axiosError.response.data.message;
+      }
+      
+      if (axiosError.response?.data?.error) {
+        return axiosError.response.data.error;
+      }
     }
     
-    if (error?.response?.data?.error) {
-      return error.response.data.error;
-    }
-    
-    if (error?.message) {
+    if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
       return error.message;
     }
     
@@ -142,6 +162,10 @@ export const authApi = {
   // POST /api/Auth/login - User login
   login: (data: LoginRequestDto): Promise<AxiosResponse<LoginResponseDto>> =>
     apiClient.post('/Auth/login', data),
+
+  // POST /api/Auth/refresh - Refresh authentication token
+  refreshToken: (data: RefreshTokenRequestDto): Promise<AxiosResponse<LoginResponseDto>> =>
+    apiClient.post('/Auth/refresh', data),
 
   // POST /api/Auth/register - User registration
   register: (data: RegisterRequestDto): Promise<AxiosResponse<LoginResponseDto>> =>
@@ -362,4 +386,24 @@ export const yarnTypeApi = {
   // POST /api/YarnType/search - Search yarn types
   searchYarnTypes: (data: YarnTypeSearchRequestDto): Promise<AxiosResponse<YarnTypeResponseDto[]>> =>
     apiClient.post('/YarnType/search', data),
+};
+
+// ============================================
+// VOUCHERS API (/api/Vouchers)
+// ============================================
+
+export const vouchersApi = {
+  // GET /api/Vouchers - Get all vouchers
+  getAllVouchers: (): Promise<AxiosResponse<VoucherDto[]>> =>
+    apiClient.get('/Vouchers'),
+};
+
+// ============================================
+// SALES ORDER API (/api/SalesOrder)
+// ============================================
+
+export const salesOrderApi = {
+  // GET /api/SalesOrder/unprocessed - Get all unprocessed sales orders
+  getUnprocessedSalesOrders: (): Promise<AxiosResponse<SalesOrderDto[]>> =>
+    apiClient.get('/SalesOrder/unprocessed'),
 };

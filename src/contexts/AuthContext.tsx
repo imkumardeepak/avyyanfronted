@@ -10,6 +10,7 @@ interface AuthContextType {
   pageAccesses: AuthPageAccessDto[];
   login: (credentials: LoginRequestDto) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
+  refreshToken: () => Promise<boolean>;
   hasRole: (role: string) => boolean;
   hasPermission: (pageName: string, action: 'View' | 'Add' | 'Edit' | 'Delete') => boolean;
   isAdmin: () => boolean;
@@ -100,12 +101,41 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       savePageAccessesToStorage(loginResult.pageAccesses);
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Login error:', error);
       const errorMessage = apiUtils.handleError(error);
       return { success: false, error: errorMessage };
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Add a function to refresh the token manually
+  const refreshToken = async (): Promise<boolean> => {
+    try {
+      const refreshToken = localStorage.getItem('auth_refresh_token');
+      if (!refreshToken) {
+        throw new Error('No refresh token available');
+      }
+
+      const response = await authApi.refreshToken({ refreshToken });
+      const refreshResult = apiUtils.extractData(response);
+
+      setUser(refreshResult.user);
+      setToken(refreshResult.token);
+      setPageAccesses(refreshResult.pageAccesses);
+
+      // Update stored auth data
+      apiUtils.setAuthToken(refreshResult.token);
+      localStorage.setItem('auth_refresh_token', refreshResult.refreshToken);
+      localStorage.setItem('auth_user', JSON.stringify(refreshResult.user));
+      savePageAccessesToStorage(refreshResult.pageAccesses);
+
+      return true;
+    } catch (error) {
+      console.error('Token refresh error:', error);
+      logout();
+      return false;
     }
   };
 
@@ -174,6 +204,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     pageAccesses,
     login,
     logout,
+    refreshToken,
     hasRole,
     hasPermission,
     isAdmin,
