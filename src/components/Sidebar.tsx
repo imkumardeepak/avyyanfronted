@@ -50,6 +50,39 @@ const navConfig: NavItem[] = [
         icon: Cog,
         description: 'Manage manufacturing machines and equipment',
       },
+      {
+        title: 'Fabric Structure',
+        href: '/fabric-structures',
+        icon: Cog,
+        description: 'Manage fabric structure and components',
+      },
+      {
+        title: 'Location Master',
+        href: '/locations',
+        icon: Cog,
+        description: 'Manage manufacturing locations and facilities',
+      },
+      {
+        title: 'Yarn Type',
+        href: '/yarn-types',
+        icon: Cog,
+        description: 'Manage yarn types and codes',
+      },
+    ],
+  },
+  {
+    title: 'Sales',
+    href: '#sales',
+    icon: BarChart3,
+    description: 'Sales management',
+    isParentOnly: true,
+    children: [
+      {
+        title: 'Sales Orders',
+        href: '/sales-orders',
+        icon: BarChart3,
+        description: 'Manage unprocessed sales orders',
+      },
     ],
   },
   {

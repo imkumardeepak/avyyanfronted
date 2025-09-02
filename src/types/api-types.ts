@@ -23,6 +23,10 @@ export interface LoginResponseDto {
     pageAccesses: AuthPageAccessDto[];
 }
 
+export interface RefreshTokenRequestDto {
+    refreshToken: string;
+}
+
 export interface RegisterRequestDto {
     firstName: string;      // Required, max 100 chars
     lastName: string;       // Required, max 100 chars
@@ -335,6 +339,39 @@ export interface ValidationErrorResponse {
 }
 
 // ============================================
+// FABRIC STRUCTURE DTOs (AvyyanBackend.DTOs.FabricStructure)
+// ============================================
+
+export interface FabricStructureResponseDto {
+    id: number;
+    fabricstr: string;
+    standardeffencny: number;
+    fabricCode?: string; // Added new optional FabricCode property
+    createdAt: string;
+    updatedAt?: string;
+    isActive: boolean;
+}
+
+export interface CreateFabricStructureRequestDto {
+    fabricstr: string;
+    standardeffencny: number;
+    fabricCode?: string; // Added new optional FabricCode property
+}
+
+export interface UpdateFabricStructureRequestDto {
+    fabricstr: string;
+    standardeffencny: number;
+    fabricCode?: string; // Added new optional FabricCode property
+    isActive: boolean;
+}
+
+export interface FabricStructureSearchRequestDto {
+    fabricstr?: string;
+    fabricCode?: string; // Added new optional FabricCode property
+    isActive?: boolean;
+}
+
+// ============================================
 // LEGACY COMPATIBILITY TYPES
 // ============================================
 
@@ -457,4 +494,160 @@ export interface MachineFormData {
     efficiency: number;
     description?: string;
     isActive: boolean;
+}
+
+// ============================================
+// LOCATION DTOs (AvyyanBackend.DTOs.Location)
+// ============================================
+
+export interface LocationResponseDto {
+    id: number;
+    warehousename: string;
+    location: string;
+    sublocation: string;
+    locationcode: string;
+    createdAt: string;
+    updatedAt?: string;
+    isActive: boolean;
+}
+
+export interface CreateLocationRequestDto {
+    warehousename: string;
+    location: string;
+    sublocation: string;
+    locationcode: string;
+}
+
+export interface UpdateLocationRequestDto {
+    warehousename: string;
+    location: string;
+    sublocation: string;
+    locationcode: string;
+    isActive: boolean;
+}
+
+export interface LocationSearchRequestDto {
+    warehousename?: string;
+    location?: string;
+    sublocation?: string;
+    locationcode?: string;
+    isActive?: boolean;
+}
+
+// ============================================
+// YARN TYPE DTOs (AvyyanBackend.DTOs.YarnType)
+// ============================================
+
+export interface YarnTypeResponseDto {
+    id: number;
+    yarnType: string;
+    yarnCode: string;
+    shortCode: string;
+    createdAt: string;
+    updatedAt?: string;
+    isActive: boolean;
+}
+
+export interface CreateYarnTypeRequestDto {
+    yarnType: string;
+    yarnCode: string;
+    shortCode: string;
+}
+
+export interface UpdateYarnTypeRequestDto {
+    yarnType: string;
+    yarnCode: string;
+    shortCode: string;
+    isActive: boolean;
+}
+
+export interface YarnTypeSearchRequestDto {
+    yarnType?: string;
+    yarnCode?: string;
+    shortCode?: string;
+    isActive?: boolean;
+}
+
+// ============================================
+// VOUCHER DTOs
+// ============================================
+
+export interface VoucherDto {
+  id: number;
+  vchType: string;
+  date: string; // ISO 8601 datetime
+  guid: string;
+  gstRegistrationType: string;
+  stateName: string;
+  partyName: string;
+  partyLedgerName: string;
+  voucherNumber: string;
+  reference: string;
+  companyAddress: string;
+  buyerAddress: string;
+  orderTerms: string;
+  ledgerEntries: string;
+  processFlag: number;
+  processDate: string; // ISO 8601 datetime
+  createdAt: string; // ISO 8601 datetime
+  createdBy: string;
+  updatedAt: string; // ISO 8601 datetime
+  updatedBy: string;
+  items: VoucherItemDto[];
+}
+
+export interface VoucherItemDto {
+  id: number;
+  voucherId: number;
+  stockItemName: string;
+  rate: string;
+  amount: string;
+  actualQty: string;
+  billedQty: string;
+  descriptions: string;
+  batchName: string;
+  orderNo: string;
+  orderDueDate: string;
+}
+
+// ============================================
+// SALES ORDER DTOs
+// ============================================
+
+export interface SalesOrderItemDto {
+  id: number;
+  salesOrderId: number;
+  stockItemName: string;
+  rate: string;
+  amount: string;
+  actualQty: string;
+  billedQty: string;
+  descriptions: string;
+  batchName: string;
+  orderNo: string;
+  orderDueDate: string;
+}
+
+export interface SalesOrderDto {
+  id: number;
+  vchType: string;
+  salesDate: string; // ISO 8601 datetime
+  guid: string;
+  gstRegistrationType: string;
+  stateName: string;
+  partyName: string;
+  partyLedgerName: string;
+  voucherNumber: string;
+  reference: string;
+  companyAddress: string;
+  buyerAddress: string;
+  orderTerms: string;
+  ledgerEntries: string;
+  processFlag: number;
+  processDate: string; // ISO 8601 datetime
+  createdAt: string; // ISO 8601 datetime
+  createdBy: string;
+  updatedAt: string; // ISO 8601 datetime
+  updatedBy: string;
+  items: SalesOrderItemDto[];
 }

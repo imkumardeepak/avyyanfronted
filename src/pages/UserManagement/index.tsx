@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { DataTable } from '@/components/DataTable';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DeleteConfirmationDialog } from '@/components/ui/confirmation-dialog';
-import { Plus, Users, UserCheck, UserX, Clock } from 'lucide-react';
+import { Plus, Users, UserCheck, UserX, Clock, Eye, Edit, Trash2 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { userApi, apiUtils } from '@/lib/api-client';
 import { formatDate } from '@/lib/utils';
@@ -95,13 +95,6 @@ const UserManagement = () => {
       },
     },
     {
-      accessorKey: 'createdAt',
-      header: 'Created',
-      cell: ({ row }: UserCellProps) => (
-        <div className="text-sm">{formatDate(row.getValue('createdAt'))}</div>
-      ),
-    },
-    {
       id: 'actions',
       header: 'Actions',
       cell: ({ row }: UserCellProps) => {
@@ -109,13 +102,13 @@ const UserManagement = () => {
         return (
           <div className="flex space-x-2">
             <Button variant="outline" size="sm" onClick={() => navigate(`/users/${user.id}`)}>
-              View
+              <Eye className="h-4 w-4" />
             </Button>
             <Button variant="outline" size="sm" onClick={() => navigate(`/users/${user.id}/edit`)}>
-              Edit
+              <Edit className="h-4 w-4" />
             </Button>
             <Button variant="destructive" size="sm" onClick={() => handleDelete(user.id)}>
-              Delete
+              <Trash2 className="h-4 w-4" />
             </Button>
           </div>
         );
@@ -202,30 +195,30 @@ const UserManagement = () => {
           <CardContent>
             <div className="text-2xl font-bold">{activeUsers}</div>
             <p className="text-xs text-muted-foreground">
-              {Math.round((activeUsers / users.length) * 100)}% of total
+              {usersWithRecentLogin} logged in this week
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">New Users (7 days)</CardTitle>
+            <CardTitle className="text-sm font-medium">Inactive Users</CardTitle>
             <UserX className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{recentUsers}</div>
-            <p className="text-xs text-muted-foreground">Recently registered</p>
+            <div className="text-2xl font-bold">{inactiveUsers}</div>
+            <p className="text-xs text-muted-foreground">{recentUsers} created this week</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Recent Logins</CardTitle>
+            <CardTitle className="text-sm font-medium">Recent Activity</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{usersWithRecentLogin}</div>
-            <p className="text-xs text-muted-foreground">Last 7 days</p>
+            <p className="text-xs text-muted-foreground">users logged in this week</p>
           </CardContent>
         </Card>
       </div>
@@ -233,9 +226,15 @@ const UserManagement = () => {
       <Card>
         <CardHeader>
           <CardTitle>All Users</CardTitle>
+          <span className="text-sm font-normal text-muted-foreground">({users.length} users)</span>
         </CardHeader>
         <CardContent>
-          <DataTable columns={columns} data={users} />
+          <DataTable
+            columns={columns}
+            data={users}
+            searchKey="firstName"
+            searchPlaceholder="Search by name..."
+          />
         </CardContent>
       </Card>
 

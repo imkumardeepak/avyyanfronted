@@ -6,8 +6,12 @@
 export const PAGE_NAMES = {
     DASHBOARD: 'Dashboard',
     USER_MANAGEMENT: 'User Management',
+    FABRIC_STRUCTURE: 'Fabric Structure',
+    LOCATION_MASTER: 'Location Master',
+    YARNTYPE_MASTER: 'Yarn Type',
     ROLE_MASTER: 'Role Master',
     MACHINE_MASTER: 'Machine Master',
+    SALES_ORDERS: 'Sales Orders',
     CHAT: 'Chat',
     NOTIFICATIONS: 'Notifications',
 } as const;

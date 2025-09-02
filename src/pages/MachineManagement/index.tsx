@@ -1,18 +1,17 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { DataTable } from '@/components/DataTable';
 import { DeleteConfirmationDialog } from '@/components/ui/confirmation-dialog';
-import { Plus, Settings, Search, Upload, Download } from 'lucide-react';
-import { useMachines, useDeleteMachine, useSearchMachines } from '@/hooks/queries';
+import { Plus, Settings, Edit, Trash2 } from 'lucide-react';
+import { useMachines, useDeleteMachine } from '@/hooks/queries';
 import { machineApi, apiUtils } from '@/lib/api-client';
 import { formatDate } from '@/lib/utils';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Row } from '@tanstack/react-table';
-import type { MachineResponseDto, MachineSearchRequestDto } from '@/types/api-types';
+import type { MachineResponseDto } from '@/types/api-types';
 
 type MachineCellProps = { row: Row<MachineResponseDto> };
 
@@ -22,15 +21,6 @@ const MachineManagement = () => {
   const { data: machines = [], isLoading, error } = useMachines();
   const { mutate: deleteMachineMutation, isPending: isDeleting } = useDeleteMachine();
 
-  const [searchParams, setSearchParams] = useState<MachineSearchRequestDto>({});
-  const [isSearching, setIsSearching] = useState(false);
-
-  // Use useSearchMachines correctly as a query hook
-  const { data: searchResults = [], isLoading: isSearchLoading } = useSearchMachines(
-    searchParams,
-    isSearching
-  );
-
   const [deleteDialog, setDeleteDialog] = useState<{
     open: boolean;
     machine: MachineResponseDto | null;
@@ -38,11 +28,6 @@ const MachineManagement = () => {
     open: false,
     machine: null,
   });
-
-  // Use search results when searching, otherwise use all machines
-  const displayedMachines = useMemo(() => {
-    return isSearching ? searchResults : machines;
-  }, [isSearching, searchResults, machines]);
 
   const columns = [
     {
@@ -91,35 +76,6 @@ const MachineManagement = () => {
       },
     },
     {
-      accessorKey: 'efficiency',
-      header: 'Performance',
-      cell: ({ row }: MachineCellProps) => {
-        const machine = row.original;
-        const efficiencyColor =
-          machine.efficiency >= 80
-            ? 'text-green-600'
-            : machine.efficiency >= 60
-              ? 'text-yellow-600'
-              : 'text-red-600';
-        return (
-          <div className="space-y-1">
-            <div className={`text-sm font-medium ${efficiencyColor}`}>
-              {machine.efficiency}% Efficiency
-            </div>
-            <div className="text-sm text-muted-foreground">{machine.rpm} RPM</div>
-            <div className="text-sm text-muted-foreground">{machine.feeder} Feeders</div>
-          </div>
-        );
-      },
-    },
-    {
-      accessorKey: 'createdAt',
-      header: 'Created',
-      cell: ({ row }: MachineCellProps) => (
-        <div className="text-sm">{formatDate(row.getValue('createdAt'))}</div>
-      ),
-    },
-    {
       accessorKey: 'isActive',
       header: 'Status',
       cell: ({ row }: MachineCellProps) => {
@@ -143,10 +99,10 @@ const MachineManagement = () => {
               size="sm"
               onClick={() => navigate(`/machines/${machine.id}/edit`)}
             >
-              Edit
+              <Edit className="h-4 w-4" />
             </Button>
             <Button variant="destructive" size="sm" onClick={() => handleDelete(machine.id)}>
-              Delete
+              <Trash2 className="h-4 w-4" />
             </Button>
           </div>
         );
@@ -154,18 +110,8 @@ const MachineManagement = () => {
     },
   ];
 
-  const handleSearch = () => {
-    setIsSearching(true);
-  };
-
-  const handleReset = () => {
-    setSearchParams({});
-    setIsSearching(false);
-    queryClient.invalidateQueries({ queryKey: ['machines'] });
-  };
-
   const handleDelete = (id: number) => {
-    const machine = displayedMachines.find((m) => m.id === id);
+    const machine = machines.find((m) => m.id === id);
     if (machine) {
       setDeleteDialog({
         open: true,
@@ -196,21 +142,15 @@ const MachineManagement = () => {
     );
   }
 
-  const activeMachines = displayedMachines.filter((machine) => machine.isActive).length;
-  const inactiveMachines = displayedMachines.length - activeMachines;
-  const totalEfficiency = displayedMachines.reduce((sum, machine) => sum + machine.efficiency, 0);
-  const averageEfficiency =
-    displayedMachines.length > 0 ? (totalEfficiency / displayedMachines.length).toFixed(1) : '0';
-  const highEfficiencyMachines = displayedMachines.filter(
-    (machine) => machine.efficiency >= 80
-  ).length;
+  const activeMachines = machines.filter((machine) => machine.isActive).length;
+  const inactiveMachines = machines.length - activeMachines;
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold font-display">Machine Management</h1>
-          <p className="text-muted-foreground">Manage manufacturing machines and equipment</p>
+          <p className="text-muted-foreground">Manage knitting machines and their specifications</p>
         </div>
         <Button onClick={() => navigate('/machines/create')}>
           <Plus className="h-4 w-4 mr-2" />
@@ -226,30 +166,10 @@ const MachineManagement = () => {
             <Settings className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{displayedMachines.length}</div>
-            <p className="text-xs text-muted-foreground">{activeMachines} active</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Efficiency</CardTitle>
-            <Settings className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{averageEfficiency}%</div>
-            <p className="text-xs text-muted-foreground">Across all machines</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">High Efficiency</CardTitle>
-            <Settings className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{highEfficiencyMachines}</div>
-            <p className="text-xs text-muted-foreground">≥80% efficiency</p>
+            <div className="text-2xl font-bold">{machines.length}</div>
+            <p className="text-xs text-muted-foreground">
+              {activeMachines} active, {inactiveMachines} inactive
+            </p>
           </CardContent>
         </Card>
 
@@ -260,86 +180,52 @@ const MachineManagement = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{activeMachines}</div>
-            <p className="text-xs text-muted-foreground">
-              {displayedMachines.length - activeMachines} inactive
-            </p>
+            <p className="text-xs text-muted-foreground">Currently operational</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">RPM Info</CardTitle>
+            <Settings className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {machines.length > 0 ? `${Math.max(...machines.map((m) => m.rpm))}` : '0'}
+            </div>
+            <p className="text-xs text-muted-foreground">Max RPM</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Feeders</CardTitle>
+            <Settings className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {machines.length > 0 ? `${Math.max(...machines.map((m) => m.feeder))}` : '0'}
+            </div>
+            <p className="text-xs text-muted-foreground">Max Feeders</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Search Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Search Machines</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Machine Name</label>
-              <Input
-                placeholder="Enter machine name"
-                value={searchParams.machineName || ''}
-                onChange={(e) =>
-                  setSearchParams((prev) => ({ ...prev, machineName: e.target.value }))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Diameter</label>
-              <Input
-                type="number"
-                placeholder="Enter diameter"
-                value={searchParams.dia || ''}
-                onChange={(e) =>
-                  setSearchParams((prev) => ({
-                    ...prev,
-                    dia: parseFloat(e.target.value) || undefined,
-                  }))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Status</label>
-              <select
-                className="w-full p-2 border rounded-md"
-                value={searchParams.isActive === undefined ? '' : searchParams.isActive.toString()}
-                onChange={(e) =>
-                  setSearchParams((prev) => ({
-                    ...prev,
-                    isActive: e.target.value === '' ? undefined : e.target.value === 'true',
-                  }))
-                }
-              >
-                <option value="">All</option>
-                <option value="true">Active</option>
-                <option value="false">Inactive</option>
-              </select>
-            </div>
-            <div className="flex items-end space-x-2">
-              <Button onClick={handleSearch} disabled={isSearchLoading}>
-                <Search className="h-4 w-4 mr-2" />
-                {isSearchLoading ? 'Searching...' : 'Search'}
-              </Button>
-              <Button variant="outline" onClick={handleReset}>
-                Reset
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Machines Table */}
       <Card>
         <CardHeader>
-          <CardTitle>
-            {isSearching ? 'Search Results' : 'All Machines'}
-            <span className="text-sm font-normal text-muted-foreground ml-2">
-              ({displayedMachines.length} machines)
-            </span>
-          </CardTitle>
+          <CardTitle>All Machines</CardTitle>
+          <span className="text-sm font-normal text-muted-foreground">
+            ({machines.length} machines)
+          </span>
         </CardHeader>
         <CardContent>
-          <DataTable columns={columns} data={displayedMachines} />
+          <DataTable
+            columns={columns}
+            data={machines}
+            searchKey="machineName"
+            searchPlaceholder="Search by machine name..."
+          />
         </CardContent>
       </Card>
 

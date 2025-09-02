@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DataTable } from '@/components/DataTable';
 import { DeleteConfirmationDialog } from '@/components/ui/confirmation-dialog';
-import { Plus, Shield, Users, Settings } from 'lucide-react';
+import { Plus, Shield, Users, Settings, Edit, Trash2, Key } from 'lucide-react';
 import { useRoles, useDeleteRole } from '@/hooks/queries';
 import { roleApi, apiUtils } from '@/lib/api-client';
 import { formatDate } from '@/lib/utils';
@@ -96,13 +96,6 @@ const RoleManagement = () => {
       },
     },
     {
-      accessorKey: 'createdAt',
-      header: 'Created',
-      cell: ({ row }: RoleCellProps) => (
-        <div className="text-sm">{formatDate(row.getValue('createdAt'))}</div>
-      ),
-    },
-    {
       accessorKey: 'isActive',
       header: 'Status',
       cell: ({ row }: RoleCellProps) => {
@@ -122,17 +115,17 @@ const RoleManagement = () => {
         return (
           <div className="flex space-x-2">
             <Button variant="outline" size="sm" onClick={() => navigate(`/roles/${role.id}/edit`)}>
-              Edit
+              <Edit className="h-4 w-4" />
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={() => navigate(`/roles/${role.id}/permissions`)}
             >
-              Permissions
+              <Key className="h-4 w-4" />
             </Button>
             <Button variant="destructive" size="sm" onClick={() => handleDelete(role.id)}>
-              Delete
+              <Trash2 className="h-4 w-4" />
             </Button>
           </div>
         );
@@ -208,7 +201,7 @@ const RoleManagement = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{activeRoles}</div>
-            <p className="text-xs text-muted-foreground">{roles.length - activeRoles} inactive</p>
+            <p className="text-xs text-muted-foreground">Currently in use</p>
           </CardContent>
         </Card>
 
@@ -227,9 +220,15 @@ const RoleManagement = () => {
       <Card>
         <CardHeader>
           <CardTitle>All Roles</CardTitle>
+          <span className="text-sm font-normal text-muted-foreground">({roles.length} roles)</span>
         </CardHeader>
         <CardContent>
-          <DataTable columns={columns} data={roles} />
+          <DataTable
+            columns={columns}
+            data={roles}
+            searchKey="roleName"
+            searchPlaceholder="Search by role name..."
+          />
         </CardContent>
       </Card>
 

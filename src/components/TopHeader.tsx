@@ -1,7 +1,7 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useSidebar } from '@/contexts/SidebarContext'; // Import useSidebar
+import { useSidebar } from '@/contexts/SidebarContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -24,12 +24,14 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ThemeToggle } from './ThemeToggle';
 import { Search, User, Settings, LogOut, Menu, Bell } from 'lucide-react';
+import { useNotifications } from '@/hooks/useNotifications';
 
 export const TopHeader: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { toggleMobileSidebar } = useSidebar(); // Use toggleMobileSidebar from context
+  const { toggleMobileSidebar } = useSidebar();
+  const { unreadCount } = useNotifications();
 
   // Generate breadcrumbs from current path
   const generateBreadcrumbs = () => {
@@ -55,7 +57,7 @@ export const TopHeader: React.FC = () => {
         <Button
           variant="ghost"
           size="sm"
-          onClick={toggleMobileSidebar} // Use toggleMobileSidebar from context
+          onClick={toggleMobileSidebar}
           className="md:hidden h-8 w-8 p-0"
         >
           <Menu className="h-4 w-4" />
@@ -91,9 +93,7 @@ export const TopHeader: React.FC = () => {
 
         {/* Right side actions */}
         <div className="flex items-center gap-2">
-          {/* Removed WebSocket Status and NotificationBadge as part of WebSocket removal */}
-
-          {/* Notifications - Simplified */}
+          {/* Notifications with unread count */}
           <Button
             variant="ghost"
             size="sm"
@@ -101,7 +101,14 @@ export const TopHeader: React.FC = () => {
             onClick={() => navigate('/notifications')}
           >
             <Bell className="h-4 w-4" />
-            {/* Removed NotificationBadge as part of WebSocket removal */}
+            {unreadCount > 0 && (
+              <Badge
+                variant="destructive"
+                className="absolute -top-2 -right-2 h-4 w-4 p-0 flex items-center justify-center text-xs"
+              >
+                {unreadCount}
+              </Badge>
+            )}
           </Button>
 
           {/* Theme Toggle */}

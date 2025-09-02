@@ -1,6 +1,6 @@
 import axios from 'axios';
-import type { AxiosResponse } from 'axios';
-import { getToken, setToken, removeToken } from '@/lib/auth';
+import type { AxiosResponse, AxiosError } from 'axios';
+import { getToken } from '@/lib/auth';
 import type {
   LoginRequestDto,
   LoginResponseDto,
@@ -22,6 +22,21 @@ import type {
   UserPermissionsResponseDto,
   PageAccessResponseDto,
   MessageResponseDto,
+  FabricStructureResponseDto,
+  CreateFabricStructureRequestDto,
+  UpdateFabricStructureRequestDto,
+  FabricStructureSearchRequestDto,
+  LocationResponseDto,
+  CreateLocationRequestDto,
+  UpdateLocationRequestDto,
+  LocationSearchRequestDto,
+  YarnTypeResponseDto,
+  CreateYarnTypeRequestDto,
+  UpdateYarnTypeRequestDto,
+  YarnTypeSearchRequestDto,
+  RefreshTokenRequestDto,
+  SalesOrderDto,
+  VoucherDto,
 } from '@/types/api-types';
 
 // API Configuration
@@ -33,6 +48,26 @@ const API_CONFIG = {
 // Determine base URL based on environment
 const getBaseUrl = () => {
   return import.meta.env.DEV ? API_CONFIG.DEVELOPMENT_URL : API_CONFIG.PRODUCTION_URL;
+};
+
+// Create a separate axios instance for auth refresh to avoid circular dependencies
+const authRefreshClient = axios.create({
+  baseURL: getBaseUrl(),
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Helper function to refresh token without using authApi (to avoid circular dependency)
+const refreshAuthToken = async (refreshToken: string): Promise<any> => {
+  try {
+    const response = await authRefreshClient.post('/Auth/refresh', { refreshToken });
+    return response.data;
+  } catch (error) {
+    console.error('Failed to refresh token:', error);
+    throw error;
+  }
 };
 
 // Create axios instance
@@ -66,21 +101,58 @@ apiClient.interceptors.response.use(
 
     // Handle 401 Unauthorized errors (token expired)
     if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-      
-      // TODO: Implement token refresh logic if needed
-      // For now, redirect to login
-      removeToken();
-      window.location.href = '/login';
-      return Promise.reject(error);
+          apiUtils.clearAuth();
+          window.location.href = '/login';
+          return Promise.reject(error);
     }
-
-    return Promise.reject(error);
   }
 );
 
 // Export the main API client
 export default apiClient;
+
+// Add apiUtils object with helper functions
+export const apiUtils = {
+  // Extract data from Axios response
+  extractData: <T>(response: AxiosResponse<T>): T => {
+    return response.data;
+  },
+
+  // Handle API errors and return user-friendly messages
+  handleError: (error: unknown): string => {
+    if (error && typeof error === 'object' && 'response' in error) {
+      const axiosError = error as AxiosError<{ message?: string; error?: string }>;
+      if (axiosError.response?.data?.message) {
+        return axiosError.response.data.message;
+      }
+      
+      if (axiosError.response?.data?.error) {
+        return axiosError.response.data.error;
+      }
+    }
+    
+    if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
+      return error.message;
+    }
+    
+    return 'An unexpected error occurred';
+  },
+
+  // Auth token management
+  getAuthToken: (): string | null => {
+    return localStorage.getItem('auth_token');
+  },
+
+  setAuthToken: (token: string): void => {
+    localStorage.setItem('auth_token', token);
+  },
+
+  clearAuth: (): void => {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('auth_refresh_token');
+    localStorage.removeItem('auth_user');
+  },
+};
 
 // ============================================
 // AUTHENTICATION API (/api/Auth)
@@ -90,6 +162,10 @@ export const authApi = {
   // POST /api/Auth/login - User login
   login: (data: LoginRequestDto): Promise<AxiosResponse<LoginResponseDto>> =>
     apiClient.post('/Auth/login', data),
+
+  // POST /api/Auth/refresh - Refresh authentication token
+  refreshToken: (data: RefreshTokenRequestDto): Promise<AxiosResponse<LoginResponseDto>> =>
+    apiClient.post('/Auth/refresh', data),
 
   // POST /api/Auth/register - User registration
   register: (data: RegisterRequestDto): Promise<AxiosResponse<LoginResponseDto>> =>
@@ -171,6 +247,10 @@ export const roleApi = {
   getRole: (id: number): Promise<AxiosResponse<RoleResponseDto>> =>
     apiClient.get(`/Role/${id}`),
 
+  // GET /api/Role/{id}/page-accesses - Get role page accesses
+  getRolePageAccesses: (id: number): Promise<AxiosResponse<PageAccessResponseDto[]>> =>
+    apiClient.get(`/Role/${id}/page-accesses`),
+
   // POST /api/Role - Create new role
   createRole: (data: CreateRoleRequestDto): Promise<AxiosResponse<RoleResponseDto>> =>
     apiClient.post('/Role', data),
@@ -182,10 +262,6 @@ export const roleApi = {
   // DELETE /api/Role/{id} - Delete role
   deleteRole: (id: number): Promise<AxiosResponse<void>> =>
     apiClient.delete(`/Role/${id}`),
-
-  // GET /api/Role/{roleId}/page-accesses - Get role page accesses
-  getRolePageAccesses: (roleId: number): Promise<AxiosResponse<PageAccessResponseDto[]>> =>
-    apiClient.get(`/Role/${roleId}/page-accesses`),
 };
 
 // ============================================
@@ -201,16 +277,6 @@ export const machineApi = {
   getMachine: (id: number): Promise<AxiosResponse<MachineResponseDto>> =>
     apiClient.get(`/Machine/${id}`),
 
-  // GET /api/Machine/search - Search machines
-  searchMachines: (params: MachineSearchRequestDto): Promise<AxiosResponse<MachineResponseDto[]>> => {
-    const queryParams = new URLSearchParams();
-    if (params.machineName) queryParams.append('machineName', params.machineName);
-    if (params.dia !== undefined) queryParams.append('dia', params.dia.toString());
-    if (params.isActive !== undefined) queryParams.append('isActive', params.isActive.toString());
-
-    return apiClient.get(`/Machine/search?${queryParams.toString()}`);
-  },
-
   // POST /api/Machine - Create new machine
   createMachine: (data: CreateMachineRequestDto): Promise<AxiosResponse<MachineResponseDto>> =>
     apiClient.post('/Machine', data),
@@ -219,46 +285,125 @@ export const machineApi = {
   updateMachine: (id: number, data: UpdateMachineRequestDto): Promise<AxiosResponse<MachineResponseDto>> =>
     apiClient.put(`/Machine/${id}`, data),
 
-  // DELETE /api/Machine/{id} - Delete machine (soft delete)
+  // DELETE /api/Machine/{id} - Delete machine
   deleteMachine: (id: number): Promise<AxiosResponse<void>> =>
     apiClient.delete(`/Machine/${id}`),
 
-  // POST /api/Machine/bulk - Create multiple machines
+  // GET /api/Machine/search - Search machines
+  searchMachines: (params: MachineSearchRequestDto): Promise<AxiosResponse<MachineResponseDto[]>> =>
+    apiClient.get('/Machine/search', { params }),
+
+  // POST /api/Machine/bulk - Bulk create machines
   createBulkMachines: (data: BulkCreateMachineRequestDto): Promise<AxiosResponse<MachineResponseDto[]>> =>
     apiClient.post('/Machine/bulk', data),
 };
 
 // ============================================
-// UTILITY FUNCTIONS
+// LOCATION API (/api/Location)
 // ============================================
 
-export const apiUtils = {
-  // Check if user is authenticated
-  isAuthenticated: (): boolean => !!getToken(),
+export const locationApi = {
+  // GET /api/Location - Get all locations
+  getAllLocations: (): Promise<AxiosResponse<LocationResponseDto[]>> =>
+    apiClient.get('/Location'),
 
-  // Get current token
-  getAuthToken: (): string | null => getToken(),
+  // GET /api/Location/{id} - Get location by ID
+  getLocation: (id: number): Promise<AxiosResponse<LocationResponseDto>> =>
+    apiClient.get(`/Location/${id}`),
 
-  // Set authentication token
-  setAuthToken: (token: string): void => setToken(token),
+  // POST /api/Location - Create new location
+  createLocation: (data: CreateLocationRequestDto): Promise<AxiosResponse<LocationResponseDto>> =>
+    apiClient.post('/Location', data),
 
-  // Clear authentication
-  clearAuth: (): void => removeToken(),
+  // PUT /api/Location/{id} - Update location
+  updateLocation: (id: number, data: UpdateLocationRequestDto): Promise<AxiosResponse<LocationResponseDto>> =>
+    apiClient.put(`/Location/${id}`, data),
 
-  // Handle API errors
-  handleError: (error: any): string => {
-    if (error.response?.data?.error) {
-      return error.response.data.error;
-    }
-    if (error.response?.data?.message) {
-      return error.response.data.message;
-    }
-    if (error.message) {
-      return error.message;
-    }
-    return 'An unexpected error occurred';
-  },
+  // DELETE /api/Location/{id} - Delete location
+  deleteLocation: (id: number): Promise<AxiosResponse<void>> =>
+    apiClient.delete(`/Location/${id}`),
 
-  // Extract data from API response
-  extractData: <T>(response: AxiosResponse<T>): T => response.data,
+  // GET /api/Location/search - Search locations
+  searchLocations: (params: LocationSearchRequestDto): Promise<AxiosResponse<LocationResponseDto[]>> =>
+    apiClient.get('/Location/search', { params }),
+};
+
+// ============================================
+// FABRIC STRUCTURE API (/api/FabricStructure)
+// ============================================
+
+export const fabricStructureApi = {
+  // GET /api/FabricStructure - Get all fabric structures
+  getAllFabricStructures: (): Promise<AxiosResponse<FabricStructureResponseDto[]>> =>
+    apiClient.get('/FabricStructure'),
+
+  // GET /api/FabricStructure/{id} - Get fabric structure by ID
+  getFabricStructure: (id: number): Promise<AxiosResponse<FabricStructureResponseDto>> =>
+    apiClient.get(`/FabricStructure/${id}`),
+
+  // POST /api/FabricStructure - Create new fabric structure
+  createFabricStructure: (data: CreateFabricStructureRequestDto): Promise<AxiosResponse<FabricStructureResponseDto>> =>
+    apiClient.post('/FabricStructure', data),
+
+  // PUT /api/FabricStructure/{id} - Update fabric structure
+  updateFabricStructure: (id: number, data: UpdateFabricStructureRequestDto): Promise<AxiosResponse<FabricStructureResponseDto>> =>
+    apiClient.put(`/FabricStructure/${id}`, data),
+
+  // DELETE /api/FabricStructure/{id} - Delete fabric structure
+  deleteFabricStructure: (id: number): Promise<AxiosResponse<void>> =>
+    apiClient.delete(`/FabricStructure/${id}`),
+
+  // GET /api/FabricStructure/search - Search fabric structures
+  searchFabricStructures: (params: FabricStructureSearchRequestDto): Promise<AxiosResponse<FabricStructureResponseDto[]>> =>
+    apiClient.get('/FabricStructure/search', { params }),
+};
+
+// ============================================
+// YARN TYPE API (/api/YarnType)
+// ============================================
+
+export const yarnTypeApi = {
+  // GET /api/YarnType - Get all yarn types
+  getAllYarnTypes: (): Promise<AxiosResponse<YarnTypeResponseDto[]>> =>
+    apiClient.get('/YarnType'),
+
+  // GET /api/YarnType/{id} - Get yarn type by ID
+  getYarnType: (id: number): Promise<AxiosResponse<YarnTypeResponseDto>> =>
+    apiClient.get(`/YarnType/${id}`),
+
+  // POST /api/YarnType - Create new yarn type
+  createYarnType: (data: CreateYarnTypeRequestDto): Promise<AxiosResponse<YarnTypeResponseDto>> =>
+    apiClient.post('/YarnType', data),
+
+  // PUT /api/YarnType/{id} - Update yarn type
+  updateYarnType: (id: number, data: UpdateYarnTypeRequestDto): Promise<AxiosResponse<YarnTypeResponseDto>> =>
+    apiClient.put(`/YarnType/${id}`, data),
+
+  // DELETE /api/YarnType/{id} - Delete yarn type
+  deleteYarnType: (id: number): Promise<AxiosResponse<void>> =>
+    apiClient.delete(`/YarnType/${id}`),
+
+  // POST /api/YarnType/search - Search yarn types
+  searchYarnTypes: (data: YarnTypeSearchRequestDto): Promise<AxiosResponse<YarnTypeResponseDto[]>> =>
+    apiClient.post('/YarnType/search', data),
+};
+
+// ============================================
+// VOUCHERS API (/api/Vouchers)
+// ============================================
+
+export const vouchersApi = {
+  // GET /api/Vouchers - Get all vouchers
+  getAllVouchers: (): Promise<AxiosResponse<VoucherDto[]>> =>
+    apiClient.get('/Vouchers'),
+};
+
+// ============================================
+// SALES ORDER API (/api/SalesOrder)
+// ============================================
+
+export const salesOrderApi = {
+  // GET /api/SalesOrder/unprocessed - Get all unprocessed sales orders
+  getUnprocessedSalesOrders: (): Promise<AxiosResponse<SalesOrderDto[]>> =>
+    apiClient.get('/SalesOrder/unprocessed'),
 };

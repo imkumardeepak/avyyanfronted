@@ -32,6 +32,23 @@ const RolePermissions = lazy(() => import('../pages/RoleManagement/RolePermissio
 const MachineManagement = lazy(() => import('../pages/MachineManagement'));
 const MachineForm = lazy(() => import('../pages/MachineManagement/MachineForm'));
 
+// Fabric Structure Management Pages
+const FabricStructureManagement = lazy(() => import('../pages/FabricStructureManagement'));
+const FabricStructureForm = lazy(
+  () => import('../pages/FabricStructureManagement/FabricStructureForm')
+);
+
+// Location Management Pages
+const LocationManagement = lazy(() => import('../pages/LocationManagement'));
+const LocationForm = lazy(() => import('../pages/LocationManagement/LocationForm'));
+
+// Yarn Type Management Pages
+const YarnTypeManagement = lazy(() => import('../pages/YarnTypeManagement'));
+const YarnTypeForm = lazy(() => import('../pages/YarnTypeManagement/YarnTypeForm'));
+
+// Sales Order Management Pages
+const SalesOrderManagement = lazy(() => import('../pages/SalesOrderManagement'));
+
 // Chat and Notifications Pages
 const Chat = lazy(() => import('../pages/Chat'));
 const Notifications = lazy(() => import('../pages/Notifications'));
@@ -179,6 +196,94 @@ const Router = () => {
               element={
                 <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
                   <MachineForm />
+                </LazyRoute>
+              }
+            />
+
+            {/* Fabric Structure Management Routes */}
+            <Route
+              path="fabric-structures"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <FabricStructureManagement />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="fabric-structures/create"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <FabricStructureForm />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="fabric-structures/:id/edit"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <FabricStructureForm />
+                </LazyRoute>
+              }
+            />
+
+            {/* Location Management Routes */}
+            <Route
+              path="locations"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <LocationManagement />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="locations/create"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <LocationForm />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="locations/:id/edit"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <LocationForm />
+                </LazyRoute>
+              }
+            />
+
+            {/* Yarn Type Management Routes */}
+            <Route
+              path="yarn-types"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <YarnTypeManagement />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="yarn-types/create"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <YarnTypeForm />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="yarn-types/:id/edit"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <YarnTypeForm />
+                </LazyRoute>
+              }
+            />
+
+            {/* Sales Order Management Routes */}
+            <Route
+              path="sales-orders"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <SalesOrderManagement />
                 </LazyRoute>
               }
             />

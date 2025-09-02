@@ -5,8 +5,10 @@ export { useUsers } from './useUsers';
 export { useLoadingBar } from './useLoadingBar';
 export { useNetworkStatus } from './useNetworkStatus';
 
-// WebSocket Hooks
-export { useWebSocket } from './useWebSocket';
+// SignalR Hooks
+export { useSignalR } from './useSignalR';
+
+// Custom Hooks
 export { useNotifications } from './useNotifications';
 export { useChat } from './useChat';
 
