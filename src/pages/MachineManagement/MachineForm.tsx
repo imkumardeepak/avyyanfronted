@@ -271,7 +271,7 @@ const MachineForm = () => {
                 <Input
                   id="constat"
                   type="number"
-                  step="0.01"
+                  step="0.00001"
                   {...form.register('constat', { valueAsNumber: true })}
                   placeholder="Enter constant value"
                 />

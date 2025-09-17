@@ -12,5 +12,8 @@ export { useSignalR } from './useSignalR';
 export { useNotifications } from './useNotifications';
 export { useChat } from './useChat';
 
+// Sales Order Item Processing Hooks - Only keeping the hooks that are actually being used
+export { useDescriptionParser } from './saleOrderitemPro/useDescriptionParser';
+
 // Query Hooks
 export * from './queries';

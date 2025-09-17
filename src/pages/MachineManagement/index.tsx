@@ -5,11 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DataTable } from '@/components/DataTable';
 import { DeleteConfirmationDialog } from '@/components/ui/confirmation-dialog';
-import { Plus, Settings, Edit, Trash2 } from 'lucide-react';
+import { Plus, Settings, Edit, Trash2, QrCode } from 'lucide-react';
 import { useMachines, useDeleteMachine } from '@/hooks/queries';
-import { machineApi, apiUtils } from '@/lib/api-client';
-import { formatDate } from '@/lib/utils';
-import { useQueryClient } from '@tanstack/react-query';
+import { apiUtils, machineApi } from '@/lib/api-client';
 import type { Row } from '@tanstack/react-table';
 import type { MachineResponseDto } from '@/types/api-types';
 
@@ -17,7 +15,6 @@ type MachineCellProps = { row: Row<MachineResponseDto> };
 
 const MachineManagement = () => {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { data: machines = [], isLoading, error } = useMachines();
   const { mutate: deleteMachineMutation, isPending: isDeleting } = useDeleteMachine();
 
@@ -28,6 +25,8 @@ const MachineManagement = () => {
     open: false,
     machine: null,
   });
+
+  const [isGeneratingQR, setIsGeneratingQR] = useState(false);
 
   const columns = [
     {
@@ -101,6 +100,18 @@ const MachineManagement = () => {
             >
               <Edit className="h-4 w-4" />
             </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => handleGenerateQRCode(machine)}
+              disabled={isGeneratingQR}
+            >
+              {isGeneratingQR ? (
+                <span className="h-4 w-4">...</span>
+              ) : (
+                <QrCode className="h-4 w-4" />
+              )}
+            </Button>
             <Button variant="destructive" size="sm" onClick={() => handleDelete(machine.id)}>
               <Trash2 className="h-4 w-4" />
             </Button>
@@ -124,6 +135,20 @@ const MachineManagement = () => {
     if (deleteDialog.machine) {
       deleteMachineMutation(deleteDialog.machine.id);
       setDeleteDialog({ open: false, machine: null });
+    }
+  };
+
+  const handleGenerateQRCode = async (machine: MachineResponseDto) => {
+    try {
+      setIsGeneratingQR(true);
+      const response = await machineApi.generateQRCode(machine.id);
+      alert(response.data.message || "QR code generated successfully");
+    } catch (error) {
+      console.error("Error generating QR code:", error);
+      const errorMessage = apiUtils.handleError(error);
+      alert(`Failed to generate QR code: ${errorMessage}`);
+    } finally {
+      setIsGeneratingQR(false);
     }
   };
 

@@ -157,6 +157,7 @@ export interface CreateRoleRequestDto {
     name: string;           // Required, max 100 chars
     description?: string;   // Optional, max 500 chars
     isActive?: boolean;     // Optional, default: true
+    pageAccesses?: CreatePageAccessRequestDto[]; // Optional, page access permissions
 }
 
 export interface UpdateRoleRequestDto {
@@ -164,6 +165,16 @@ export interface UpdateRoleRequestDto {
     description?: string;   // Optional, max 500 chars
     isActive?: boolean;     // Optional, default: true
     pageAccesses?: UpdatePageAccessRequestDto[]; // Optional, page access permissions
+}
+
+// Add this interface for page access creation
+export interface CreatePageAccessRequestDto {
+    roleId: number;
+    pageName: string;
+    isView: boolean;
+    isAdd: boolean;
+    isEdit: boolean;
+    isDelete: boolean;
 }
 
 // Add this interface for page access updates
@@ -626,6 +637,8 @@ export interface SalesOrderItemDto {
   batchName: string;
   orderNo: string;
   orderDueDate: string;
+   processFlag: number;
+  processDate: string; // ISO 8601 datetime
 }
 
 export interface SalesOrderDto {
@@ -650,4 +663,87 @@ export interface SalesOrderDto {
   updatedAt: string; // ISO 8601 datetime
   updatedBy: string;
   items: SalesOrderItemDto[];
+}
+
+// ============================================
+// PRODUCTION ALLOTMENT API (/api/ProductionAllotment)
+// ============================================
+
+export interface CreateProductionAllotmentRequest {
+  allotmentId: string;
+  voucherNumber: string;
+  itemName: string;
+  salesOrderId: number;
+  salesOrderItemId: number;
+  actualQuantity: number;
+  yarnCount: string;
+  diameter: number;
+  gauge: number;
+  fabricType: string;
+  slitLine: string;
+  stitchLength: number;
+  efficiency: number;
+  composition: string;
+  machineAllocations: MachineAllocationRequest[];
+}
+
+export interface ProductionAllotmentResponseDto {
+  id: number;
+  allotmentId: string;
+  voucherNumber: string;
+  itemName: string;
+  salesOrderId: number;
+  salesOrderItemId: number;
+  actualQuantity: number;
+  yarnCount: string;
+  diameter: number;
+  gauge: number;
+  fabricType: string;
+  slitLine: string;
+  stitchLength: number;
+  efficiency: number;
+  composition: string;
+  totalProductionTime: number;
+  createdDate: string; // ISO 8601 datetime
+  machineAllocations: MachineAllocationResponseDto[];
+}
+
+export interface MachineAllocationResponseDto {
+  id: number;
+  productionAllotmentId: number;
+  machineName: string;
+  machineId: number;
+  numberOfNeedles: number;
+  feeders: number;
+  rpm: number;
+  rollPerKg: number;
+  totalLoadWeight: number;
+  totalRolls: number;
+  rollBreakdown: RollBreakdown;
+  estimatedProductionTime: number;
+}
+
+export interface MachineAllocationRequest {
+  machineName: string;
+  machineId: number;
+  numberOfNeedles: number;
+  feeders: number;
+  rpm: number;
+  rollPerKg: number;
+  totalLoadWeight: number;
+  totalRolls: number;
+  rollBreakdown: RollBreakdown;
+  estimatedProductionTime: number;
+}
+
+// Roll Breakdown Interfaces
+export interface RollItem {
+  quantity: number;
+  weightPerRoll: number;
+  totalWeight: number;
+}
+
+export interface RollBreakdown {
+  wholeRolls: RollItem[];
+  fractionalRoll: RollItem;
 }
