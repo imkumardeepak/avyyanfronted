@@ -225,30 +225,30 @@ const SalesOrderManagement = () => {
                             <th className="text-left p-3 sticky top-0 bg-muted z-10 min-w-[200px]">
                               Item Name
                             </th>
-                            <th className="text-left p-3 sticky top-0 bg-muted z-10 min-w-[120px]">
+                            {/* <th className="text-left p-3 sticky top-0 bg-muted z-10 min-w-[120px]">
                               Rate
                             </th>
                             <th className="text-left p-3 sticky top-0 bg-muted z-10 min-w-[120px]">
                               Amount
-                            </th>
+                            </th> */}
                             <th className="text-left p-3 sticky top-0 bg-muted z-10 min-w-[120px]">
                               Actual Qty
                             </th>
-                            <th className="text-left p-3 sticky top-0 bg-muted z-10 min-w-[120px]">
+                            {/* <th className="text-left p-3 sticky top-0 bg-muted z-10 min-w-[120px]">
                               Billed Qty
                             </th>
                             <th className="text-left p-3 sticky top-0 bg-muted z-10 min-w-[150px]">
                               Batch
-                            </th>
+                            </th> */}
                             <th className="text-left p-3 sticky top-0 bg-muted z-10 min-w-[200px]">
                               Description
                             </th>
-                            <th className="text-left p-3 sticky top-0 bg-muted z-10 min-w-[150px]">
+                            {/* <th className="text-left p-3 sticky top-0 bg-muted z-10 min-w-[150px]">
                               Order No
                             </th>
                             <th className="text-left p-3 sticky top-0 bg-muted z-10 min-w-[120px]">
                               Due Date
-                            </th>
+                            </th> */}
                           </tr>
                         </thead>
                         <tbody>
@@ -257,16 +257,16 @@ const SalesOrderManagement = () => {
                               <td className="p-3 whitespace-normal break-words">
                                 {item.stockItemName}
                               </td>
-                              <td className="p-3">{item.rate}</td>
-                              <td className="p-3">{item.amount}</td>
+                              {/* <td className="p-3">{item.rate}</td>
+                              <td className="p-3">{item.amount}</td> */}
                               <td className="p-3">{item.actualQty}</td>
-                              <td className="p-3">{item.billedQty}</td>
-                              <td className="p-3">{item.batchName}</td>
+                              {/* <td className="p-3">{item.billedQty}</td>
+                              <td className="p-3">{item.batchName}</td> */}
                               <td className="p-3 whitespace-normal break-words">
                                 {item.descriptions || '-'}
                               </td>
-                              <td className="p-3">{item.orderNo}</td>
-                              <td className="p-3">{item.orderDueDate}</td>
+                              {/* <td className="p-3">{item.orderNo}</td>
+                              <td className="p-3">{item.orderDueDate}</td> */}
                             </tr>
                           ))}
                         </tbody>
