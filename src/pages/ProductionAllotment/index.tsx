@@ -4,16 +4,37 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Loader } from '@/components/loader';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { Eye, FileText, QrCode } from 'lucide-react';
 import { productionAllotmentApi } from '@/lib/api-client';
-import type { ProductionAllotmentResponseDto, MachineAllocationResponseDto } from '@/types/api-types';
+import { toast } from '@/lib/toast';
+import { PDFDownloadLink } from '@react-pdf/renderer';
+import ProductionAllotmentPDFDocument from './ProductionAllotmentPDFDocument';
+import type {
+  ProductionAllotmentResponseDto,
+  MachineAllocationResponseDto,
+} from '@/types/api-types';
 
 const ProductionAllotment: React.FC = () => {
   const { data: productionAllotments, isLoading, error, refetch } = useProductionAllotments();
-  const [selectedAllotment, setSelectedAllotment] = useState<ProductionAllotmentResponseDto | null>(null);
+  const [selectedAllotment, setSelectedAllotment] = useState<ProductionAllotmentResponseDto | null>(
+    null
+  );
   const [isGeneratingQR, setIsGeneratingQR] = useState(false);
 
   if (isLoading) {
@@ -26,10 +47,7 @@ const ProductionAllotment: React.FC = () => {
         <Alert variant="destructive">
           <AlertDescription>
             Error loading production allotments: {error.message}
-            <button 
-              onClick={() => refetch()}
-              className="ml-4 text-sm underline"
-            >
+            <button onClick={() => refetch()} className="ml-4 text-sm underline">
               Retry
             </button>
           </AlertDescription>
@@ -38,22 +56,18 @@ const ProductionAllotment: React.FC = () => {
     );
   }
 
-  // Function to handle PDF generation for a specific machine
-  const handleGeneratePDF = (allotment: ProductionAllotmentResponseDto, machine: MachineAllocationResponseDto) => {
-    // TODO: Implement PDF generation logic
-    console.log(`Generating PDF for machine: ${machine.machineName} in allotment: ${allotment.allotmentId}`);
-    alert(`PDF generation for ${machine.machineName} would be implemented here`);
-  };
-
   // Function to handle QR code generation for a specific machine
-  const handleGenerateQRCode = async (allotment: ProductionAllotmentResponseDto, machine: MachineAllocationResponseDto) => {
+  const handleGenerateQRCode = async (
+    allotment: ProductionAllotmentResponseDto,
+    machine: MachineAllocationResponseDto
+  ) => {
     try {
       setIsGeneratingQR(true);
       const response = await productionAllotmentApi.generateQRCodes(machine.id);
-      alert(response.data.message || "QR codes generated successfully");
+      toast.success(response.data.message || 'QR codes generated successfully');
     } catch (error) {
-      console.error("Error generating QR codes:", error);
-      alert("Failed to generate QR codes. Please try again.");
+      console.error('Error generating QR codes:', error);
+      toast.error('Error generating QR codes');
     } finally {
       setIsGeneratingQR(false);
     }
@@ -65,17 +79,33 @@ const ProductionAllotment: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <h3 className="font-semibold">Allotment Information</h3>
-            <p><span className="font-medium">ID:</span> {allotment.allotmentId}</p>
-            <p><span className="font-medium">Item:</span> {allotment.itemName}</p>
-            <p><span className="font-medium">Voucher:</span> {allotment.voucherNumber}</p>
-            <p><span className="font-medium">Quantity:</span> {allotment.actualQuantity}</p>
+            <p>
+              <span className="font-medium">ID:</span> {allotment.allotmentId}
+            </p>
+            <p>
+              <span className="font-medium">Item:</span> {allotment.itemName}
+            </p>
+            <p>
+              <span className="font-medium">Voucher:</span> {allotment.voucherNumber}
+            </p>
+            <p>
+              <span className="font-medium">Quantity:</span> {allotment.actualQuantity}
+            </p>
           </div>
           <div>
             <h3 className="font-semibold">Fabric Details</h3>
-            <p><span className="font-medium">Type:</span> {allotment.fabricType}</p>
-            <p><span className="font-medium">Yarn Count:</span> {allotment.yarnCount}</p>
-            <p><span className="font-medium">Diameter:</span> {allotment.diameter}</p>
-            <p><span className="font-medium">Gauge:</span> {allotment.gauge}</p>
+            <p>
+              <span className="font-medium">Type:</span> {allotment.fabricType}
+            </p>
+            <p>
+              <span className="font-medium">Yarn Count:</span> {allotment.yarnCount}
+            </p>
+            <p>
+              <span className="font-medium">Diameter:</span> {allotment.diameter}
+            </p>
+            <p>
+              <span className="font-medium">Gauge:</span> {allotment.gauge}
+            </p>
           </div>
         </div>
 
@@ -108,16 +138,28 @@ const ProductionAllotment: React.FC = () => {
                   <TableCell>{allocation.estimatedProductionTime.toFixed(2)}</TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => handleGeneratePDF(allotment, allocation)}
+                      <PDFDownloadLink
+                        document={
+                          <ProductionAllotmentPDFDocument
+                            allotment={allotment}
+                            machine={allocation}
+                          />
+                        }
+                        fileName={`production-allotment-${allotment.allotmentId}-${allocation.machineName.replace(/\s+/g, '_')}.pdf`}
                       >
-                        <FileText className="h-4 w-4 mr-1" />
-                        PDF
-                      </Button>
-                      <Button 
-                        size="sm" 
+                        {({ loading }) => (
+                          <Button size="sm" variant="outline" disabled={loading}>
+                            {loading ? (
+                              <span className="h-4 w-4 mr-1">...</span>
+                            ) : (
+                              <FileText className="h-4 w-4 mr-1" />
+                            )}
+                            PDF
+                          </Button>
+                        )}
+                      </PDFDownloadLink>
+                      <Button
+                        size="sm"
                         variant="outline"
                         onClick={() => handleGenerateQRCode(allotment, allocation)}
                         disabled={isGeneratingQR}
@@ -135,7 +177,7 @@ const ProductionAllotment: React.FC = () => {
               ))}
             </TableBody>
           </Table>
-          
+
           {/* Roll Breakdown Section */}
           <div className="mt-6">
             <h4 className="font-semibold mb-2">Roll Breakdown Details</h4>
@@ -146,7 +188,8 @@ const ProductionAllotment: React.FC = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <h6 className="font-medium mb-1">Whole Rolls:</h6>
-                      {allocation.rollBreakdown.wholeRolls && allocation.rollBreakdown.wholeRolls.length > 0 ? (
+                      {allocation.rollBreakdown.wholeRolls &&
+                      allocation.rollBreakdown.wholeRolls.length > 0 ? (
                         <Table>
                           <TableHeader>
                             <TableRow>
@@ -182,9 +225,15 @@ const ProductionAllotment: React.FC = () => {
                           </TableHeader>
                           <TableBody>
                             <TableRow>
-                              <TableCell>{allocation.rollBreakdown.fractionalRoll.quantity}</TableCell>
-                              <TableCell>{allocation.rollBreakdown.fractionalRoll.weightPerRoll.toFixed(2)}</TableCell>
-                              <TableCell>{allocation.rollBreakdown.fractionalRoll.totalWeight.toFixed(2)}</TableCell>
+                              <TableCell>
+                                {allocation.rollBreakdown.fractionalRoll.quantity}
+                              </TableCell>
+                              <TableCell>
+                                {allocation.rollBreakdown.fractionalRoll.weightPerRoll.toFixed(2)}
+                              </TableCell>
+                              <TableCell>
+                                {allocation.rollBreakdown.fractionalRoll.totalWeight.toFixed(2)}
+                              </TableCell>
                             </TableRow>
                           </TableBody>
                         </Table>
@@ -204,9 +253,7 @@ const ProductionAllotment: React.FC = () => {
     <div className="p-6">
       <div className="mb-6">
         <h1 className="text-3xl font-bold">Production Allotment</h1>
-        <p className="text-muted-foreground">
-          View all production allotment records
-        </p>
+        <p className="text-muted-foreground">View all production allotment records</p>
       </div>
 
       <Card>
@@ -240,14 +287,12 @@ const ProductionAllotment: React.FC = () => {
                         <Badge variant="secondary">{allotment.fabricType}</Badge>
                       </TableCell>
                       <TableCell>{allotment.machineAllocations.length}</TableCell>
-                      <TableCell>
-                        {new Date(allotment.createdDate).toLocaleDateString()}
-                      </TableCell>
+                      <TableCell>{new Date(allotment.createdDate).toLocaleDateString()}</TableCell>
                       <TableCell>
                         <Dialog>
                           <DialogTrigger asChild>
-                            <Button 
-                              variant="outline" 
+                            <Button
+                              variant="outline"
                               size="sm"
                               onClick={() => setSelectedAllotment(allotment)}
                             >
