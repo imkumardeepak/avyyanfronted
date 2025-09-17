@@ -3,10 +3,19 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/DataTable';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { apiUtils } from '@/lib/api-client';
-import { useUnprocessedSalesOrders, useProcessedSalesOrders } from '@/hooks/queries/useSalesOrderQueries';
+import {
+  useUnprocessedSalesOrders,
+  useProcessedSalesOrders,
+} from '@/hooks/queries/useSalesOrderQueries';
 import { formatDate } from '@/lib/utils';
 import { Eye, RefreshCw, Settings } from 'lucide-react';
 import type { Row } from '@tanstack/react-table';
@@ -17,8 +26,18 @@ type SalesOrderCellProps = { row: Row<SalesOrderDto> };
 
 const SalesOrderManagement = () => {
   const navigate = useNavigate();
-  const { data: unprocessedSalesOrders = [], isLoading: isUnprocessedLoading, error: unprocessedError, refetch: refetchUnprocessed } = useUnprocessedSalesOrders();
-  const { data: processedSalesOrders = [], isLoading: isProcessedLoading, error: processedError, refetch: refetchProcessed } = useProcessedSalesOrders();
+  const {
+    data: unprocessedSalesOrders = [],
+    isLoading: isUnprocessedLoading,
+    error: unprocessedError,
+    refetch: refetchUnprocessed,
+  } = useUnprocessedSalesOrders();
+  const {
+    data: processedSalesOrders = [],
+    isLoading: isProcessedLoading,
+    error: processedError,
+    refetch: refetchProcessed,
+  } = useProcessedSalesOrders();
   const [selectedOrder, setSelectedOrder] = useState<SalesOrderDto | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -43,11 +62,11 @@ const SalesOrderManagement = () => {
 
   const handleProcessOrderItem = (item: SalesOrderItemDto, order: SalesOrderDto) => {
     // Navigate to the processing page with specific item data
-    navigate(`/sales-orders/${order.id}/process-item/${item.id}`, { 
-      state: { 
+    navigate(`/sales-orders/${order.id}/process-item/${item.id}`, {
+      state: {
         orderData: order,
-        selectedItem: item
-      } 
+        selectedItem: item,
+      },
     });
   };
 
@@ -133,7 +152,6 @@ const SalesOrderManagement = () => {
               <Eye className="h-4 w-4 mr-1" />
               View Items
             </Button>
-           
           </div>
         );
       },
@@ -170,20 +188,17 @@ const SalesOrderManagement = () => {
 
       {/* Filter Buttons */}
       <div className="flex space-x-2">
-        <Button 
-          variant={filter === 'all' ? 'default' : 'outline'} 
-          onClick={() => setFilter('all')}
-        >
+        <Button variant={filter === 'all' ? 'default' : 'outline'} onClick={() => setFilter('all')}>
           All Orders
         </Button>
-        <Button 
-          variant={filter === 'unprocessed' ? 'default' : 'outline'} 
+        <Button
+          variant={filter === 'unprocessed' ? 'default' : 'outline'}
           onClick={() => setFilter('unprocessed')}
         >
           Unprocessed
         </Button>
-        <Button 
-          variant={filter === 'processed' ? 'default' : 'outline'} 
+        <Button
+          variant={filter === 'processed' ? 'default' : 'outline'}
           onClick={() => setFilter('processed')}
         >
           Processed
@@ -340,9 +355,9 @@ const SalesOrderManagement = () => {
                               </td>
                               <td className="p-3">
                                 {item.processFlag === 0 ? (
-                                  <Button 
-                                    variant="default" 
-                                    size="sm" 
+                                  <Button
+                                    variant="default"
+                                    size="sm"
                                     onClick={() => handleProcessOrderItem(item, selectedOrder)}
                                     className="bg-green-600 hover:bg-green-700"
                                   >
@@ -387,7 +402,7 @@ const SalesOrderManagement = () => {
                     </div>
                   )}
                 </div>
-              )} 
+              )}
             </div>
           </ScrollArea>
           <DialogFooter className="shrink-0 border-t pt-4">
@@ -395,7 +410,6 @@ const SalesOrderManagement = () => {
               <Button variant="outline" onClick={() => setIsModalOpen(false)}>
                 Close
               </Button>
-             
             </div>
           </DialogFooter>
         </DialogContent>

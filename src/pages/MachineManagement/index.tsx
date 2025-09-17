@@ -100,9 +100,9 @@ const MachineManagement = () => {
             >
               <Edit className="h-4 w-4" />
             </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => handleGenerateQRCode(machine)}
               disabled={isGeneratingQR}
             >
@@ -142,9 +142,9 @@ const MachineManagement = () => {
     try {
       setIsGeneratingQR(true);
       const response = await machineApi.generateQRCode(machine.id);
-      alert(response.data.message || "QR code generated successfully");
+      alert(response.data.message || 'QR code generated successfully');
     } catch (error) {
-      console.error("Error generating QR code:", error);
+      console.error('Error generating QR code:', error);
       const errorMessage = apiUtils.handleError(error);
       alert(`Failed to generate QR code: ${errorMessage}`);
     } finally {

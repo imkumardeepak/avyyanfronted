@@ -136,7 +136,7 @@ const Login = () => {
                   <Input
                     id="email"
                     name="email"
-                    type="text"
+                    type="email"
                     placeholder="Enter your email"
                     value={formData.email}
                     onChange={handleInputChange}
