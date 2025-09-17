@@ -26,6 +26,17 @@ export const useUnprocessedSalesOrders = () => {
   });
 };
 
+// Processed Sales Order Queries
+export const useProcessedSalesOrders = () => {
+  return useQuery({
+    queryKey: [...salesOrderKeys.lists(), 'processed'],
+    queryFn: async () => {
+      const response = await salesOrderApi.getProcessedSalesOrders();
+      return apiUtils.extractData(response) as SalesOrderDto[];
+    },
+  });
+};
+
 // Voucher Queries
 export const useVouchers = () => {
   return useQuery({

@@ -37,6 +37,7 @@ import type {
   RefreshTokenRequestDto,
   SalesOrderDto,
   VoucherDto,
+  ProductionAllotmentResponseDto
 } from '@/types/api-types';
 
 // API Configuration
@@ -60,7 +61,8 @@ const authRefreshClient = axios.create({
 });
 
 // Helper function to refresh token without using authApi (to avoid circular dependency)
-const refreshAuthToken = async (refreshToken: string): Promise<any> => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const refreshAuthToken = async (refreshToken: string): Promise<unknown> => {
   try {
     const response = await authRefreshClient.post('/Auth/refresh', { refreshToken });
     return response.data;
@@ -296,6 +298,10 @@ export const machineApi = {
   // POST /api/Machine/bulk - Bulk create machines
   createBulkMachines: (data: BulkCreateMachineRequestDto): Promise<AxiosResponse<MachineResponseDto[]>> =>
     apiClient.post('/Machine/bulk', data),
+
+  // POST /api/Machine/generate-qr/{id} - Generate QR code for machine
+  generateQRCode: (id: number): Promise<AxiosResponse<{ message: string }>> =>
+    apiClient.post(`/Machine/generate-qr/${id}`),
 };
 
 // ============================================
@@ -406,4 +412,30 @@ export const salesOrderApi = {
   // GET /api/SalesOrder/unprocessed - Get all unprocessed sales orders
   getUnprocessedSalesOrders: (): Promise<AxiosResponse<SalesOrderDto[]>> =>
     apiClient.get('/SalesOrder/unprocessed'),
+
+  // GET /api/SalesOrder/processed - Get all processed sales orders
+  getProcessedSalesOrders: (): Promise<AxiosResponse<SalesOrderDto[]>> =>
+    apiClient.get('/SalesOrder/processed'),
+
+  // GET /api/SalesOrder - Get all sales orders
+  getAllSalesOrders: (): Promise<AxiosResponse<SalesOrderDto[]>> =>
+    apiClient.get('/SalesOrder'),
+};
+
+// ============================================
+// PRODUCTION ALLOTMENT API (/api/ProductionAllotment)
+// ============================================
+
+export const productionAllotmentApi = {
+  // GET /api/ProductionAllotment - Get all production allotments
+  getAllProductionAllotments: (): Promise<AxiosResponse<ProductionAllotmentResponseDto[]>> =>
+    apiClient.get('/ProductionAllotment'),
+
+  // GET /api/ProductionAllotment/next-serial-number - Get next serial number
+  getNextSerialNumber: (): Promise<AxiosResponse<string>> =>
+    apiClient.get('/ProductionAllotment/next-serial-number'),
+
+  // POST /api/ProductionAllotment/stkprint/{id} - Generate QR codes for machine allocation
+  generateQRCodes: (id: number): Promise<AxiosResponse<{ message: string }>> =>
+    apiClient.post(`/ProductionAllotment/stkprint/${id}`),
 };

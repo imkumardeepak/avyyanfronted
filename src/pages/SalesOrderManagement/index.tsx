@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/DataTable';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { apiUtils } from '@/lib/api-client';
-import { useUnprocessedSalesOrders } from '@/hooks/queries/useSalesOrderQueries';
+import { useUnprocessedSalesOrders, useProcessedSalesOrders } from '@/hooks/queries/useSalesOrderQueries';
 import { formatDate } from '@/lib/utils';
-import { Eye, RefreshCw } from 'lucide-react';
+import { Eye, RefreshCw, Settings } from 'lucide-react';
 import type { Row } from '@tanstack/react-table';
 import type { SalesOrderDto, SalesOrderItemDto } from '@/types/api-types';
 import { vouchersApi } from '@/lib/api-client';
@@ -15,10 +16,13 @@ import { vouchersApi } from '@/lib/api-client';
 type SalesOrderCellProps = { row: Row<SalesOrderDto> };
 
 const SalesOrderManagement = () => {
-  const { data: salesOrders = [], isLoading, error, refetch } = useUnprocessedSalesOrders();
+  const navigate = useNavigate();
+  const { data: unprocessedSalesOrders = [], isLoading: isUnprocessedLoading, error: unprocessedError, refetch: refetchUnprocessed } = useUnprocessedSalesOrders();
+  const { data: processedSalesOrders = [], isLoading: isProcessedLoading, error: processedError, refetch: refetchProcessed } = useProcessedSalesOrders();
   const [selectedOrder, setSelectedOrder] = useState<SalesOrderDto | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [filter, setFilter] = useState<'all' | 'unprocessed' | 'processed'>('all');
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -26,7 +30,7 @@ const SalesOrderManagement = () => {
       // Call getAllVouchers API
       await vouchersApi.getAllVouchers();
       // Refetch sales orders
-      await refetch();
+      await Promise.all([refetchUnprocessed(), refetchProcessed()]);
     } finally {
       setIsRefreshing(false);
     }
@@ -36,6 +40,34 @@ const SalesOrderManagement = () => {
     setSelectedOrder(order);
     setIsModalOpen(true);
   };
+
+  const handleProcessOrderItem = (item: SalesOrderItemDto, order: SalesOrderDto) => {
+    // Navigate to the processing page with specific item data
+    navigate(`/sales-orders/${order.id}/process-item/${item.id}`, { 
+      state: { 
+        orderData: order,
+        selectedItem: item
+      } 
+    });
+  };
+
+  // Combine and filter sales orders based on selected filter
+  const filteredSalesOrders = useMemo(() => {
+    switch (filter) {
+      case 'unprocessed':
+        return unprocessedSalesOrders;
+      case 'processed':
+        return processedSalesOrders;
+      default: // 'all'
+        return [...unprocessedSalesOrders, ...processedSalesOrders];
+    }
+  }, [unprocessedSalesOrders, processedSalesOrders, filter]);
+
+  // Check if any data is loading
+  const isLoading = isUnprocessedLoading || isProcessedLoading;
+
+  // Check if there are any errors
+  const error = unprocessedError || processedError;
 
   const columns = [
     {
@@ -62,14 +94,26 @@ const SalesOrderManagement = () => {
         return <div>{formatDate(new Date(order.salesDate))}</div>;
       },
     },
-    // {
-    //   accessorKey: 'reference',
-    //   header: 'Reference',
-    //   cell: ({ row }: SalesOrderCellProps) => {
-    //     const order = row.original;
-    //     return <div>{order.reference}</div>;
-    //   },
-    // },
+    {
+      accessorKey: 'processFlag',
+      header: 'Status',
+      cell: ({ row }: SalesOrderCellProps) => {
+        const order = row.original;
+        return (
+          <div>
+            {order.processFlag === 0 ? (
+              <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">
+                Unprocessed
+              </span>
+            ) : (
+              <span className="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-800 ring-1 ring-inset ring-green-600/20">
+                Processed
+              </span>
+            )}
+          </div>
+        );
+      },
+    },
     {
       accessorKey: 'items',
       header: 'Items Count',
@@ -89,6 +133,7 @@ const SalesOrderManagement = () => {
               <Eye className="h-4 w-4 mr-1" />
               View Items
             </Button>
+           
           </div>
         );
       },
@@ -115,7 +160,7 @@ const SalesOrderManagement = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold font-display">Sales Order Management</h1>
-          <p className="text-muted-foreground">Manage unprocessed sales orders</p>
+          <p className="text-muted-foreground">Manage sales orders (Unprocessed and Processed)</p>
         </div>
         <Button onClick={handleRefresh} disabled={isRefreshing}>
           <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
@@ -123,17 +168,43 @@ const SalesOrderManagement = () => {
         </Button>
       </div>
 
+      {/* Filter Buttons */}
+      <div className="flex space-x-2">
+        <Button 
+          variant={filter === 'all' ? 'default' : 'outline'} 
+          onClick={() => setFilter('all')}
+        >
+          All Orders
+        </Button>
+        <Button 
+          variant={filter === 'unprocessed' ? 'default' : 'outline'} 
+          onClick={() => setFilter('unprocessed')}
+        >
+          Unprocessed
+        </Button>
+        <Button 
+          variant={filter === 'processed' ? 'default' : 'outline'} 
+          onClick={() => setFilter('processed')}
+        >
+          Processed
+        </Button>
+      </div>
+
       <Card>
         <CardHeader>
-          <CardTitle>Unprocessed Sales Orders</CardTitle>
+          <CardTitle>
+            {filter === 'all' && 'All Sales Orders'}
+            {filter === 'unprocessed' && 'Unprocessed Sales Orders'}
+            {filter === 'processed' && 'Processed Sales Orders'}
+          </CardTitle>
           <span className="text-sm font-normal text-muted-foreground">
-            ({salesOrders.length} orders)
+            ({filteredSalesOrders.length} orders)
           </span>
         </CardHeader>
         <CardContent>
           <DataTable
             columns={columns}
-            data={salesOrders}
+            data={filteredSalesOrders}
             searchKey="voucherNumber"
             searchPlaceholder="Search by voucher number..."
           />
@@ -195,11 +266,14 @@ const SalesOrderManagement = () => {
                           <span className="font-medium">Voucher Type:</span> {selectedOrder.vchType}
                         </p>
                         <p>
-                          <span className="font-medium">Process Flag:</span>{' '}
-                          {selectedOrder.processFlag}
-                          {selectedOrder.processFlag === 0 && (
-                            <span className="ml-2 inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">
+                          <span className="font-medium">Status:</span>{' '}
+                          {selectedOrder.processFlag === 0 ? (
+                            <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">
                               Unprocessed
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-800 ring-1 ring-inset ring-green-600/20">
+                              Processed
                             </span>
                           )}
                         </p>
@@ -226,19 +300,7 @@ const SalesOrderManagement = () => {
                               Item Name
                             </th>
                             <th className="text-left p-3 sticky top-0 bg-muted z-10 min-w-[120px]">
-                              Rate
-                            </th>
-                            <th className="text-left p-3 sticky top-0 bg-muted z-10 min-w-[120px]">
-                              Amount
-                            </th>
-                            <th className="text-left p-3 sticky top-0 bg-muted z-10 min-w-[120px]">
                               Actual Qty
-                            </th>
-                            <th className="text-left p-3 sticky top-0 bg-muted z-10 min-w-[120px]">
-                              Billed Qty
-                            </th>
-                            <th className="text-left p-3 sticky top-0 bg-muted z-10 min-w-[150px]">
-                              Batch
                             </th>
                             <th className="text-left p-3 sticky top-0 bg-muted z-10 min-w-[200px]">
                               Description
@@ -247,7 +309,10 @@ const SalesOrderManagement = () => {
                               Order No
                             </th>
                             <th className="text-left p-3 sticky top-0 bg-muted z-10 min-w-[120px]">
-                              Due Date
+                              Status
+                            </th>
+                            <th className="text-left p-3 sticky top-0 bg-muted z-10 min-w-[120px]">
+                              Action
                             </th>
                           </tr>
                         </thead>
@@ -257,16 +322,37 @@ const SalesOrderManagement = () => {
                               <td className="p-3 whitespace-normal break-words">
                                 {item.stockItemName}
                               </td>
-                              <td className="p-3">{item.rate}</td>
-                              <td className="p-3">{item.amount}</td>
                               <td className="p-3">{item.actualQty}</td>
-                              <td className="p-3">{item.billedQty}</td>
-                              <td className="p-3">{item.batchName}</td>
                               <td className="p-3 whitespace-normal break-words">
                                 {item.descriptions || '-'}
                               </td>
                               <td className="p-3">{item.orderNo}</td>
-                              <td className="p-3">{item.orderDueDate}</td>
+                              <td className="p-3">
+                                {item.processFlag === 0 ? (
+                                  <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">
+                                    Unprocessed
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-800 ring-1 ring-inset ring-green-600/20">
+                                    Processed
+                                  </span>
+                                )}
+                              </td>
+                              <td className="p-3">
+                                {item.processFlag === 0 ? (
+                                  <Button 
+                                    variant="default" 
+                                    size="sm" 
+                                    onClick={() => handleProcessOrderItem(item, selectedOrder)}
+                                    className="bg-green-600 hover:bg-green-700"
+                                  >
+                                    <Settings className="h-4 w-4 mr-1" />
+                                    Process
+                                  </Button>
+                                ) : (
+                                  <span className="text-sm text-muted-foreground">Processed</span>
+                                )}
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -301,9 +387,17 @@ const SalesOrderManagement = () => {
                     </div>
                   )}
                 </div>
-              )}
+              )} 
             </div>
           </ScrollArea>
+          <DialogFooter className="shrink-0 border-t pt-4">
+            <div className="flex space-x-2 w-full">
+              <Button variant="outline" onClick={() => setIsModalOpen(false)}>
+                Close
+              </Button>
+             
+            </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

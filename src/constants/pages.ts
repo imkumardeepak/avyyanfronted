@@ -14,6 +14,7 @@ export const PAGE_NAMES = {
     SALES_ORDERS: 'Sales Orders',
     CHAT: 'Chat',
     NOTIFICATIONS: 'Notifications',
+    PRODUCTION_ALLOTMENT: 'Production Allotment',
 } as const;
 
 // Array of all page names for role management

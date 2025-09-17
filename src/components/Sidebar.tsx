@@ -15,6 +15,9 @@ import {
   Shield,
   MessageSquare,
   Bell,
+  CheckCircle,
+  Check,
+  Eye,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -82,6 +85,42 @@ const navConfig: NavItem[] = [
         href: '/sales-orders',
         icon: BarChart3,
         description: 'Manage unprocessed sales orders',
+      },
+    ],
+  },
+  {
+    title: 'Production',
+    href: '#production',
+    icon: Cog,
+    description: 'Production management',
+    isParentOnly: true,
+    children: [
+      {
+        title: 'Production Allotment',
+        href: '/production-allotment',
+        icon: Cog,
+        description: 'View production allotment details',
+      },
+    ],
+  },
+  {
+    title: 'Roll Confirmation',
+    href: '#confirmation',
+    icon: CheckCircle,
+    description: 'Final roll Confirmation',
+    isParentOnly: true,
+    children: [
+      {
+        title: 'Confirmation',
+        href: '/confirmation',
+        icon: Check,
+        description: 'rolls confirmation',
+      },
+      {
+        title: 'roll Inspection',
+        href: '/rollInspection',
+        icon: Eye,
+        description: 'check all rolls good conditon or not',
       },
     ],
   },
@@ -161,7 +200,18 @@ export const Sidebar: React.FC = () => {
   }, [expandedItems]);
 
   const hasAccess = (pageTitle: string) => {
-    const page = pageAccesses.find((p) => p.pageName.toLowerCase() === pageTitle.toLowerCase());
+    // Allow admin users to access all pages
+    if (user?.roleName === 'Admin') {
+      return true;
+    }
+    
+    // Normalize the page title for comparison
+    const normalizedTitle = pageTitle.trim().toLowerCase();
+    const page = pageAccesses.find((p) => {
+      const normalizedPageName = p.pageName?.trim().toLowerCase() || '';
+      return normalizedPageName === normalizedTitle;
+    });
+    
     return page?.isView ?? false;
   };
 
@@ -176,14 +226,65 @@ export const Sidebar: React.FC = () => {
   };
 
   const renderNavItem = (item: NavItem, level = 0): JSX.Element | null => {
+    // Special handling for Production section for admin users
+    // This ensures the Production section is always visible for admin users
+    // even if there are issues with page access configuration
+    if (item.title === 'Production' && user?.roleName === 'Admin') {
+      const isExpanded = expandedItems.includes(item.href);
+      const active = isActive(item.href);
+      
+      return (
+        <div key={item.href}>
+          <NavLink
+            to={item.isParentOnly ? '#' : item.href}
+            className={cn(
+              'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent',
+              active && 'bg-accent text-accent-foreground',
+              level > 0 && 'ml-6',
+              isSidebarCollapsed && level === 0 && 'justify-center px-2'
+            )}
+            onClick={(e) => {
+              if (item.children && !isSidebarCollapsed) {
+                e.preventDefault();
+                toggleExpanded(item.href);
+              }
+            }}
+          >
+            <item.icon className={cn('h-4 w-4', isSidebarCollapsed && 'h-5 w-5')} />
+            {!isSidebarCollapsed && (
+              <>
+                <span className="flex-1">{item.title}</span>
+                {item.badge && (
+                  <Badge variant="secondary" className="ml-auto h-5 px-1.5 text-xs">
+                    {item.badge}
+                  </Badge>
+                )}
+                {item.children && (
+                  <ChevronRight
+                    className={cn('h-4 w-4 transition-transform', isExpanded && 'rotate-90')}
+                  />
+                )}
+              </>
+            )}
+          </NavLink>
+
+          {item.children && isExpanded && !isSidebarCollapsed && (
+            <div className="mt-1 space-y-1">
+              {item.children.map((child) => renderNavItem(child, level + 1))}
+            </div>
+          )}
+        </div>
+      );
+    }
+    
     const accessibleChildren = item.children?.filter((child) => hasAccess(child.title)) ?? [];
     const hasChildren = accessibleChildren.length > 0;
 
-    if (!hasAccess(item.title) && !hasChildren) {
-      return null;
-    }
+    // For parent items, we want to show them if they have accessible children
+    // even if the user doesn't have direct access to the parent item itself
+    const shouldShowItem = item.isParentOnly ? hasChildren : hasAccess(item.title) || hasChildren;
 
-    if (item.isParentOnly && !hasChildren) {
+    if (!shouldShowItem) {
       return null;
     }
 
