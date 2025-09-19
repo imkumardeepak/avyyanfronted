@@ -4,6 +4,7 @@ import type {
   CreateProductionAllotmentRequest,
   ProductionAllotmentResponseDto
 } from '@/types/api-types';
+import type { AxiosError } from 'axios';
 
 export class ProductionAllotmentService {
   // GET /api/productionallotment - Get all production allotments
@@ -25,6 +26,48 @@ export class ProductionAllotmentService {
     } catch (error) {
       console.error('Error fetching next serial number:', error);
       throw error;
+    }
+  }
+
+  // GET /api/productionallotment/by-allot-id/{allotId} - Get production allotment by AllotmentId
+  static async getProductionAllotmentByAllotId(allotId: string): Promise<ProductionAllotmentResponseDto> {
+    try {
+      const response = await productionAllotmentApi.getProductionAllotmentByAllotId(allotId);
+      // Check if response has data property before accessing it
+      if (response && response.data) {
+        return response.data;
+      } else {
+        throw new Error('Invalid response format from server');
+      }
+    } catch (error) {
+      console.error('Error fetching production allotment by AllotmentId:', error);
+      // Handle different types of errors
+      if (error instanceof Error) {
+        // Check if it's an Axios error with response
+        const axiosError = error as AxiosError;
+        if (axiosError.isAxiosError) {
+          if (axiosError.response) {
+            // Server responded with error status
+            if (axiosError.response.status === 404) {
+              throw new Error(`Production allotment with ID ${allotId} not found`);
+            } else {
+              throw new Error(`Server error: ${axiosError.response.status} - ${axiosError.response.statusText}`);
+            }
+          } else if (axiosError.request) {
+            // Request was made but no response received
+            throw new Error('Network error: Unable to reach server');
+          } else {
+            // Something else happened
+            throw new Error(`Error: ${axiosError.message}`);
+          }
+        } else {
+          // Regular Error object
+          throw new Error(`Error: ${error.message}`);
+        }
+      } else {
+        // Unknown error type
+        throw new Error('Unknown error occurred');
+      }
     }
   }
 

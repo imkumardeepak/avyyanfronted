@@ -435,6 +435,10 @@ export const productionAllotmentApi = {
   getNextSerialNumber: (): Promise<AxiosResponse<string>> =>
     apiClient.get('/ProductionAllotment/next-serial-number'),
 
+  // GET /api/ProductionAllotment/by-allot-id/{allotId} - Get production allotment by AllotmentId
+  getProductionAllotmentByAllotId: (allotId: string): Promise<AxiosResponse<ProductionAllotmentResponseDto>> =>
+    apiClient.get(`/ProductionAllotment/by-allot-id/${allotId}`),
+
   // POST /api/ProductionAllotment/stkprint/{id} - Generate QR codes for machine allocation
   generateQRCodes: (id: number): Promise<AxiosResponse<{ message: string }>> =>
     apiClient.post(`/ProductionAllotment/stkprint/${id}`),
