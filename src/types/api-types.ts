@@ -684,6 +684,14 @@ export interface CreateProductionAllotmentRequest {
   stitchLength: number;
   efficiency: number;
   composition: string;
+  yarnLotNo?: string;
+  counter?: string;
+  colourCode?: string;
+  reqGreyGsm?: number | null;
+  reqGreyWidth?: number | null;
+  reqFinishGsm?: number | null;
+  reqFinishWidth?: number | null;
+  partyName?: string;
   machineAllocations: MachineAllocationRequest[];
 }
 
@@ -705,6 +713,14 @@ export interface ProductionAllotmentResponseDto {
   composition: string;
   totalProductionTime: number;
   createdDate: string; // ISO 8601 datetime
+  yarnLotNo?: string;
+  counter?: string;
+  colourCode?: string;
+  reqGreyGsm?: number | null;
+  reqGreyWidth?: number | null;
+  reqFinishGsm?: number | null;
+  reqFinishWidth?: number | null;
+  partyName?: string;
   machineAllocations: MachineAllocationResponseDto[];
 }
 

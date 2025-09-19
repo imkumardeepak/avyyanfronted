@@ -39,8 +39,6 @@ interface ProductionCalculation {
 
 interface MachineSelection {
   selectedMachine: MachineResponseDto | null;
-  isEditable: boolean;
-  k120Machine: MachineResponseDto | null; // Store K120 machine reference
 }
 
 interface MachineLoadDistribution {
@@ -49,7 +47,6 @@ interface MachineLoadDistribution {
   allocatedRolls: number;
   allocatedWeight: number; // kg
   estimatedProductionTime: number; // hours
-  isSelected: boolean;
   isEditing?: boolean;
   customParameters?: {
     needle: number;
@@ -74,6 +71,17 @@ interface RollInput {
   rollPerKg: number;
 }
 
+// Add new interface for additional fields
+interface AdditionalFields {
+  yarnLotNo: string;
+  counter: string;
+  colourCode: string;
+  reqGreyGsm: number | null;
+  reqGreyWidth: number | null;
+  reqFinishGsm: number | null;
+  reqFinishWidth: number | null;
+}
+
 const SalesOrderItemProcessing = () => {
   const { orderId, itemId } = useParams();
   const navigate = useNavigate();
@@ -88,11 +96,20 @@ const SalesOrderItemProcessing = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isItemProcessing, setIsItemProcessing] = useState(false);
 
+  // Add state for additional fields
+  const [additionalFields, setAdditionalFields] = useState<AdditionalFields>({
+    yarnLotNo: '',
+    counter: '',
+    colourCode: '',
+    reqGreyGsm: null,
+    reqGreyWidth: null,
+    reqFinishGsm: null,
+    reqFinishWidth: null,
+  });
+
   // Production calculation states
   const [machineSelection, setMachineSelection] = useState<MachineSelection>({
     selectedMachine: null,
-    isEditable: false,
-    k120Machine: null, // Initialize with null
   });
 
   // Multiple machine selection and load distribution
@@ -166,10 +183,9 @@ const SalesOrderItemProcessing = () => {
       const k120Machine = machines.find((m) => m.machineName.toLowerCase().includes('k120'));
       const defaultMachine = k120Machine || machines[0]; // Fallback to first machine if K120 not found
 
-      setMachineSelection((prev) => ({
-        ...prev,
+      setMachineSelection({
         selectedMachine: defaultMachine,
-      }));
+      });
 
       // Set initial production calculation values from machine
       setProductionCalc((prev) => ({
@@ -552,6 +568,7 @@ const SalesOrderItemProcessing = () => {
       allocatedWeight: 0,
       estimatedProductionTime: 0,
       isSelected: true,
+
       isEditing: false,
       customParameters: {
         needle: machine.needle,
@@ -1047,6 +1064,17 @@ const SalesOrderItemProcessing = () => {
     }
   };
 
+  // Add handler for additional fields
+  const handleAdditionalFieldChange = (
+    field: keyof AdditionalFields,
+    value: string | number | null
+  ) => {
+    setAdditionalFields((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
   const handleProcessItem = async () => {
     if (!selectedItem || !selectedOrder) return;
 
@@ -1073,27 +1101,25 @@ const SalesOrderItemProcessing = () => {
     setIsProcessing(true);
     try {
       // Prepare data for API call
-      const machineAllocations = selectedMachines
-        .filter((machine) => machine.isSelected)
-        .map((machine) => ({
-          machineName: machine.machineName,
-          machineId: machine.machineId,
-          numberOfNeedles: machine.customParameters?.needle || productionCalc.needle,
-          feeders: machine.customParameters?.feeder || productionCalc.feeder,
-          rpm: machine.customParameters?.rpm || productionCalc.rpm,
-          rollPerKg: rollCalculation.rollPerKg,
-          totalLoadWeight: machine.allocatedWeight,
-          totalRolls: machine.allocatedRolls,
-          rollBreakdown: {
-            wholeRolls: [],
-            fractionalRoll: {
-              quantity: 0,
-              weightPerRoll: 0,
-              totalWeight: machine.allocatedWeight,
-            },
+      const machineAllocations = selectedMachines.map((machine) => ({
+        machineName: machine.machineName,
+        machineId: machine.machineId,
+        numberOfNeedles: machine.customParameters?.needle || productionCalc.needle,
+        feeders: machine.customParameters?.feeder || productionCalc.feeder,
+        rpm: machine.customParameters?.rpm || productionCalc.rpm,
+        rollPerKg: rollCalculation.rollPerKg,
+        totalLoadWeight: machine.allocatedWeight,
+        totalRolls: machine.allocatedRolls,
+        rollBreakdown: {
+          wholeRolls: [],
+          fractionalRoll: {
+            quantity: 0,
+            weightPerRoll: 0,
+            totalWeight: machine.allocatedWeight,
           },
-          estimatedProductionTime: machine.estimatedProductionTime,
-        }));
+        },
+        estimatedProductionTime: machine.estimatedProductionTime,
+      }));
 
       // Extract yarn count from item description
       const yarnCount = extractYarnCount(selectedItem.descriptions || '');
@@ -1106,7 +1132,7 @@ const SalesOrderItemProcessing = () => {
         extractFabricTypeFromDescription(selectedItem.descriptions || '') ||
         extractFabricType(selectedItem.stockItemName);
 
-      // Prepare the request data
+      // Prepare the request data with additional fields
       const requestData = {
         allotmentId: allotmentId || `ALT-${Date.now()}`,
         voucherNumber: selectedOrder.voucherNumber,
@@ -1122,6 +1148,15 @@ const SalesOrderItemProcessing = () => {
         stitchLength: productionCalc.stichLength,
         efficiency: productionCalc.efficiency,
         composition: composition,
+        // Add the new fields
+        yarnLotNo: additionalFields.yarnLotNo,
+        counter: additionalFields.counter,
+        colourCode: additionalFields.colourCode,
+        reqGreyGsm: additionalFields.reqGreyGsm,
+        reqGreyWidth: additionalFields.reqGreyWidth,
+        reqFinishGsm: additionalFields.reqFinishGsm,
+        reqFinishWidth: additionalFields.reqFinishWidth,
+        partyName: selectedOrder.partyName, // Fetch party name from sales order
         machineAllocations: machineAllocations,
       };
 
@@ -1220,10 +1255,10 @@ const SalesOrderItemProcessing = () => {
             <h1 className="text-3xl font-bold font-display">Process Sales Order Item</h1>
             <p className="text-muted-foreground">
               Processing Item:{' '}
-              <span className="font-semibold text-primary">{selectedItem.stockItemName}</span>
+              <span className="font-semibold text-primary">{selectedItem?.stockItemName}</span>
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              From Order: {selectedOrder.voucherNumber} | Customer: {selectedOrder.partyName}
+              From Order: {selectedOrder?.voucherNumber} | Customer: {selectedOrder?.partyName}
             </p>
           </div>
         </div>
@@ -1325,6 +1360,120 @@ const SalesOrderItemProcessing = () => {
                   <p>{selectedOrder.voucherNumber}</p>
                 </div>
               </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Additional Fields Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Additional Information</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="yarn-lot-no">Yarn Lot No.</Label>
+              <Input
+                id="yarn-lot-no"
+                value={additionalFields.yarnLotNo}
+                onChange={(e) => handleAdditionalFieldChange('yarnLotNo', e.target.value)}
+                placeholder="Enter yarn lot number"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="counter">Counter</Label>
+              <Input
+                id="counter"
+                value={additionalFields.counter}
+                onChange={(e) => handleAdditionalFieldChange('counter', e.target.value)}
+                placeholder="Enter counter"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="colour-code">Colour Code</Label>
+              <Input
+                id="colour-code"
+                value={additionalFields.colourCode}
+                onChange={(e) => handleAdditionalFieldChange('colourCode', e.target.value)}
+                placeholder="Enter colour code"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="party-name">Party Name</Label>
+              <Input
+                id="party-name"
+                value={selectedOrder?.partyName || ''}
+                disabled
+                placeholder="Party name from sales order"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="req-grey-gsm">Req. Grey GSM</Label>
+              <Input
+                id="req-grey-gsm"
+                type="number"
+                value={additionalFields.reqGreyGsm || ''}
+                onChange={(e) =>
+                  handleAdditionalFieldChange(
+                    'reqGreyGsm',
+                    e.target.value ? parseFloat(e.target.value) : null
+                  )
+                }
+                placeholder="Enter required grey GSM"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="req-grey-width">Req. Grey Width</Label>
+              <Input
+                id="req-grey-width"
+                type="number"
+                value={additionalFields.reqGreyWidth || ''}
+                onChange={(e) =>
+                  handleAdditionalFieldChange(
+                    'reqGreyWidth',
+                    e.target.value ? parseFloat(e.target.value) : null
+                  )
+                }
+                placeholder="Enter required grey width"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="req-finish-gsm">Req. Finish GSM</Label>
+              <Input
+                id="req-finish-gsm"
+                type="number"
+                value={additionalFields.reqFinishGsm || ''}
+                onChange={(e) =>
+                  handleAdditionalFieldChange(
+                    'reqFinishGsm',
+                    e.target.value ? parseFloat(e.target.value) : null
+                  )
+                }
+                placeholder="Enter required finish GSM"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="req-finish-width">Req. Finish Width</Label>
+              <Input
+                id="req-finish-width"
+                type="number"
+                value={additionalFields.reqFinishWidth || ''}
+                onChange={(e) =>
+                  handleAdditionalFieldChange(
+                    'reqFinishWidth',
+                    e.target.value ? parseFloat(e.target.value) : null
+                  )
+                }
+                placeholder="Enter required finish width"
+              />
             </div>
           </div>
         </CardContent>
