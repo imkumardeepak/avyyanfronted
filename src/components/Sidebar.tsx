@@ -18,6 +18,7 @@ import {
   CheckCircle,
   Check,
   Eye,
+  Package,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -122,6 +123,12 @@ const navConfig: NavItem[] = [
         icon: Eye,
         description: 'check all rolls good conditon or not',
       },
+      {
+        title: 'Storage Capture',
+        href: '/storage-capture',
+        icon: Package,
+        description: 'Capture and allocate FG rolls to storage locations',
+      },
     ],
   },
   {
@@ -204,14 +211,14 @@ export const Sidebar: React.FC = () => {
     if (user?.roleName === 'Admin') {
       return true;
     }
-    
+
     // Normalize the page title for comparison
     const normalizedTitle = pageTitle.trim().toLowerCase();
     const page = pageAccesses.find((p) => {
       const normalizedPageName = p.pageName?.trim().toLowerCase() || '';
       return normalizedPageName === normalizedTitle;
     });
-    
+
     return page?.isView ?? false;
   };
 
@@ -232,7 +239,7 @@ export const Sidebar: React.FC = () => {
     if (item.title === 'Production' && user?.roleName === 'Admin') {
       const isExpanded = expandedItems.includes(item.href);
       const active = isActive(item.href);
-      
+
       return (
         <div key={item.href}>
           <NavLink
@@ -276,7 +283,7 @@ export const Sidebar: React.FC = () => {
         </div>
       );
     }
-    
+
     const accessibleChildren = item.children?.filter((child) => hasAccess(child.title)) ?? [];
     const hasChildren = accessibleChildren.length > 0;
 
