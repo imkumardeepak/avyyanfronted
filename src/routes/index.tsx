@@ -48,13 +48,16 @@ const YarnTypeForm = lazy(() => import('../pages/YarnTypeManagement/YarnTypeForm
 
 // Sales Order Management Pages
 const SalesOrderManagement = lazy(() => import('../pages/SalesOrderManagement'));
-const SalesOrderItemProcessing = lazy(() => import('../pages/SalesOrderManagement/SalesOrderItemProcessing'));
+const SalesOrderItemProcessing = lazy(
+  () => import('../pages/SalesOrderManagement/SalesOrderItemProcessing')
+);
 
 // Production Allotment Page
 const ProductionAllotment = lazy(() => import('../pages/ProductionAllotment'));
 
 // Production Confirmation Page
 const ProductionConfirmation = lazy(() => import('../pages/ProductionConfirmation'));
+const StorageCapture = lazy(() => import('../pages/StorageCapture'));
 
 // Chat and Notifications Pages
 const Chat = lazy(() => import('../pages/Chat'));
@@ -182,7 +185,7 @@ const Router = () => {
             />
 
             {/* Machine Management Routes */}
-              <Route
+            <Route
               path="machines"
               element={
                 <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
@@ -206,7 +209,6 @@ const Router = () => {
                 </LazyRoute>
               }
             />
-
 
             {/* Fabric Structure Management Routes */}
             <Route
@@ -376,23 +378,35 @@ const Router = () => {
               }
             />
 
-            {// Production Allotment Routes
-            <Route
-              path="production-allotment"
-              element={
-                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
-                  <ProductionAllotment />
-                </LazyRoute>
-              }
-            />
-            /* Production Allotment Routes - Removed as it's no longer needed */}
-            
+            {
+              // Production Allotment Routes
+              <Route
+                path="production-allotment"
+                element={
+                  <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                    <ProductionAllotment />
+                  </LazyRoute>
+                }
+              />
+              /* Production Allotment Routes - Removed as it's no longer needed */
+            }
+
             {/* Production Confirmation Route */}
             <Route
               path="confirmation"
               element={
                 <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
                   <ProductionConfirmation />
+                </LazyRoute>
+              }
+            />
+
+            {/* Storage Capture Route */}
+            <Route
+              path="storage-capture"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <StorageCapture />
                 </LazyRoute>
               }
             />
