@@ -3,17 +3,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { toast } from '@/lib/toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ProductionAllotmentService } from '@/services/productionAllotmentService';
 import { SalesOrderService } from '@/services/salesOrderService';
+import { RollConfirmationService } from '@/services/rollConfirmationService';
 import type { ProductionAllotmentResponseDto, MachineAllocationResponseDto } from '@/types/api-types';
-import type { SalesOrderDto } from '@/types/api-types';
+import type { SalesOrderDto, RollConfirmationRequestDto } from '@/types/api-types';
 
 const ProductionConfirmation: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isFetchingData, setIsFetchingData] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [rollValidation, setRollValidation] = useState<{
     isValid: boolean | null;
     message: string | null;
@@ -35,6 +36,7 @@ const ProductionConfirmation: React.FC = () => {
   });
 
   // Allotment data
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [allotmentData, setAllotmentData] = useState<ProductionAllotmentResponseDto | null>(null);
   const [salesOrderData, setSalesOrderData] = useState<SalesOrderDto | null>(null);
   const [selectedMachine, setSelectedMachine] = useState<MachineAllocationResponseDto | null>(null);
@@ -135,8 +137,7 @@ const ProductionConfirmation: React.FC = () => {
         rollPerKg: rollPerKgValue
       }));
       
-      setSuccess('Allotment data loaded successfully');
-      setTimeout(() => setSuccess(null), 3000);
+      toast.success('Success', 'Allotment data loaded successfully');
     } catch (err) {
       console.error('Error fetching allotment data:', err);
       setAllotmentData(null);
@@ -145,11 +146,10 @@ const ProductionConfirmation: React.FC = () => {
       
       // Show specific error message to user
       if (err instanceof Error) {
-        setError(err.message);
+        toast.error('Error', err.message);
       } else {
-        setError('Failed to fetch allotment data. Please check the allotment ID and try again.');
+        toast.error('Error', 'Failed to fetch allotment data. Please check the allotment ID and try again.');
       }
-      setTimeout(() => setError(null), 5000);
     } finally {
       setIsFetchingData(false);
     }
@@ -172,16 +172,13 @@ const ProductionConfirmation: React.FC = () => {
         // Fetch greyGsm, greyWidth, and rollPerKg based on allotId and machineName
         fetchAllotmentData(newAllotId, machineName);
         
-        setSuccess('Barcode data loaded successfully');
-        setTimeout(() => setSuccess(null), 3000);
+        toast.success('Success', 'Barcode data loaded successfully');
       } else {
-        setError('Invalid barcode format. Expected: ALLOTID#MACHINENAME#ROLLNO');
-        setTimeout(() => setError(null), 3000);
+        toast.error('Error', 'Invalid barcode format. Expected: ALLOTID#MACHINENAME#ROLLNO');
       }
     } catch (err) {
       console.error('Error processing barcode:', err);
-      setError('Failed to process barcode data');
-      setTimeout(() => setError(null), 3000);
+      toast.error('Error', 'Failed to process barcode data');
     }
   };
 
@@ -225,8 +222,26 @@ const ProductionConfirmation: React.FC = () => {
   }, []);
 
   // Handle form submission
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate all required fields are filled
+    const requiredFields = [
+      { value: formData.allotId, name: 'Allot ID' },
+      { value: formData.machineName, name: 'Machine Name' },
+      { value: formData.rollNo, name: 'Roll No' },
+      { value: formData.greyGsm, name: 'GREY GSM' },
+      { value: formData.greyWidth, name: 'GREY WIDTH' },
+      { value: formData.rollPerKg, name: 'Expected Roll Per Kg' }
+    ];
+    
+    const emptyFields = requiredFields.filter(field => !field.value);
+    
+    if (emptyFields.length > 0) {
+      const missingFields = emptyFields.map(field => field.name).join(', ');
+      toast.error('Error', `Please fill in all required fields: ${missingFields}`);
+      return;
+    }
     
     // Validate roll per kg before submission if both values are provided
     if (formData.rollPerKg && formData.actualRollPerKg) {
@@ -236,14 +251,71 @@ const ProductionConfirmation: React.FC = () => {
     setIsLoading(true);
     setError(null);
     
-    // Simulate API call
-    setTimeout(() => {
-      console.log('Form submitted:', formData);
+    try {
+      // Prepare data for roll confirmation API
+      const rollConfirmationData: RollConfirmationRequestDto = {
+        allotId: formData.allotId,
+        machineName: formData.machineName,
+        rollPerKg: parseFloat(formData.rollPerKg) || 0,
+        greyGsm: parseFloat(formData.greyGsm) || 0,
+        greyWidth: parseFloat(formData.greyWidth) || 0,
+        blendPercent: parseFloat(formData.blendPercent) || 0,
+        cotton: parseFloat(formData.cotton) || 0,
+        polyester: parseFloat(formData.polyester) || 0,
+        spandex: parseFloat(formData.spandex) || 0,
+        rollNo: formData.rollNo
+      };
+      
+      // Call the roll confirmation API
+      const response = await RollConfirmationService.createRollConfirmation(rollConfirmationData);
+      
+      console.log('Roll confirmation saved:', response);
       setIsLoading(false);
-      setSuccess('Confirmation data saved successfully');
-      setTimeout(() => setSuccess(null), 3000);
-    }, 1500);
+      toast.success('Success', 'Roll Confirmation details added successfully');
+      
+      // Reset form after successful submission
+      setFormData({
+        allotId: '',
+        machineName: '',
+        rollNo: '',
+        greyGsm: '',
+        greyWidth: '',
+        blendPercent: '',
+        cotton: '',
+        polyester: '',
+        spandex: '',
+        rollPerKg: '',
+        actualRollPerKg: ''
+      });
+      setAllotmentData(null);
+      setSalesOrderData(null);
+      setSelectedMachine(null);
+    } catch (err) {
+      console.error('Error saving roll confirmation:', err);
+      setIsLoading(false);
+      toast.error('Error', 'Failed to save confirmation data. Please try again.');
+    }
   };
+
+  // Auto-dismiss error messages after 2 seconds
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => {
+        setError(null);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
+
+  // Auto-dismiss roll validation messages after 2 seconds
+  useEffect(() => {
+    if (rollValidation.message) {
+      const timer = setTimeout(() => {
+        setRollValidation({ isValid: null, message: null });
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [rollValidation.message]);
 
   return (
     <div className="p-6">
@@ -259,26 +331,7 @@ const ProductionConfirmation: React.FC = () => {
           <CardTitle className="text-blue-800">Roll Confirmation Details</CardTitle>
         </CardHeader>
         <CardContent>
-          {error && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-          
-          {success && (
-            <Alert variant="default" className="mb-4 bg-green-100 border-green-500">
-              <AlertDescription>{success}</AlertDescription>
-            </Alert>
-          )}
-          
-          {/* Roll validation message */}
-          {rollValidation.message && (
-            <Alert variant={rollValidation.isValid ? "default" : "destructive"} 
-                   className={`mb-4 ${rollValidation.isValid ? 'bg-green-100 border-green-500' : ''}`}>
-              <AlertDescription>{rollValidation.message}</AlertDescription>
-            </Alert>
-          )}
-          
+         
           {/* Completely hidden scanner focus element */}
           <div className="absolute -left-full top-0 opacity-0 w-0 h-0 overflow-hidden">
             <input type="text" />
@@ -357,19 +410,19 @@ const ProductionConfirmation: React.FC = () => {
                       </div>
                                                 <div className="text-center bg-white/50 rounded p-1">
                             <Label className="text-xs text-green-600 block">Machine</Label>
-                            <div className="text-xs font-medium">{selectedMachine.machineName || 'N/A'}</div>
+                            <div className="text-xs font-medium">{selectedMachine?.machineName || 'N/A'}</div>
                           </div>
                           
                          
                           
                           <div className="text-center bg-white/50 rounded p-1">
                             <Label className="text-xs text-green-600 block">RPM</Label>
-                            <div className="text-xs font-medium">{selectedMachine.rpm || 'N/A'}</div>
+                            <div className="text-xs font-medium">{selectedMachine?.rpm || 'N/A'}</div>
                           </div>
                           
                           <div className="text-center bg-white/50 rounded p-1">
                             <Label className="text-xs text-green-600 block">Rolls/Kg</Label>
-                            <div className="text-xs font-medium">{selectedMachine.rollPerKg?.toFixed(3) || 'N/A'}</div>
+                            <div className="text-xs font-medium">{selectedMachine?.rollPerKg?.toFixed(3) || 'N/A'}</div>
                           </div>
                     </div>
                     
@@ -401,7 +454,7 @@ const ProductionConfirmation: React.FC = () => {
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="greyGsm">GREY GSM</Label>
+                  <Label htmlFor="greyGsm">GREY GSM *</Label>
                   <Input
                     id="greyGsm"
                     name="greyGsm"
@@ -409,11 +462,12 @@ const ProductionConfirmation: React.FC = () => {
                     onChange={handleChange}
                     type="number"
                     disabled={isFetchingData}
+                    placeholder="Enter GREY GSM"
                   />
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="greyWidth">GREY WIDTH</Label>
+                  <Label htmlFor="greyWidth">GREY WIDTH *</Label>
                   <Input
                     id="greyWidth"
                     name="greyWidth"
@@ -421,6 +475,7 @@ const ProductionConfirmation: React.FC = () => {
                     onChange={handleChange}
                     type="number"
                     disabled={isFetchingData}
+                    placeholder="Enter GREY WIDTH"
                   />
                 </div>
                 
@@ -432,6 +487,7 @@ const ProductionConfirmation: React.FC = () => {
                     value={formData.blendPercent}
                     onChange={handleChange}
                     type="number"
+                    placeholder="Enter BLEND %"
                   />
                 </div>
               </div>
@@ -445,6 +501,7 @@ const ProductionConfirmation: React.FC = () => {
                     value={formData.cotton}
                     onChange={handleChange}
                     type="number"
+                    placeholder="Enter COTTON"
                   />
                 </div>
                 
@@ -456,6 +513,7 @@ const ProductionConfirmation: React.FC = () => {
                     value={formData.polyester}
                     onChange={handleChange}
                     type="number"
+                    placeholder="Enter POLYESTER"
                   />
                 </div>
                 
@@ -467,6 +525,7 @@ const ProductionConfirmation: React.FC = () => {
                     value={formData.spandex}
                     onChange={handleChange}
                     type="number"
+                    placeholder="Enter SPANDEX"
                   />
                 </div>
               </div>
@@ -477,7 +536,7 @@ const ProductionConfirmation: React.FC = () => {
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="rollPerKg">Expected Roll Per Kg (from database)</Label>
+                  <Label htmlFor="rollPerKg">Expected Roll Per Kg (from database) *</Label>
                   <Input
                     id="rollPerKg"
                     name="rollPerKg"
@@ -485,7 +544,8 @@ const ProductionConfirmation: React.FC = () => {
                     onChange={handleChange}
                     type="number"
                     step="0.001"
-                    disabled
+                    disabled={isFetchingData}
+                    placeholder="Enter Expected Roll Per Kg"
                   />
                 </div>
                 
@@ -514,6 +574,7 @@ const ProductionConfirmation: React.FC = () => {
                 </div>
               </div>
             </div>
+            
             
             <div className="flex justify-end pt-4">
               <Button 
