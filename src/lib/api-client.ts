@@ -37,7 +37,9 @@ import type {
   RefreshTokenRequestDto,
   SalesOrderDto,
   VoucherDto,
-  ProductionAllotmentResponseDto
+  ProductionAllotmentResponseDto,
+  RollConfirmationRequestDto,
+  RollConfirmationResponseDto
 } from '@/types/api-types';
 
 // API Configuration
@@ -442,4 +444,22 @@ export const productionAllotmentApi = {
   // POST /api/ProductionAllotment/stkprint/{id} - Generate QR codes for machine allocation
   generateQRCodes: (id: number): Promise<AxiosResponse<{ message: string }>> =>
     apiClient.post(`/ProductionAllotment/stkprint/${id}`),
+};
+
+// ============================================
+// ROLL CONFIRMATION API (/api/RollConfirmation)
+// ============================================
+
+export const rollConfirmationApi = {
+  // POST /api/RollConfirmation - Create new roll confirmation
+  createRollConfirmation: (data: RollConfirmationRequestDto): Promise<AxiosResponse<RollConfirmationResponseDto>> =>
+    apiClient.post('/RollConfirmation', data),
+
+  // GET /api/RollConfirmation/{id} - Get roll confirmation by ID
+  getRollConfirmation: (id: number): Promise<AxiosResponse<RollConfirmationResponseDto>> =>
+    apiClient.get(`/RollConfirmation/${id}`),
+
+  // GET /api/RollConfirmation/by-allot-id/{allotId} - Get roll confirmations by AllotId
+  getRollConfirmationsByAllotId: (allotId: string): Promise<AxiosResponse<RollConfirmationResponseDto[]>> =>
+    apiClient.get(`/RollConfirmation/by-allot-id/${allotId}`),
 };

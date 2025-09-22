@@ -295,7 +295,7 @@ export interface NotificationDto {
 
 export interface WebSocketResponseDto {
     type: string;
-    data: any;              // Generic object
+    data: unknown;              // Generic object
     timestamp: string;      // Default: current UTC
     success: boolean;       // Default: true
 }
@@ -387,21 +387,22 @@ export interface FabricStructureSearchRequestDto {
 // ============================================
 
 // For backward compatibility with existing code
-export interface LoginDto extends LoginRequestDto { }
-export interface RegisterDto extends RegisterRequestDto { }
-export interface ChangePasswordDto extends ChangePasswordRequestDto { }
-export interface ResetPasswordDto extends ResetPasswordRequestDto { }
-export interface UserDto extends AuthUserDto { }
-export interface CreateUserDto extends CreateUserRequestDto { }
-export interface UpdateUserDto extends UpdateUserRequestDto { }
-export interface RoleDto extends RoleResponseDto { }
-export interface CreateRoleDto extends CreateRoleRequestDto { }
-export interface UpdateRoleDto extends UpdateRoleRequestDto { }
-export interface PageAccessDto extends AuthPageAccessDto { }
-export interface ApiResponse<T> extends ApiResponseDto<T> { }
-export interface ErrorResponse extends ErrorResponseDto { }
-export interface MessageResponse extends MessageResponseDto { }
-export interface PaginatedResponse<T> extends PaginatedResponseDto<T> { }
+// Type aliases for backward compatibility
+export type LoginDto = LoginRequestDto;
+export type RegisterDto = RegisterRequestDto;
+export type ChangePasswordDto = ChangePasswordRequestDto;
+export type ResetPasswordDto = ResetPasswordRequestDto;
+export type UserDto = AuthUserDto;
+export type CreateUserDto = CreateUserRequestDto;
+export type UpdateUserDto = UpdateUserRequestDto;
+export type RoleDto = RoleResponseDto;
+export type CreateRoleDto = CreateRoleRequestDto;
+export type UpdateRoleDto = UpdateRoleRequestDto;
+export type PageAccessDto = AuthPageAccessDto;
+export type ApiResponse<T> = ApiResponseDto<T>;
+export type ErrorResponse = ErrorResponseDto;
+export type MessageResponse = MessageResponseDto;
+export type PaginatedResponse<T> = PaginatedResponseDto<T>;
 
 // ============================================
 // TYPE ALIASES FOR COMPONENT COMPATIBILITY
@@ -762,4 +763,36 @@ export interface RollItem {
 export interface RollBreakdown {
   wholeRolls: RollItem[];
   fractionalRoll: RollItem;
+}
+
+// ============================================
+// ROLL CONFIRMATION DTOs
+// ============================================
+
+export interface RollConfirmationRequestDto {
+  allotId: string;
+  machineName: string;
+  rollPerKg: number;
+  greyGsm: number;
+  greyWidth: number;
+  blendPercent: number;
+  cotton: number;
+  polyester: number;
+  spandex: number;
+  rollNo: string;
+}
+
+export interface RollConfirmationResponseDto {
+  id: number;
+  allotId: string;
+  machineName: string;
+  rollPerKg: number;
+  greyGsm: number;
+  greyWidth: number;
+  blendPercent: number;
+  cotton: number;
+  polyester: number;
+  spandex: number;
+  rollNo: string;
+  createdDate: string;
 }
