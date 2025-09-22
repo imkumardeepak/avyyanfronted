@@ -1040,7 +1040,7 @@ const SalesOrderItemProcessing = () => {
 
       // 15th, 16th, 17th, 18th, 19th & 20th character: Serial Number (000001 as example)
       // This now comes from the backend database sequence
-        const serialNumber = await ProductionAllotmentService.getNextSerialNumber();
+      const serialNumber = await ProductionAllotmentService.getNextSerialNumber();
 
       // 21st character: N (No Slit Line), H (HoneyComb Slit Line), O (Open Width)
       // Based on fabric type or defaulting to N
