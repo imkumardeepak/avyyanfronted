@@ -37,7 +37,19 @@ import type {
   RefreshTokenRequestDto,
   SalesOrderDto,
   VoucherDto,
-  ProductionAllotmentResponseDto
+  ProductionAllotmentResponseDto,
+  RollConfirmationRequestDto,
+  RollConfirmationResponseDto,
+  InspectionRequestDto,
+  InspectionResponseDto,
+  TapeColorResponseDto,
+  CreateTapeColorRequestDto,
+  UpdateTapeColorRequestDto,
+  TapeColorSearchRequestDto,
+  ShiftResponseDto,
+  CreateShiftRequestDto,
+  UpdateShiftRequestDto,
+  ShiftSearchRequestDto
 } from '@/types/api-types';
 
 // API Configuration
@@ -395,6 +407,66 @@ export const yarnTypeApi = {
 };
 
 // ============================================
+// TAPE COLOR API (/api/TapeColor)
+// ============================================
+
+export const tapeColorApi = {
+  // GET /api/TapeColor - Get all tape colors
+  getAllTapeColors: (): Promise<AxiosResponse<TapeColorResponseDto[]>> =>
+    apiClient.get('/TapeColor'),
+
+  // GET /api/TapeColor/{id} - Get tape color by ID
+  getTapeColor: (id: number): Promise<AxiosResponse<TapeColorResponseDto>> =>
+    apiClient.get(`/TapeColor/${id}`),
+
+  // POST /api/TapeColor - Create new tape color
+  createTapeColor: (data: CreateTapeColorRequestDto): Promise<AxiosResponse<TapeColorResponseDto>> =>
+    apiClient.post('/TapeColor', data),
+
+  // PUT /api/TapeColor/{id} - Update tape color
+  updateTapeColor: (id: number, data: UpdateTapeColorRequestDto): Promise<AxiosResponse<TapeColorResponseDto>> =>
+    apiClient.put(`/TapeColor/${id}`, data),
+
+  // DELETE /api/TapeColor/{id} - Delete tape color
+  deleteTapeColor: (id: number): Promise<AxiosResponse<void>> =>
+    apiClient.delete(`/TapeColor/${id}`),
+
+  // GET /api/TapeColor/search - Search tape colors
+  searchTapeColors: (params: TapeColorSearchRequestDto): Promise<AxiosResponse<TapeColorResponseDto[]>> =>
+    apiClient.get('/TapeColor/search', { params }),
+};
+
+// ============================================
+// SHIFT API (/api/Shift)
+// ============================================
+
+export const shiftApi = {
+  // GET /api/Shift - Get all shifts
+  getAllShifts: (): Promise<AxiosResponse<ShiftResponseDto[]>> =>
+    apiClient.get('/Shift'),
+
+  // GET /api/Shift/{id} - Get shift by ID
+  getShift: (id: number): Promise<AxiosResponse<ShiftResponseDto>> =>
+    apiClient.get(`/Shift/${id}`),
+
+  // POST /api/Shift - Create new shift
+  createShift: (data: CreateShiftRequestDto): Promise<AxiosResponse<ShiftResponseDto>> =>
+    apiClient.post('/Shift', data),
+
+  // PUT /api/Shift/{id} - Update shift
+  updateShift: (id: number, data: UpdateShiftRequestDto): Promise<AxiosResponse<ShiftResponseDto>> =>
+    apiClient.put(`/Shift/${id}`, data),
+
+  // DELETE /api/Shift/{id} - Delete shift
+  deleteShift: (id: number): Promise<AxiosResponse<void>> =>
+    apiClient.delete(`/Shift/${id}`),
+
+  // GET /api/Shift/search - Search shifts
+  searchShifts: (params: ShiftSearchRequestDto): Promise<AxiosResponse<ShiftResponseDto[]>> =>
+    apiClient.get('/Shift/search', { params }),
+};
+
+// ============================================
 // VOUCHERS API (/api/Vouchers)
 // ============================================
 
@@ -442,4 +514,40 @@ export const productionAllotmentApi = {
   // POST /api/ProductionAllotment/stkprint/{id} - Generate QR codes for machine allocation
   generateQRCodes: (id: number): Promise<AxiosResponse<{ message: string }>> =>
     apiClient.post(`/ProductionAllotment/stkprint/${id}`),
+};
+
+// ============================================
+// ROLL CONFIRMATION API (/api/RollConfirmation)
+// ============================================
+
+export const rollConfirmationApi = {
+  // POST /api/RollConfirmation - Create new roll confirmation
+  createRollConfirmation: (data: RollConfirmationRequestDto): Promise<AxiosResponse<RollConfirmationResponseDto>> =>
+    apiClient.post('/RollConfirmation', data),
+
+  // GET /api/RollConfirmation/{id} - Get roll confirmation by ID
+  getRollConfirmation: (id: number): Promise<AxiosResponse<RollConfirmationResponseDto>> =>
+    apiClient.get(`/RollConfirmation/${id}`),
+
+  // GET /api/RollConfirmation/by-allot-id/{allotId} - Get roll confirmations by AllotId
+  getRollConfirmationsByAllotId: (allotId: string): Promise<AxiosResponse<RollConfirmationResponseDto[]>> =>
+    apiClient.get(`/RollConfirmation/by-allot-id/${allotId}`),
+};
+
+// ============================================
+// INSPECTION API (/api/Inspection)
+// ============================================
+
+export const inspectionApi = {
+  // POST /api/Inspection - Create new inspection
+  createInspection: (data: InspectionRequestDto): Promise<AxiosResponse<InspectionResponseDto>> =>
+    apiClient.post('/Inspection', data),
+
+  // GET /api/Inspection/{id} - Get inspection by ID
+  getInspection: (id: number): Promise<AxiosResponse<InspectionResponseDto>> =>
+    apiClient.get(`/Inspection/${id}`),
+
+  // GET /api/Inspection/by-allot-id/{allotId} - Get inspections by AllotId
+  getInspectionsByAllotId: (allotId: string): Promise<AxiosResponse<InspectionResponseDto[]>> =>
+    apiClient.get(`/Inspection/by-allot-id/${allotId}`),
 };

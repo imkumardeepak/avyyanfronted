@@ -64,17 +64,10 @@ const MachineForm = () => {
   const queryClient = useQueryClient();
   const isEditMode = !!id && !isNaN(Number(id));
 
-  // Validate ID parameter
-  if (id && isNaN(Number(id))) {
-    console.error('Invalid machine ID:', id);
-    navigate('/machines');
-    return null;
-  }
-
   const { data: machine, isLoading: isMachineLoading } = useQuery<MachineResponseDto>({
     queryKey: ['machine', id],
     queryFn: () => fetchMachine(parseInt(id!)),
-    enabled: isEditMode,
+    enabled: isEditMode && id !== undefined && !isNaN(Number(id)),
   });
 
   const { mutate: createMachineMutation, isPending: isCreating } = useMutation({
@@ -120,6 +113,18 @@ const MachineForm = () => {
     },
   });
 
+  // Watch dia and gg values to calculate needles automatically
+  const diaValue = form.watch('dia');
+  const ggValue = form.watch('gg');
+
+  // Calculate needles automatically when dia or gg changes
+  useEffect(() => {
+    if (diaValue > 0 && ggValue > 0) {
+      const calculatedNeedles = Math.round(diaValue * ggValue * 3.14);
+      form.setValue('needle', calculatedNeedles);
+    }
+  }, [diaValue, ggValue, form]);
+
   useEffect(() => {
     if (machine && isEditMode) {
       form.setValue('machineName', machine.machineName);
@@ -136,12 +141,19 @@ const MachineForm = () => {
   }, [machine, isEditMode, form]);
 
   const onSubmit = (data: FormData) => {
-    if (isEditMode) {
-      updateMachineMutation({ id: parseInt(id!), data: data as UpdateMachineRequestDto });
+    if (isEditMode && id) {
+      updateMachineMutation({ id: parseInt(id), data: data as UpdateMachineRequestDto });
     } else {
       createMachineMutation(data as CreateMachineRequestDto);
     }
   };
+
+  // Validate ID parameter after hooks are defined
+  if (id && (isNaN(Number(id)) || Number(id) <= 0)) {
+    console.error('Invalid machine ID:', id);
+    navigate('/machines');
+    return null;
+  }
 
   if (isMachineLoading) {
     return (
@@ -226,16 +238,20 @@ const MachineForm = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="needle">Needles</Label>
+                <Label htmlFor="needle">Needles (Auto-calculated)</Label>
                 <Input
                   id="needle"
                   type="number"
                   {...form.register('needle', { valueAsNumber: true })}
                   placeholder="Enter needle count"
+                  readOnly
                 />
                 {form.formState.errors.needle && (
                   <p className="text-sm text-destructive">{form.formState.errors.needle.message}</p>
                 )}
+                <p className="text-xs text-muted-foreground">
+                  Calculated as: Dia × GG × 3.14 = {diaValue} × {ggValue} × 3.14 ≈ {diaValue > 0 && ggValue > 0 ? Math.round(diaValue * ggValue * 3.14) : '0'}
+                </p>
               </div>
 
               <div className="space-y-2">

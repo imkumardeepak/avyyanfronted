@@ -1,4 +1,4 @@
-import apiClient from '@/lib/api-client';
+import { rollConfirmationApi } from '@/lib/api-client';
 import type { 
   RollConfirmationRequestDto,
   RollConfirmationResponseDto
@@ -8,7 +8,7 @@ export class RollConfirmationService {
   // POST /api/rollconfirmation - Create a new roll confirmation
   static async createRollConfirmation(data: RollConfirmationRequestDto): Promise<RollConfirmationResponseDto> {
     try {
-      const response = await apiClient.post('/rollconfirmation', data);
+      const response = await rollConfirmationApi.createRollConfirmation(data);
       return response.data;
     } catch (error) {
       console.error('Error creating roll confirmation:', error);
@@ -19,7 +19,7 @@ export class RollConfirmationService {
   // GET /api/rollconfirmation/{id} - Get roll confirmation by ID
   static async getRollConfirmationById(id: number): Promise<RollConfirmationResponseDto> {
     try {
-      const response = await apiClient.get(`/rollconfirmation/${id}`);
+      const response = await rollConfirmationApi.getRollConfirmation(id);
       return response.data;
     } catch (error) {
       console.error('Error fetching roll confirmation by ID:', error);
@@ -30,7 +30,7 @@ export class RollConfirmationService {
   // GET /api/rollconfirmation/by-allot-id/{allotId} - Get roll confirmations by AllotId
   static async getRollConfirmationsByAllotId(allotId: string): Promise<RollConfirmationResponseDto[]> {
     try {
-      const response = await apiClient.get(`/rollconfirmation/by-allot-id/${allotId}`);
+      const response = await rollConfirmationApi.getRollConfirmationsByAllotId(allotId);
       return response.data;
     } catch (error) {
       console.error('Error fetching roll confirmations by AllotId:', error);

@@ -16,6 +16,8 @@ export const PAGE_NAMES = {
     NOTIFICATIONS: 'Notifications',
     PRODUCTION_ALLOTMENT: 'Production Allotment',
     STORAGE_CAPTURE: 'Storage Capture',
+    TAPE_COLOR_MASTER: 'Tape Color',
+    SHIFT_MASTER: 'Shift Master',
 } as const;
 
 // Array of all page names for role management

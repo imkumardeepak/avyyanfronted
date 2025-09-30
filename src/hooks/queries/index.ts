@@ -70,33 +70,63 @@ export {
   useDeleteYarnType,
 } from './useYarnTypeQueries';
 
+// Tape Color Queries
+export {
+  tapeColorKeys,
+  useTapeColors,
+  useTapeColor,
+  useSearchTapeColors,
+  useCreateTapeColor,
+  useUpdateTapeColor,
+  useDeleteTapeColor,
+} from './useTapeColorQueries';
+
+// Shift Queries
+export {
+  shiftKeys,
+  useShifts,
+  useShift,
+  useSearchShifts,
+  useCreateShift,
+  useUpdateShift,
+  useDeleteShift,
+} from './useShiftQueries';
+
 // Notification Management Queries - Removed
 
 // Common Query Utilities
 export const queryUtils = {
   // Invalidate all queries for a specific entity type
-  invalidateUserQueries: (queryClient: any) => {
+  invalidateUserQueries: (queryClient: { invalidateQueries: (args: { queryKey: string[] }) => void }) => {
     queryClient.invalidateQueries({ queryKey: ['users'] });
   },
   
-  invalidateRoleQueries: (queryClient: any) => {
+  invalidateRoleQueries: (queryClient: { invalidateQueries: (args: { queryKey: string[] }) => void }) => {
     queryClient.invalidateQueries({ queryKey: ['roles'] });
   },
   
-  invalidateMachineQueries: (queryClient: any) => {
+  invalidateMachineQueries: (queryClient: { invalidateQueries: (args: { queryKey: string[] }) => void }) => {
     queryClient.invalidateQueries({ queryKey: ['machines'] });
   },
   
-  invalidateFabricStructureQueries: (queryClient: any) => {
+  invalidateFabricStructureQueries: (queryClient: { invalidateQueries: (args: { queryKey: string[] }) => void }) => {
     queryClient.invalidateQueries({ queryKey: ['fabricStructures'] });
   },
   
-  invalidateLocationQueries: (queryClient: any) => {
+  invalidateLocationQueries: (queryClient: { invalidateQueries: (args: { queryKey: string[] }) => void }) => {
     queryClient.invalidateQueries({ queryKey: ['locations'] });
+  },
+  
+  invalidateTapeColorQueries: (queryClient: { invalidateQueries: (args: { queryKey: string[] }) => void }) => {
+    queryClient.invalidateQueries({ queryKey: ['tapeColors'] });
+  },
+  
+  invalidateShiftQueries: (queryClient: { invalidateQueries: (args: { queryKey: string[] }) => void }) => {
+    queryClient.invalidateQueries({ queryKey: ['shifts'] });
   },
 
   // Clear all caches
-  clearAllCaches: (queryClient: any) => {
+  clearAllCaches: (queryClient: { clear: () => void }) => {
     queryClient.clear();
   },
 };
@@ -106,7 +136,7 @@ export const createQueryKeys = {
   users: {
     all: ['users'] as const,
     lists: () => [...createQueryKeys.users.all, 'list'] as const,
-    list: (filters: any) => [...createQueryKeys.users.lists(), { filters }] as const,
+    list: (filters: unknown) => [...createQueryKeys.users.lists(), { filters }] as const,
     details: () => [...createQueryKeys.users.all, 'detail'] as const,
     detail: (id: number) => [...createQueryKeys.users.details(), id] as const,
   },
@@ -114,7 +144,7 @@ export const createQueryKeys = {
   roles: {
     all: ['roles'] as const,
     lists: () => [...createQueryKeys.roles.all, 'list'] as const,
-    list: (filters: any) => [...createQueryKeys.roles.lists(), { filters }] as const,
+    list: (filters: unknown) => [...createQueryKeys.roles.lists(), { filters }] as const,
     details: () => [...createQueryKeys.roles.all, 'detail'] as const,
     detail: (id: number) => [...createQueryKeys.roles.details(), id] as const,
   },
@@ -122,7 +152,7 @@ export const createQueryKeys = {
   machines: {
     all: ['machines'] as const,
     lists: () => [...createQueryKeys.machines.all, 'list'] as const,
-    list: (filters: any) => [...createQueryKeys.machines.lists(), { filters }] as const,
+    list: (filters: unknown) => [...createQueryKeys.machines.lists(), { filters }] as const,
     details: () => [...createQueryKeys.machines.all, 'detail'] as const,
     detail: (id: number) => [...createQueryKeys.machines.details(), id] as const,
   },
@@ -130,7 +160,7 @@ export const createQueryKeys = {
   fabricStructures: {
     all: ['fabricStructures'] as const,
     lists: () => [...createQueryKeys.fabricStructures.all, 'list'] as const,
-    list: (filters: any) => [...createQueryKeys.fabricStructures.lists(), { filters }] as const,
+    list: (filters: unknown) => [...createQueryKeys.fabricStructures.lists(), { filters }] as const,
     details: () => [...createQueryKeys.fabricStructures.all, 'detail'] as const,
     detail: (id: number) => [...createQueryKeys.fabricStructures.details(), id] as const,
   },
@@ -138,19 +168,35 @@ export const createQueryKeys = {
   locations: {
     all: ['locations'] as const,
     lists: () => [...createQueryKeys.locations.all, 'list'] as const,
-    list: (filters: any) => [...createQueryKeys.locations.lists(), { filters }] as const,
+    list: (filters: unknown) => [...createQueryKeys.locations.lists(), { filters }] as const,
     details: () => [...createQueryKeys.locations.all, 'detail'] as const,
     detail: (id: number) => [...createQueryKeys.locations.details(), id] as const,
+  },
+  
+  tapeColors: {
+    all: ['tapeColors'] as const,
+    lists: () => [...createQueryKeys.tapeColors.all, 'list'] as const,
+    list: (filters: unknown) => [...createQueryKeys.tapeColors.lists(), { filters }] as const,
+    details: () => [...createQueryKeys.tapeColors.all, 'detail'] as const,
+    detail: (id: number) => [...createQueryKeys.tapeColors.details(), id] as const,
+  },
+  
+  shifts: {
+    all: ['shifts'] as const,
+    lists: () => [...createQueryKeys.shifts.all, 'list'] as const,
+    list: (filters: unknown) => [...createQueryKeys.shifts.lists(), { filters }] as const,
+    details: () => [...createQueryKeys.shifts.all, 'detail'] as const,
+    detail: (id: number) => [...createQueryKeys.shifts.details(), id] as const,
   },
 };
 
 // Error handling utilities
 export const queryErrorHandlers = {
   // Standard error handler for mutations
-  handleMutationError: (error: any, defaultMessage: string) => {
-    const message = error?.response?.data?.message ||
-      error?.response?.data?.error ||
-      error?.message ||
+  handleMutationError: (error: unknown, defaultMessage: string) => {
+    const message = (error as { response?: { data?: { message?: string; error?: string } } })?.response?.data?.message ||
+      (error as { response?: { data?: { error?: string } } })?.response?.data?.error ||
+      (error as { message?: string })?.message ||
       defaultMessage;
 
     return {
@@ -161,17 +207,17 @@ export const queryErrorHandlers = {
   },
 
   // Check if error is authentication related
-  isAuthError: (error: any) => {
-    return error?.response?.status === 401 || error?.response?.status === 403;
+  isAuthError: (error: unknown) => {
+    return (error as { response?: { status?: number } })?.response?.status === 401 || (error as { response?: { status?: number } })?.response?.status === 403;
   },
 
   // Check if error is network related
-  isNetworkError: (error: any) => {
-    return !error?.response && error?.code === 'NETWORK_ERROR';
+  isNetworkError: (error: unknown) => {
+    return !(error as { response?: unknown })?.response && (error as { code?: string })?.code === 'NETWORK_ERROR';
   },
 
   // Get user-friendly error message
-  getUserFriendlyMessage: (error: any) => {
+  getUserFriendlyMessage: (error: unknown) => {
     if (queryErrorHandlers.isAuthError(error)) {
       return 'You are not authorized to perform this action.';
     }
@@ -180,30 +226,31 @@ export const queryErrorHandlers = {
       return 'Network error. Please check your connection and try again.';
     }
 
-    if (error?.response?.status === 404) {
+    const responseStatus = (error as { response?: { status?: number } })?.response?.status;
+    if (responseStatus === 404) {
       return 'The requested resource was not found.';
     }
 
-    if (error?.response?.status >= 500) {
+    if (responseStatus && responseStatus >= 500) {
       return 'Server error. Please try again later.';
     }
 
-    return error?.response?.data?.message || error?.message || 'An unexpected error occurred.';
+    return (error as { response?: { data?: { message?: string } }, message?: string })?.response?.data?.message || (error as { message?: string })?.message || 'An unexpected error occurred.';
   },
 };
 
 // Performance optimization utilities
 export const queryOptimizations = {
   // Background refetch for critical data
-  setupBackgroundRefetch: (queryClient: any) => {
+  setupBackgroundRefetch: () => {
     // Can add background refetch logic here if needed
   },
 
   // Prefetch common data
-  prefetchCommonData: async (queryClient: any) => {
+  prefetchCommonData: async (queryClient: unknown) => {
     try {
       // Prefetch roles for user management (pageAccesses included)
-      await queryClient.prefetchQuery({
+      await (queryClient as { prefetchQuery?: (args: unknown) => Promise<unknown> })?.prefetchQuery?.({
         queryKey: ['roles', 'list'],
         queryFn: async () => {
           const { roleApi } = await import('@/lib/api-client');
