@@ -805,6 +805,53 @@ export interface RollConfirmationResponseDto {
 }
 
 // ============================================
+// ROLL ASSIGNMENT DTOs
+// ============================================
+
+export interface CreateRollAssignmentRequest {
+  machineAllocationId: number;
+  shiftId: number;
+  assignedRolls: number;
+  operatorName: string;
+  timestamp: string;
+}
+
+export interface GenerateStickersRequest {
+  rollAssignmentId: number;
+  stickerCount: number;
+}
+
+export interface GenerateBarcodesRequest {
+  rollAssignmentId: number;
+  barcodeCount: number;
+}
+
+// New interface for generating stickers for specific roll numbers
+export interface GenerateStickersForRollsRequest {
+  rollNumbers: number[];
+}
+
+export interface RollAssignmentResponseDto {
+  id: number;
+  machineAllocationId: number;
+  shiftId: number;
+  assignedRolls: number;
+  generatedStickers: number;
+  remainingRolls: number;
+  operatorName: string;
+  timestamp: string;
+  generatedBarcodes: GeneratedBarcodeDto[];
+}
+
+export interface GeneratedBarcodeDto {
+  id: number;
+  rollAssignmentId: number;
+  barcode: string;
+  rollNumber: number;
+  generatedAt: string;
+}
+
+// ============================================
 // INSPECTION DTOs
 // ============================================
 

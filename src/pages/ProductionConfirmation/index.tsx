@@ -1,38 +1,35 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { toast } from '@/lib/toast';
-
+import { RollConfirmationService } from '@/services/rollConfirmationService';
 import { ProductionAllotmentService } from '@/services/productionAllotmentService';
 import { SalesOrderService } from '@/services/salesOrderService';
-import { RollConfirmationService } from '@/services/rollConfirmationService';
-import type { ProductionAllotmentResponseDto, MachineAllocationResponseDto } from '@/types/api-types';
-import type { SalesOrderDto, RollConfirmationRequestDto } from '@/types/api-types';
+import type { 
+  RollConfirmationRequestDto, 
+  ProductionAllotmentResponseDto,
+  SalesOrderDto,
+  MachineAllocationResponseDto
+} from '@/types/api-types';
 
 const ProductionConfirmation: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isFetchingData, setIsFetchingData] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [rollValidation, setRollValidation] = useState<{
-    isValid: boolean | null;
-    message: string | null;
-  }>({ isValid: null, message: null });
   
   // Form fields
   const [formData, setFormData] = useState({
     allotId: '',
     machineName: '',
     rollNo: '',
-    greyGsm: '',
-    greyWidth: '',
-    blendPercent: '',
-    cotton: '',
-    polyester: '',
-    spandex: '',
-    rollPerKg: '', // Expected roll per kg from database
-    actualRollPerKg: '' // Actual produced roll per kg
+    greyGsm: '0',
+    greyWidth: '0',
+    blendPercent: '0',
+    cotton: '0',
+    polyester: '0',
+    spandex: '0'
   });
 
   // Allotment data
@@ -53,40 +50,6 @@ const ProductionConfirmation: React.FC = () => {
       ...prev,
       [name]: value
     }));
-    
-    // Clear validation when user changes actualRollPerKg
-    if (name === 'actualRollPerKg') {
-      setRollValidation({ isValid: null, message: null });
-    }
-  };
-
-  // Validate roll per kg
-  const validateRollPerKg = () => {
-    const rollPerKg = parseFloat(formData.rollPerKg);
-    const actualRollPerKg = parseFloat(formData.actualRollPerKg);
-    
-    if (isNaN(rollPerKg) || isNaN(actualRollPerKg)) {
-      setRollValidation({
-        isValid: false,
-        message: 'Please enter valid numbers for both roll per kg values'
-      });
-      return;
-    }
-    
-    const difference = Math.abs(rollPerKg - actualRollPerKg);
-    const tolerance = 0.5; // 500g in kg
-    
-    if (difference <= tolerance) {
-      setRollValidation({
-        isValid: true,
-        message: `Roll is within tolerance (${difference.toFixed(3)}kg difference). Roll approved.`
-      });
-    } else {
-      setRollValidation({
-        isValid: false,
-        message: `Roll exceeds tolerance by ${(difference - tolerance).toFixed(3)}kg. Roll not approved.`
-      });
-    }
   };
 
   // Fetch greyGsm and greyWidth based on allotId
@@ -112,32 +75,29 @@ const ProductionConfirmation: React.FC = () => {
       }
       
       // Get rollPerKg from the matching machine allocation if available
-      let rollPerKgValue = '';
       let selectedMachineData = null;
       
       if (allotmentData.machineAllocations && allotmentData.machineAllocations.length > 0) {
         // If machine name from barcode is provided, find matching machine allocation
         if (machineNameFromBarcode) {
           selectedMachineData = allotmentData.machineAllocations.find(
-            ma => ma.machineName === machineNameFromBarcode
+            (ma: MachineAllocationResponseDto) => ma.machineName === machineNameFromBarcode
           ) || allotmentData.machineAllocations[0]; // Fallback to first machine if not found
         } else {
           // Otherwise use the first machine allocation
           selectedMachineData = allotmentData.machineAllocations[0];
         }
         
-        rollPerKgValue = selectedMachineData.rollPerKg?.toString() || '';
         setSelectedMachine(selectedMachineData);
       }
       
       setFormData(prev => ({
         ...prev,
-        greyGsm: allotmentData.reqGreyGsm?.toString() || '',
-        greyWidth: allotmentData.reqGreyWidth?.toString() || '',
-        rollPerKg: rollPerKgValue
+        greyGsm: allotmentData.reqGreyGsm?.toString() || '0',
+        greyWidth: allotmentData.reqGreyWidth?.toString() || '0',
       }));
       
-      toast.success('Success', 'Allotment data loaded successfully');
+      toast.success('Success', 'Production planning data loaded successfully. Please enter actual values for quality checking.');
     } catch (err) {
       console.error('Error fetching allotment data:', err);
       setAllotmentData(null);
@@ -231,8 +191,7 @@ const ProductionConfirmation: React.FC = () => {
       { value: formData.machineName, name: 'Machine Name' },
       { value: formData.rollNo, name: 'Roll No' },
       { value: formData.greyGsm, name: 'GREY GSM' },
-      { value: formData.greyWidth, name: 'GREY WIDTH' },
-      { value: formData.rollPerKg, name: 'Expected Roll Per Kg' }
+      { value: formData.greyWidth, name: 'GREY WIDTH' }
     ];
     
     const emptyFields = requiredFields.filter(field => !field.value);
@@ -243,11 +202,6 @@ const ProductionConfirmation: React.FC = () => {
       return;
     }
     
-    // Validate roll per kg before submission if both values are provided
-    if (formData.rollPerKg && formData.actualRollPerKg) {
-      validateRollPerKg();
-    }
-    
     setIsLoading(true);
     setError(null);
     
@@ -256,7 +210,7 @@ const ProductionConfirmation: React.FC = () => {
       const rollConfirmationData: RollConfirmationRequestDto = {
         allotId: formData.allotId,
         machineName: formData.machineName,
-        rollPerKg: parseFloat(formData.rollPerKg) || 0,
+        rollPerKg: selectedMachine?.rollPerKg || 0,
         greyGsm: parseFloat(formData.greyGsm) || 0,
         greyWidth: parseFloat(formData.greyWidth) || 0,
         blendPercent: parseFloat(formData.blendPercent) || 0,
@@ -271,21 +225,19 @@ const ProductionConfirmation: React.FC = () => {
       
       console.log('Roll confirmation saved:', response);
       setIsLoading(false);
-      toast.success('Success', 'Roll Confirmation details added successfully');
+      toast.success('Success', 'Quality checking data saved successfully');
       
       // Reset form after successful submission
       setFormData({
         allotId: '',
         machineName: '',
         rollNo: '',
-        greyGsm: '',
-        greyWidth: '',
-        blendPercent: '',
-        cotton: '',
-        polyester: '',
-        spandex: '',
-        rollPerKg: '',
-        actualRollPerKg: ''
+        greyGsm: '0',
+        greyWidth: '0',
+        blendPercent: '0',
+        cotton: '0',
+        polyester: '0',
+        spandex: '0'
       });
       setAllotmentData(null);
       setSalesOrderData(null);
@@ -307,28 +259,18 @@ const ProductionConfirmation: React.FC = () => {
     }
   }, [error]);
 
-  // Auto-dismiss roll validation messages after 2 seconds
-  useEffect(() => {
-    if (rollValidation.message) {
-      const timer = setTimeout(() => {
-        setRollValidation({ isValid: null, message: null });
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [rollValidation.message]);
-
   return (
     <div className="p-6">
       <div className="mb-6">
         <h1 className="text-3xl font-bold">Quality Checking</h1>
         <p className="text-muted-foreground">
-          Scan a barcode or enter details manually
+          Enter actual fabric specifications for quality checking
         </p>
       </div>
 
       <Card>
         <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-lg">
-          <CardTitle className="text-blue-800">Roll Confirmation Details</CardTitle>
+          <CardTitle className="text-blue-800">Quality Checking Details</CardTitle>
         </CardHeader>
         <CardContent>
          
@@ -453,32 +395,47 @@ const ProductionConfirmation: React.FC = () => {
 
         
             <div className="border-t pt-4 mt-6">
-              <h3 className="text-lg font-semibold mb-4 text-gray-800 border-b border-gray-200 pb-2">Fabric Specifications</h3>
+              <h3 className="text-lg font-semibold mb-4 text-gray-800 border-b border-gray-200 pb-2">Quality Checking - Fabric Specifications</h3>
+              
+              {/* Planning Values Display */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div className="space-y-2 bg-blue-50 p-3 rounded">
+                  <Label className="text-sm font-medium text-blue-800">Planning GREY GSM</Label>
+                  <div className="text-lg font-semibold">
+                    {allotmentData?.reqGreyGsm?.toFixed(2) || 'N/A'}
+                  </div>
+                </div>
+                
+                <div className="space-y-2 bg-blue-50 p-3 rounded">
+                  <Label className="text-sm font-medium text-blue-800">Planning GREY WIDTH</Label>
+                  <div className="text-lg font-semibold">
+                    {allotmentData?.reqGreyWidth?.toFixed(2) || 'N/A'}
+                  </div>
+                </div>
+              </div>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="greyGsm">GREY GSM *</Label>
+                  <Label htmlFor="greyGsm">Actual GREY GSM *</Label>
                   <Input
                     id="greyGsm"
                     name="greyGsm"
                     value={formData.greyGsm}
                     onChange={handleChange}
                     type="number"
-                    disabled={isFetchingData || !!allotmentData} // Disable when data is fetched
-                    placeholder="Enter GREY GSM"
+                    placeholder="Enter Actual GREY GSM"
                   />
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="greyWidth">GREY WIDTH *</Label>
+                  <Label htmlFor="greyWidth">Actual GREY WIDTH *</Label>
                   <Input
                     id="greyWidth"
                     name="greyWidth"
                     value={formData.greyWidth}
                     onChange={handleChange}
                     type="number"
-                    disabled={isFetchingData || !!allotmentData} // Disable when data is fetched
-                    placeholder="Enter GREY WIDTH"
+                    placeholder="Enter Actual GREY WIDTH"
                   />
                 </div>
                 
@@ -534,55 +491,10 @@ const ProductionConfirmation: React.FC = () => {
               </div>
             </div>
             
-            <div className="border-t pt-4 mt-6">
-              <h3 className="text-lg font-semibold mb-4 text-gray-800 border-b border-gray-200 pb-2">Roll Weight Validation</h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="rollPerKg">Expected Roll Per Kg (from database) *</Label>
-                  <Input
-                    id="rollPerKg"
-                    name="rollPerKg"
-                    value={formData.rollPerKg}
-                    onChange={handleChange}
-                    type="number"
-                    step="0.001"
-                    disabled={isFetchingData || !!allotmentData} // Disable when data is fetched
-                    placeholder="Enter Expected Roll Per Kg"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="actualRollPerKg">Actual Roll Per Kg (produced)</Label>
-                  <Input
-                    id="actualRollPerKg"
-                    name="actualRollPerKg"
-                    value={formData.actualRollPerKg}
-                    onChange={handleChange}
-                    type="number"
-                    step="0.001"
-                    placeholder="Enter actual roll weight per kg"
-                  />
-                </div>
-                
-                <div className="space-y-2 flex items-end">
-                  <Button 
-                    type="button" 
-                    onClick={validateRollPerKg}
-                    disabled={!formData.rollPerKg || !formData.actualRollPerKg}
-                    className="h-10"
-                  >
-                    Validate Roll
-                  </Button>
-                </div>
-              </div>
-            </div>
-            
-            
             <div className="flex justify-end pt-4">
               <Button 
                 type="submit" 
-                disabled={isLoading || isFetchingData || (rollValidation.isValid === false)}
+                disabled={isLoading || isFetchingData}
               >
                 {isLoading ? (
                   <div className="flex items-center">
@@ -595,7 +507,7 @@ const ProductionConfirmation: React.FC = () => {
                     <span>Loading Data...</span>
                   </div>
                 ) : (
-                  'Save Confirmation'
+                  'Save Quality Check'
                 )}
               </Button>
             </div>

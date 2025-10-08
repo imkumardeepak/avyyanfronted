@@ -49,7 +49,11 @@ import type {
   ShiftResponseDto,
   CreateShiftRequestDto,
   UpdateShiftRequestDto,
-  ShiftSearchRequestDto
+  ShiftSearchRequestDto,
+  CreateRollAssignmentRequest,
+  RollAssignmentResponseDto,
+  GenerateStickersRequest,
+  GenerateBarcodesRequest
 } from '@/types/api-types';
 
 // API Configuration
@@ -514,6 +518,10 @@ export const productionAllotmentApi = {
   // POST /api/ProductionAllotment/stkprint/{id} - Generate QR codes for machine allocation
   generateQRCodes: (id: number): Promise<AxiosResponse<{ message: string }>> =>
     apiClient.post(`/ProductionAllotment/stkprint/${id}`),
+    
+  // POST /api/ProductionAllotment/stkprint/roll-assignment/{id} - Generate QR codes for specific roll numbers in a roll assignment
+  generateQRCodesForRollAssignment: (id: number, rollNumbers: number[]): Promise<AxiosResponse<{ message: string }>> =>
+    apiClient.post(`/ProductionAllotment/stkprint/roll-assignment/${id}`, { rollNumbers }),
 };
 
 // ============================================
@@ -532,6 +540,28 @@ export const rollConfirmationApi = {
   // GET /api/RollConfirmation/by-allot-id/{allotId} - Get roll confirmations by AllotId
   getRollConfirmationsByAllotId: (allotId: string): Promise<AxiosResponse<RollConfirmationResponseDto[]>> =>
     apiClient.get(`/RollConfirmation/by-allot-id/${allotId}`),
+};
+
+// ============================================
+// ROLL ASSIGNMENT API (/api/RollAssignment)
+// ============================================
+
+export const rollAssignmentApi = {
+  // POST /api/RollAssignment - Create new roll assignment
+  createRollAssignment: (data: CreateRollAssignmentRequest): Promise<AxiosResponse<RollAssignmentResponseDto>> =>
+    apiClient.post('/RollAssignment', data),
+
+  // POST /api/RollAssignment/generate-stickers - Generate stickers for roll assignment
+  generateStickers: (data: GenerateStickersRequest): Promise<AxiosResponse<RollAssignmentResponseDto>> =>
+    apiClient.post('/RollAssignment/generate-stickers', data),
+
+  // POST /api/RollAssignment/generate-barcodes - Generate barcodes for roll assignment
+  generateBarcodes: (data: GenerateBarcodesRequest): Promise<AxiosResponse<RollAssignmentResponseDto>> =>
+    apiClient.post('/RollAssignment/generate-barcodes', data),
+
+  // GET /api/RollAssignment/by-machine-allocation/{machineAllocationId} - Get roll assignments by MachineAllocationId
+  getRollAssignmentsByMachineAllocationId: (machineAllocationId: number): Promise<AxiosResponse<RollAssignmentResponseDto[]>> =>
+    apiClient.get(`/RollAssignment/by-machine-allocation/${machineAllocationId}`),
 };
 
 // ============================================
