@@ -7,63 +7,34 @@ import { toast } from '@/lib/toast';
 import { RollConfirmationService } from '@/services/rollConfirmationService';
 import { ProductionAllotmentService } from '@/services/productionAllotmentService';
 import { SalesOrderService } from '@/services/salesOrderService';
-import type { 
-  RollConfirmationRequestDto, 
-  ProductionAllotmentResponseDto,
-  SalesOrderDto,
-  MachineAllocationResponseDto
-} from '@/types/api-types';
+import type { RollConfirmationRequestDto, ProductionAllotmentResponseDto, SalesOrderDto, MachineAllocationResponseDto } from '@/types/api-types';
 
 const ProductionConfirmation: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isFetchingData, setIsFetchingData] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  
-  // Form fields
   const [formData, setFormData] = useState({
-    allotId: '',
-    machineName: '',
-    rollNo: '',
-    greyGsm: '0',
-    greyWidth: '0',
-    blendPercent: '0',
-    cotton: '0',
-    polyester: '0',
-    spandex: '0'
+    allotId: '', machineName: '', rollNo: '', greyGsm: '0', greyWidth: '0', blendPercent: '0', cotton: '0', polyester: '0', spandex: '0'
   });
-
-  // Allotment data
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [allotmentData, setAllotmentData] = useState<ProductionAllotmentResponseDto | null>(null);
   const [salesOrderData, setSalesOrderData] = useState<SalesOrderDto | null>(null);
   const [selectedMachine, setSelectedMachine] = useState<MachineAllocationResponseDto | null>(null);
 
-  // Refs for scanner
-  const scanBuffer = useRef<string>(''); // store scanned characters
-  const isScanning = useRef<boolean>(false); // track if we're in a scanning session
-  const lastKeyTime = useRef<number>(Date.now()); // track time between key presse`s
+  const scanBuffer = useRef<string>('');
+  const isScanning = useRef<boolean>(false);
+  const lastKeyTime = useRef<number>(Date.now());
 
-  // Handle input changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Fetch greyGsm and greyWidth based on allotId
   const fetchAllotmentData = async (allotId: string, machineNameFromBarcode?: string) => {
     if (!allotId) return;
-    
     setIsFetchingData(true);
-    setError(null);
-    
     try {
       const allotmentData = await ProductionAllotmentService.getProductionAllotmentByAllotId(allotId);
       setAllotmentData(allotmentData);
       
-      // Fetch sales order data if salesOrderId is available
       if (allotmentData.salesOrderId) {
         try {
           const salesOrder = await SalesOrderService.getSalesOrderById(allotmentData.salesOrderId);
@@ -74,20 +45,11 @@ const ProductionConfirmation: React.FC = () => {
         }
       }
       
-      // Get rollPerKg from the matching machine allocation if available
       let selectedMachineData = null;
-      
-      if (allotmentData.machineAllocations && allotmentData.machineAllocations.length > 0) {
-        // If machine name from barcode is provided, find matching machine allocation
-        if (machineNameFromBarcode) {
-          selectedMachineData = allotmentData.machineAllocations.find(
-            (ma: MachineAllocationResponseDto) => ma.machineName === machineNameFromBarcode
-          ) || allotmentData.machineAllocations[0]; // Fallback to first machine if not found
-        } else {
-          // Otherwise use the first machine allocation
-          selectedMachineData = allotmentData.machineAllocations[0];
-        }
-        
+      if (allotmentData.machineAllocations?.length > 0) {
+        selectedMachineData = machineNameFromBarcode 
+          ? allotmentData.machineAllocations.find((ma: MachineAllocationResponseDto) => ma.machineName === machineNameFromBarcode) || allotmentData.machineAllocations[0]
+          : allotmentData.machineAllocations[0];
         setSelectedMachine(selectedMachineData);
       }
       
@@ -97,44 +59,32 @@ const ProductionConfirmation: React.FC = () => {
         greyWidth: allotmentData.reqGreyWidth?.toString() || '0',
       }));
       
-      toast.success('Success', 'Production planning data loaded successfully. Please enter actual values for quality checking.');
+      toast.success('Success', 'Production planning data loaded successfully.');
     } catch (err) {
       console.error('Error fetching allotment data:', err);
       setAllotmentData(null);
       setSalesOrderData(null);
       setSelectedMachine(null);
-      
-      // Show specific error message to user
-      if (err instanceof Error) {
-        toast.error('Error', err.message);
-      } else {
-        toast.error('Error', 'Failed to fetch allotment data. Please check the allotment ID and try again.');
-      }
+      toast.error('Error', err instanceof Error ? err.message : 'Failed to fetch allotment data.');
     } finally {
       setIsFetchingData(false);
     }
   };
 
-  // Parse barcode text and fill fields
   const handleBarcodeScan = (barcodeData: string) => {
     try {
       const parts = barcodeData.split('#');
       if (parts.length >= 3) {
-        const newAllotId = parts[0] || '';
-        const machineName = parts[1] || '';
         setFormData(prev => ({
           ...prev,
-          allotId: newAllotId,
-          machineName: machineName,
+          allotId: parts[0] || '',
+          machineName: parts[1] || '',
           rollNo: parts[2] || '',
         }));
-        
-        // Fetch greyGsm, greyWidth, and rollPerKg based on allotId and machineName
-        fetchAllotmentData(newAllotId, machineName);
-        
+        fetchAllotmentData(parts[0], parts[1]);
         toast.success('Success', 'Barcode data loaded successfully');
       } else {
-        toast.error('Error', 'Invalid barcode format. Expected: ALLOTID#MACHINENAME#ROLLNO');
+        toast.error('Error', 'Invalid barcode format');
       }
     } catch (err) {
       console.error('Error processing barcode:', err);
@@ -142,10 +92,8 @@ const ProductionConfirmation: React.FC = () => {
     }
   };
 
-  // Scanner event handler (keyboard-based scanners)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore key events if user is typing in an input field
       if (e.target instanceof HTMLInputElement) {
         scanBuffer.current = '';
         isScanning.current = false;
@@ -155,7 +103,6 @@ const ProductionConfirmation: React.FC = () => {
       const currentTime = Date.now();
       const timeSinceLastKey = currentTime - lastKeyTime.current;
       
-      // If it's been more than 100ms since the last key, start a new scan session
       if (timeSinceLastKey > 100) {
         scanBuffer.current = '';
         isScanning.current = true;
@@ -163,17 +110,13 @@ const ProductionConfirmation: React.FC = () => {
       
       lastKeyTime.current = currentTime;
       
-      if (e.key === 'Enter') {
-        if (scanBuffer.current.length > 0 && isScanning.current) {
-          handleBarcodeScan(scanBuffer.current);
-          scanBuffer.current = '';
-          isScanning.current = false;
-          e.preventDefault(); // Prevent form submission if applicable
-        }
-      } else if (e.key.length === 1) { // Only process character keys
-        if (isScanning.current) {
-          scanBuffer.current += e.key;
-        }
+      if (e.key === 'Enter' && scanBuffer.current.length > 0 && isScanning.current) {
+        handleBarcodeScan(scanBuffer.current);
+        scanBuffer.current = '';
+        isScanning.current = false;
+        e.preventDefault();
+      } else if (e.key.length === 1 && isScanning.current) {
+        scanBuffer.current += e.key;
       }
     };
 
@@ -181,11 +124,9 @@ const ProductionConfirmation: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate all required fields are filled
     const requiredFields = [
       { value: formData.allotId, name: 'Allot ID' },
       { value: formData.machineName, name: 'Machine Name' },
@@ -195,18 +136,13 @@ const ProductionConfirmation: React.FC = () => {
     ];
     
     const emptyFields = requiredFields.filter(field => !field.value);
-    
     if (emptyFields.length > 0) {
-      const missingFields = emptyFields.map(field => field.name).join(', ');
-      toast.error('Error', `Please fill in all required fields: ${missingFields}`);
+      toast.error('Error', `Please fill in: ${emptyFields.map(field => field.name).join(', ')}`);
       return;
     }
     
     setIsLoading(true);
-    setError(null);
-    
     try {
-      // Prepare data for roll confirmation API
       const rollConfirmationData: RollConfirmationRequestDto = {
         allotId: formData.allotId,
         machineName: formData.machineName,
@@ -220,294 +156,166 @@ const ProductionConfirmation: React.FC = () => {
         rollNo: formData.rollNo
       };
       
-      // Call the roll confirmation API
-      const response = await RollConfirmationService.createRollConfirmation(rollConfirmationData);
-      
-      console.log('Roll confirmation saved:', response);
-      setIsLoading(false);
+      await RollConfirmationService.createRollConfirmation(rollConfirmationData);
       toast.success('Success', 'Quality checking data saved successfully');
       
-      // Reset form after successful submission
+      // Reset form
       setFormData({
-        allotId: '',
-        machineName: '',
-        rollNo: '',
-        greyGsm: '0',
-        greyWidth: '0',
-        blendPercent: '0',
-        cotton: '0',
-        polyester: '0',
-        spandex: '0'
+        allotId: '', machineName: '', rollNo: '', greyGsm: '0', greyWidth: '0', blendPercent: '0', cotton: '0', polyester: '0', spandex: '0'
       });
       setAllotmentData(null);
       setSalesOrderData(null);
       setSelectedMachine(null);
     } catch (err) {
       console.error('Error saving roll confirmation:', err);
+      toast.error('Error', 'Failed to save confirmation data.');
+    } finally {
       setIsLoading(false);
-      toast.error('Error', 'Failed to save confirmation data. Please try again.');
     }
   };
 
-  // Auto-dismiss error messages after 2 seconds
-  useEffect(() => {
-    if (error) {
-      const timer = setTimeout(() => {
-        setError(null);
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [error]);
-
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">Quality Checking</h1>
-        <p className="text-muted-foreground">
-          Enter actual fabric specifications for quality checking
-        </p>
-      </div>
-
-      <Card>
-        <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-lg">
-          <CardTitle className="text-blue-800">Quality Checking Details</CardTitle>
+    <div className="p-2 max-w-4xl mx-auto">
+      <Card className="shadow-md border-0">
+        <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-t-lg py-3">
+          <CardTitle className="text-white text-base font-semibold text-center">Quality Checking Details</CardTitle>
         </CardHeader>
-        <CardContent>
-         
-          {/* Completely hidden scanner focus element */}
-          <div className="absolute -left-full top-0 opacity-0 w-0 h-0 overflow-hidden">
-            <input type="text" />
-          </div>
+        
+        <CardContent className="p-3">
+          <div className="absolute -left-full top-0 opacity-0 w-0 h-0 overflow-hidden"><input type="text" /></div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="space-y-1">
-                <Label htmlFor="allotId" className="text-sm">Allot ID *</Label>
-                <Input
-                  id="allotId"
-                  name="allotId"
-                  value={formData.allotId}
-                  onChange={handleChange}
-                  placeholder="Enter Allot ID"
-                  required
-                 disabled={!!allotmentData}
-                  className="text-sm h-9"
-                />
-              </div>
-              
-              <div className="space-y-1">
-                <Label htmlFor="machineName" className="text-sm">Machine Name *</Label>
-                <Input
-                  id="machineName"
-                  name="machineName"
-                  value={formData.machineName}
-                  onChange={handleChange}
-                  placeholder="Enter Machine Name"
-                  required
-                  disabled={!!selectedMachine} // Disable when machine data is fetched
-                  className="text-sm h-9"
-                />
-              </div>
-              
-              <div className="space-y-1">
-                <Label htmlFor="rollNo" className="text-sm">Roll No. *</Label>
-                <Input
-                  id="rollNo"
-                  name="rollNo"
-                  value={formData.rollNo}
-                  onChange={handleChange}
-                  placeholder="Enter Roll Number"
-                  required
-                  disabled={!!formData.allotId && !!formData.machineName} // Disable when populated from barcode
-                  className="text-sm h-9"
-                />
-              </div>
+          <form onSubmit={handleSubmit} className="space-y-3">
+            {/* Main Input Fields - Compact 4-column grid */}
+            <div className="grid grid-cols-3 sm:grid-cols-3 gap-2 p-2 bg-gray-50 rounded-md">
+              {[
+                { id: 'allotId', label: 'Allot ID *', value: formData.allotId, disabled: !!allotmentData },
+                { id: 'machineName', label: 'Machine Name *', value: formData.machineName, disabled: !!selectedMachine },
+                { id: 'rollNo', label: 'Roll No. *', value: formData.rollNo, disabled: !!formData.allotId && !!formData.machineName },
+          
+              ].map(field => (
+                <div key={field.id} className="space-y-1">
+                  <Label htmlFor={field.id} className="text-xs font-medium text-gray-700">{field.label}</Label>
+                  <Input 
+                    id={field.id} 
+                    name={field.id} 
+                    value={field.value} 
+                    onChange={handleChange} 
+                    placeholder={`Enter ${field.label.replace(' *', '')}`} 
+                    required={field.label.includes('*')} 
+                    disabled={field.disabled} 
+                    className="text-xs h-8 bg-white" 
+                  />
+                </div>
+              ))}
             </div>
             
-            {/* Sales Order Description Section - Attractive Compact Display */}
+            {/* Order & Machine Info - Compact display */}
             {salesOrderData && (
-              <div className="mb-6">
-                <Card className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 shadow-sm rounded-lg">
-                  <CardHeader className="pb-2 pt-3">
-                    <CardTitle className="text-sm font-semibold text-purple-800">ROll Details</CardTitle>
-                  </CardHeader>
-                  <CardContent className="pb-3 pt-2">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                      <div className="text-center bg-white/60 rounded p-2">
-                        <Label className="text-xs text-purple-600 block">Order No</Label>
-                        <div className="text-xs font-medium">{salesOrderData.voucherNumber || 'N/A'}</div>
-                      </div>
-                      
-                      <div className="text-center bg-white/60 rounded p-2">
-                        <Label className="text-xs text-purple-600 block">Party</Label>
-                        <div className="text-xs font-medium truncate" title={salesOrderData.partyName || 'N/A'}>
-                          {salesOrderData.partyName || 'N/A'}
-                        </div>
-                      </div>
-                      
-                      <div className="text-center bg-white/60 rounded p-2">
-                        <Label className="text-xs text-purple-600 block">Order Date</Label>
-                        <div className="text-xs font-medium">
-                          {salesOrderData.salesDate 
-                            ? new Date(salesOrderData.salesDate).toLocaleDateString() 
-                            : 'N/A'}
-                        </div>
-                      </div>
-                                                <div className="text-center bg-white/50 rounded p-1">
-                            <Label className="text-xs text-green-600 block">Machine</Label>
-                            <div className="text-xs font-medium">{selectedMachine?.machineName || 'N/A'}</div>
-                          </div>
-                          
-                         
-                          
-                          <div className="text-center bg-white/50 rounded p-1">
-                            <Label className="text-xs text-green-600 block">RPM</Label>
-                            <div className="text-xs font-medium">{selectedMachine?.rpm || 'N/A'}</div>
-                          </div>
-                          
-                          <div className="text-center bg-white/50 rounded p-1">
-                            <Label className="text-xs text-green-600 block">Rolls/Kg</Label>
-                            <div className="text-xs font-medium">{selectedMachine?.rollPerKg?.toFixed(3) || 'N/A'}</div>
-                          </div>
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-md p-2">
+                <div className="flex items-center justify-between mb-1">
+                  <h3 className="text-xs font-semibold text-green-800 flex items-center">
+                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1"></span>Roll Details
+                  </h3>
+                  <span className="text-[10px] text-green-600 bg-green-100 px-1.5 py-0.5 rounded">{salesOrderData.voucherNumber || 'N/A'}</span>
+                </div>
+                
+                <div className="grid grid-cols-3 gap-1 text-[10px]">
+                  {[
+                    { label: 'Party:', value: salesOrderData.partyName || 'N/A' },
+                    { label: 'Order Date:', value: salesOrderData.salesDate ? new Date(salesOrderData.salesDate).toLocaleDateString() : 'N/A' },
+                    { label: 'Machine:', value: selectedMachine?.machineName || 'N/A' },
+                    { label: 'Rolls/Kg:', value: selectedMachine?.rollPerKg?.toFixed(3) || 'N/A' }
+                  ].map((item, index) => (
+                    <div key={index} className="flex">
+                      <span className="text-gray-600 mr-1">{item.label}</span>
+                      <div className="font-small truncate " title={item.value.toString()}>{item.value}</div>
                     </div>
-                    
-                    {salesOrderData.items && salesOrderData.items.length > 0 && (
-                      <div className="mt-3 pt-2 border-t border-purple-100">
-                        <Label className="text-xs text-purple-600 block mb-1">Item Descriptions</Label>
-                        <div className="space-y-1 max-h-20 overflow-y-auto">
-                          {salesOrderData.items.map((item, index) => (
-                            <div 
-                              key={index} 
-                              className="text-xs bg-white/60 rounded p-1 truncate"
-                              title={item.descriptions || item.stockItemName || 'N/A'}
-                            >
-                              {item.descriptions || item.stockItemName || 'N/A'}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                 
-                </Card>
+                  ))}
+                </div>
+
+                {salesOrderData.items && salesOrderData.items.length > 0 && (
+                  <div className="mt-1 pt-1 border-t border-green-200">
+                    <div className="text-[10px] text-green-700 font-medium mb-0.5">Items:</div>
+                    <div className="flex flex-wrap gap-0.5 max-h-8 overflow-y-auto">
+                      {salesOrderData.items.slice(0, 2).map((item, index) => (
+                        <span key={index} className="text-[10px] bg-white/80 text-gray-700 px-1 py-0.5 rounded border" title={item.descriptions || item.stockItemName || 'N/A'}>
+                          {item.descriptions || item.stockItemName || 'N/A'}
+                        </span>
+                      ))}
+                      {salesOrderData.items.length > 2 && <span className="text-[10px] bg-blue-100 text-blue-700 px-1 py-0.5 rounded">+{salesOrderData.items.length - 2} more</span>}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
-        
-            <div className="border-t pt-4 mt-6">
-              <h3 className="text-lg font-semibold mb-4 text-gray-800 border-b border-gray-200 pb-2">Quality Checking - Fabric Specifications</h3>
-              
-              {/* Planning Values Display */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div className="space-y-2 bg-blue-50 p-3 rounded">
-                  <Label className="text-sm font-medium text-blue-800">Planning GREY GSM</Label>
-                  <div className="text-lg font-semibold">
-                    {allotmentData?.reqGreyGsm?.toFixed(2) || 'N/A'}
-                  </div>
-                </div>
-                
-                <div className="space-y-2 bg-blue-50 p-3 rounded">
-                  <Label className="text-sm font-medium text-blue-800">Planning GREY WIDTH</Label>
-                  <div className="text-lg font-semibold">
-                    {allotmentData?.reqGreyWidth?.toFixed(2) || 'N/A'}
-                  </div>
-                </div>
+            {/* Quality Checking Section - Compact layout */}
+            <div className="border border-gray-200 rounded-md p-3 bg-white">
+              <div className="flex items-center mb-2">
+                <div className="w-1 h-3 bg-blue-600 rounded mr-1.5"></div>
+                <h3 className="text-sm font-semibold text-gray-80">Fabric Specifications</h3>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="greyGsm">Actual GREY GSM *</Label>
-                  <Input
-                    id="greyGsm"
-                    name="greyGsm"
-                    value={formData.greyGsm}
-                    onChange={handleChange}
-                    type="number"
-                    placeholder="Enter Actual GREY GSM"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="greyWidth">Actual GREY WIDTH *</Label>
-                  <Input
-                    id="greyWidth"
-                    name="greyWidth"
-                    value={formData.greyWidth}
-                    onChange={handleChange}
-                    type="number"
-                    placeholder="Enter Actual GREY WIDTH"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="blendPercent">BLEND %</Label>
-                  <Input
-                    id="blendPercent"
-                    name="blendPercent"
-                    value={formData.blendPercent}
-                    onChange={handleChange}
-                    type="number"
-                    placeholder="Enter BLEND %"
-                  />
-                </div>
+              {/* Reduced size for Grey GSM and Grey Width */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3 p-2 bg-blue-50 rounded-md">
+                {[
+                  { label: 'Plan GSM', value: allotmentData?.reqGreyGsm?.toFixed(2) || 'N/A' },
+                  { label: 'Plan Width', value: allotmentData?.reqGreyWidth?.toFixed(2) || 'N/A' },
+                  { label: 'Act GSM *', value: '' },
+                  { label: 'Act Width *', value: '' }
+                ].map((item, index) => (
+                  <div key={index} className="text-center">
+                    <Label className="text-[12px] text-blue-700 font-medium block mb-0.5">{item.label}</Label>
+                    {index < 2 ? (
+                      <div className="text-sm font-bold text-blue-900">{item.value}</div>
+                    ) : (
+                      <Input 
+                        id={index === 2 ? 'greyGsm' : 'greyWidth'}
+                        name={index === 2 ? 'greyGsm' : 'greyWidth'}
+                        value={formData[index === 2 ? 'greyGsm' : 'greyWidth']}
+                        onChange={handleChange}
+                        type="number"
+                        step="1"
+                        className="h-7 text-xs p-1"
+                      />
+                    )}
+                  </div>
+                ))}
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                <div className="space-y-2">
-                  <Label htmlFor="cotton">COTTON</Label>
-                  <Input
-                    id="cotton"
-                    name="cotton"
-                    value={formData.cotton}
-                    onChange={handleChange}
-                    type="number"
-                    placeholder="Enter COTTON"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="polyester">POLYESTER</Label>
-                  <Input
-                    id="polyester"
-                    name="polyester"
-                    value={formData.polyester}
-                    onChange={handleChange}
-                    type="number"
-                    placeholder="Enter POLYESTER"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="spandex">SPANDEX</Label>
-                  <Input
-                    id="spandex"
-                    name="spandex"
-                    value={formData.spandex}
-                    onChange={handleChange}
-                    type="number"
-                    placeholder="Enter SPANDEX"
-                  />
-                </div>
+              {/* Blend composition fields in a compact row */}
+              <div className="grid grid-cols-4 gap-2">
+                {[
+                  { id: 'cotton', label: 'COTTON', value: formData.cotton },
+                  { id: 'polyester', label: 'POLYESTER', value: formData.polyester },
+                  { id: 'spandex', label: 'SPANDEX', value: formData.spandex },
+                 { id: 'blendPercent', label: 'Blend %', value: formData.blendPercent }
+                ].map((field) => (
+                  <div key={field.id} className="space-y-1">
+                    <Label htmlFor={field.id} className="text-[10px] font-medium text-gray-700">{field.label}</Label>
+                    <Input 
+                      id={field.id} 
+                      name={field.id} 
+                      value={field.value} 
+                      onChange={handleChange} 
+                      type="number" 
+                      step="1" 
+                      className="h-7 text-xs p-1" 
+                    />
+                  </div>
+                ))}
               </div>
             </div>
             
-            <div className="flex justify-end pt-4">
-              <Button 
-                type="submit" 
-                disabled={isLoading || isFetchingData}
-              >
-                {isLoading ? (
+            <div className="flex justify-center pt-1">
+              <Button type="submit" disabled={isLoading || isFetchingData} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-1.5 h-8 min-w-28">
+                {isLoading || isFetchingData ? (
                   <div className="flex items-center">
-                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
-                    <span>Saving...</span>
-                  </div>
-                ) : isFetchingData ? (
-                  <div className="flex items-center">
-                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
-                    <span>Loading Data...</span>
+                    <div className="mr-1.5 h-2.5 w-2.5 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+                    <span className="text-xs">{isLoading ? 'Saving...' : 'Loading...'}</span>
                   </div>
                 ) : (
-                  'Save Quality Check'
+                  <span className="text-xs">Save Quality Check</span>
                 )}
               </Button>
             </div>

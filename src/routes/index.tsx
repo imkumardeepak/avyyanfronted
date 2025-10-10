@@ -67,6 +67,7 @@ const ProductionAllotment = lazy(() => import('../pages/ProductionAllotment'));
 const ProductionConfirmation = lazy(() => import('../pages/ProductionConfirmation'));
 const RollInspection = lazy(() => import('../pages/RollInspection'));
 const StorageCapture = lazy(() => import('../pages/StorageCapture'));
+const FGStickerConfirmation = lazy(() => import('../pages/FGStickerConfirmation'));
 
 // Chat and Notifications Pages
 const Chat = lazy(() => import('../pages/Chat'));
@@ -481,6 +482,18 @@ const Router = () => {
                 </LazyRoute>
               }
             />
+
+            {/* FG Sticker Confirmation Route */}
+            <Route
+              path="fg-sticker-confirmation"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <FGStickerConfirmation />
+                </LazyRoute>
+              }
+            />
+
+        
           </Route>
         </Routes>
       </Suspense>

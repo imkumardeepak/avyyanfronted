@@ -40,6 +40,7 @@ import type {
   ProductionAllotmentResponseDto,
   RollConfirmationRequestDto,
   RollConfirmationResponseDto,
+  RollConfirmationUpdateDto,
   InspectionRequestDto,
   InspectionResponseDto,
   TapeColorResponseDto,
@@ -522,6 +523,10 @@ export const productionAllotmentApi = {
   // POST /api/ProductionAllotment/stkprint/roll-assignment/{id} - Generate QR codes for specific roll numbers in a roll assignment
   generateQRCodesForRollAssignment: (id: number, rollNumbers: number[]): Promise<AxiosResponse<{ message: string }>> =>
     apiClient.post(`/ProductionAllotment/stkprint/roll-assignment/${id}`, { rollNumbers }),
+    
+  // POST /api/ProductionAllotment/fgsticker/{id} - Print FG Roll sticker
+  printFGRollSticker: (id: number): Promise<AxiosResponse<{ message: string }>> =>
+    apiClient.post(`/ProductionAllotment/fgsticker/${id}`),
 };
 
 // ============================================
@@ -540,6 +545,10 @@ export const rollConfirmationApi = {
   // GET /api/RollConfirmation/by-allot-id/{allotId} - Get roll confirmations by AllotId
   getRollConfirmationsByAllotId: (allotId: string): Promise<AxiosResponse<RollConfirmationResponseDto[]>> =>
     apiClient.get(`/RollConfirmation/by-allot-id/${allotId}`),
+
+  // PUT /api/RollConfirmation/{id} - Update roll confirmation with weight data
+  updateRollConfirmation: (id: number, data: RollConfirmationUpdateDto): Promise<AxiosResponse<RollConfirmationResponseDto>> =>
+    apiClient.put(`/RollConfirmation/${id}`, data),
 };
 
 // ============================================

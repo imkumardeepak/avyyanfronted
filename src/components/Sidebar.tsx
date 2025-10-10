@@ -142,6 +142,12 @@ const navConfig: NavItem[] = [
         icon: Package,
         description: 'Capture and allocate FG rolls to storage locations',
       },
+      {
+        title: 'FG Sticker Confirmation',
+        href: '/fg-sticker-confirmation',
+        icon: Check,
+        description: 'Confirm FG sticker details for finished goods',
+      },
     ],
   },
   {

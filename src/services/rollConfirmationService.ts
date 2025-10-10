@@ -1,7 +1,8 @@
 import { rollConfirmationApi } from '@/lib/api-client';
 import type { 
   RollConfirmationRequestDto,
-  RollConfirmationResponseDto
+  RollConfirmationResponseDto,
+  RollConfirmationUpdateDto
 } from '@/types/api-types';
 
 export class RollConfirmationService {
@@ -34,6 +35,23 @@ export class RollConfirmationService {
       return response.data;
     } catch (error) {
       console.error('Error fetching roll confirmations by AllotId:', error);
+      throw error;
+    }
+  }
+
+  // PUT /api/rollconfirmation/{id} - Update roll confirmation with weight data
+  static async updateRollConfirmation(id: number, data: RollConfirmationUpdateDto): Promise<RollConfirmationResponseDto> {
+    try {
+      const response = await rollConfirmationApi.updateRollConfirmation(id, data);
+      return response.data;
+    } catch (error: any) {
+      console.error('Error updating roll confirmation:', error);
+      
+      // Handle conflict error (409) specifically for FG sticker already generated
+      if (error.response && error.response.status === 409) {
+        throw new Error(error.response.data || 'FG Sticker has already been generated for this roll. Please scan next roll.');
+      }
+      
       throw error;
     }
   }

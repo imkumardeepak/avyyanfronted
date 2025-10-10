@@ -787,6 +787,12 @@ export interface RollConfirmationRequestDto {
   polyester: number;
   spandex: number;
   rollNo: string;
+  // Weight fields for FG Sticker Confirmation
+  grossWeight?: number;
+  tareWeight?: number;
+  netWeight?: number;
+  // Flag to indicate if FG Sticker has been generated
+  isFGStickerGenerated?: boolean;
 }
 
 export interface RollConfirmationResponseDto {
@@ -801,7 +807,21 @@ export interface RollConfirmationResponseDto {
   polyester: number;
   spandex: number;
   rollNo: string;
+  // Weight fields for FG Sticker Confirmation
+  grossWeight?: number;
+  tareWeight?: number;
+  netWeight?: number;
+  // Flag to indicate if FG Sticker has been generated
+  isFGStickerGenerated: boolean;
   createdDate: string;
+}
+
+export interface RollConfirmationUpdateDto {
+  grossWeight?: number;
+  tareWeight?: number;
+  netWeight?: number;
+  // Flag to indicate if FG Sticker has been generated
+  isFGStickerGenerated?: boolean;
 }
 
 // ============================================

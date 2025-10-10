@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useTapeColors } from '@/hooks/queries/useTapeColorQueries';
+import { getTapeColorStyle, TAPE_COLOR_MAP } from '@/utils/tapeColorUtils';
 
 interface PackagingDetailsProps {
   rollPerKg?: number;
@@ -14,6 +14,24 @@ interface PackagingDetailsProps {
   tubeWeight: number;
   tapeColorId: number | null;
 }
+
+// Define types for our color options
+type ColorOption = {
+  id: string;
+  type: 'color';
+  name: string;
+  colorId: number;
+};
+
+type CombinationOption = {
+  id: string;
+  type: 'combination';
+  name: string;
+  color1Id: number;
+  color2Id: number;
+};
+
+type TapeColorOption = ColorOption | CombinationOption;
 
 export function PackagingDetails({
   rollPerKg = 0,
@@ -25,6 +43,49 @@ export function PackagingDetails({
 }: PackagingDetailsProps) {
   const { data: tapeColors = [] } = useTapeColors();
   const [coreType, setCoreType] = useState<'with' | 'without'>('with');
+  const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
+
+  // Generate all possible color options (individual colors + combinations)
+  const colorOptions = useMemo(() => {
+    const options: TapeColorOption[] = [];
+    
+    // Add individual colors
+    tapeColors.forEach(color => {
+      options.push({
+        id: `color-${color.id}`,
+        type: 'color',
+        name: color.tapeColor,
+        colorId: color.id
+      });
+    });
+    
+    // Add combinations (including same color combinations)
+    for (let i = 0; i < tapeColors.length; i++) {
+      for (let j = i; j < tapeColors.length; j++) {
+        options.push({
+          id: `combo-${tapeColors[i].id}-${tapeColors[j].id}`,
+          type: 'combination',
+          name: `${tapeColors[i].tapeColor} + ${tapeColors[j].tapeColor}`,
+          color1Id: tapeColors[i].id,
+          color2Id: tapeColors[j].id
+        });
+      }
+    }
+    
+    return options;
+  }, [tapeColors]);
+
+  useEffect(() => {
+    // Initialize selected option based on tapeColorId
+    if (tapeColorId !== null) {
+      const colorOption = colorOptions.find(
+        option => option.type === 'color' && option.colorId === tapeColorId
+      );
+      if (colorOption) {
+        setSelectedOptionId(colorOption.id);
+      }
+    }
+  }, [tapeColorId, colorOptions]);
 
   const handleCoreTypeChange = (value: string) => {
     const newCoreType = value as 'with' | 'without';
@@ -38,7 +99,23 @@ export function PackagingDetails({
     }
   };
 
-  const selectedTapeColor = tapeColors.find(color => color.id === tapeColorId);
+  // Handle option selection
+  const handleOptionSelect = (option: TapeColorOption) => {
+    setSelectedOptionId(option.id);
+    
+    // For now, we'll just pass the first color ID for both colors and combinations
+    // In a real implementation, you might want to handle combinations differently
+    if (option.type === 'color') {
+      onTapeColorChange(option.colorId);
+    } else {
+      onTapeColorChange(option.color1Id);
+    }
+  };
+
+  // Find the currently selected option
+  const selectedOption = selectedOptionId 
+    ? colorOptions.find(option => option.id === selectedOptionId)
+    : null;
 
   return (
     <Card className="w-full max-w-md">
@@ -97,39 +174,84 @@ export function PackagingDetails({
           )}
         </div>
 
-        {/* Tape Color */}
+        {/* All Tape Colors and Combinations Grid */}
         <div className="space-y-3">
-          <Label htmlFor="tape-color" className="text-sm font-medium">Tape Color</Label>
-          <Select 
-            value={tapeColorId?.toString() || ''} 
-            onValueChange={(value) => onTapeColorChange(Number(value))}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select color">
-                {selectedTapeColor && (
-                  <div className="flex items-center gap-2">
-                    <div 
-                      className="w-4 h-4 rounded-full border"
-                     
+          <Label className="text-sm font-medium">Tape Colors & Combinations</Label>
+          <div className="grid grid-cols-4 gap-2 max-h-60 overflow-y-auto p-2 border rounded-lg bg-gray-50">
+            {colorOptions.map((option) => (
+              <div
+                key={option.id}
+                className={`flex flex-col items-center p-2 rounded cursor-pointer transition-all ${
+                  selectedOptionId === option.id
+                    ? 'ring-2 ring-blue-500 bg-blue-50'
+                    : 'hover:bg-gray-100'
+                }`}
+                onClick={() => handleOptionSelect(option)}
+              >
+                {option.type === 'color' ? (
+                  <>
+                    <div
+                      className="w-6 h-6 rounded-full border border-gray-300 mb-1"
+                      style={{ backgroundColor: getTapeColorStyle(option.name) }}
                     />
-                    {selectedTapeColor.tapeColor}
-                  </div>
+                    <span className="text-xs text-center truncate w-full">{option.name}</span>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center mb-1">
+                      <div
+                        className="w-3 h-3 rounded-full border border-gray-300"
+                        style={{ backgroundColor: getTapeColorStyle(
+                          tapeColors.find(c => c.id === option.color1Id)?.tapeColor || ''
+                        )}}
+                      />
+                      <div
+                        className="w-3 h-3 rounded-full border border-gray-300 -ml-1"
+                        style={{ backgroundColor: getTapeColorStyle(
+                          tapeColors.find(c => c.id === option.color2Id)?.tapeColor || ''
+                        )}}
+                      />
+                    </div>
+                    <span className="text-xs text-center truncate w-full">{option.name}</span>
+                  </>
                 )}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {tapeColors.map((color) => (
-                <SelectItem key={color.id} value={color.id.toString()} className="flex items-center gap-2">
-                  <div 
-                    className="w-3 h-3 rounded-full border"
-                   
-                  />
-                  {color.tapeColor}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+              </div>
+            ))}
+          </div>
         </div>
+
+        {/* Selected Option Display */}
+        {selectedOption && (
+          <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg border border-blue-200">
+            {selectedOption.type === 'color' ? (
+              <>
+                <div
+                  className="w-5 h-5 rounded-full border border-gray-300"
+                  style={{ backgroundColor: getTapeColorStyle(selectedOption.name) }}
+                />
+                <span className="text-sm font-medium">Selected: {selectedOption.name}</span>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center">
+                  <div
+                    className="w-4 h-4 rounded-full border border-gray-300"
+                    style={{ backgroundColor: getTapeColorStyle(
+                      tapeColors.find(c => c.id === selectedOption.color1Id)?.tapeColor || ''
+                    )}}
+                  />
+                  <div
+                    className="w-4 h-4 rounded-full border border-gray-300 -ml-1"
+                    style={{ backgroundColor: getTapeColorStyle(
+                      tapeColors.find(c => c.id === selectedOption.color2Id)?.tapeColor || ''
+                    )}}
+                  />
+                </div>
+                <span className="text-sm font-medium">Selected: {selectedOption.name}</span>
+              </>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
