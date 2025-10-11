@@ -21,6 +21,7 @@ import {
   Package,
   type LucideIcon,
 } from 'lucide-react';
+import { PAGE_NAMES } from '@/constants/pages';
 
 type Icon = LucideIcon;
 
@@ -72,6 +73,18 @@ const navConfig: NavItem[] = [
         icon: Cog,
         description: 'Manage yarn types and codes',
       },
+      {
+        title: PAGE_NAMES.TAPE_COLOR_MASTER,
+        href: '/tape-colors',
+        icon: Cog,
+        description: 'Manage tape colors for production',
+      },
+      {
+        title: PAGE_NAMES.SHIFT_MASTER,
+        href: '/shifts',
+        icon: Cog,
+        description: 'Manage shifts for production',
+      },
     ],
   },
   {
@@ -112,7 +125,7 @@ const navConfig: NavItem[] = [
     isParentOnly: true,
     children: [
       {
-        title: 'Confirmation',
+        title: 'Quality Checking',
         href: '/confirmation',
         icon: Check,
         description: 'rolls confirmation',
@@ -128,6 +141,12 @@ const navConfig: NavItem[] = [
         href: '/storage-capture',
         icon: Package,
         description: 'Capture and allocate FG rolls to storage locations',
+      },
+      {
+        title: 'FG Sticker Confirmation',
+        href: '/fg-sticker-confirmation',
+        icon: Check,
+        description: 'Confirm FG sticker details for finished goods',
       },
     ],
   },

@@ -39,7 +39,22 @@ import type {
   VoucherDto,
   ProductionAllotmentResponseDto,
   RollConfirmationRequestDto,
-  RollConfirmationResponseDto
+  RollConfirmationResponseDto,
+  RollConfirmationUpdateDto,
+  InspectionRequestDto,
+  InspectionResponseDto,
+  TapeColorResponseDto,
+  CreateTapeColorRequestDto,
+  UpdateTapeColorRequestDto,
+  TapeColorSearchRequestDto,
+  ShiftResponseDto,
+  CreateShiftRequestDto,
+  UpdateShiftRequestDto,
+  ShiftSearchRequestDto,
+  CreateRollAssignmentRequest,
+  RollAssignmentResponseDto,
+  GenerateStickersRequest,
+  GenerateBarcodesRequest
 } from '@/types/api-types';
 
 // API Configuration
@@ -397,6 +412,66 @@ export const yarnTypeApi = {
 };
 
 // ============================================
+// TAPE COLOR API (/api/TapeColor)
+// ============================================
+
+export const tapeColorApi = {
+  // GET /api/TapeColor - Get all tape colors
+  getAllTapeColors: (): Promise<AxiosResponse<TapeColorResponseDto[]>> =>
+    apiClient.get('/TapeColor'),
+
+  // GET /api/TapeColor/{id} - Get tape color by ID
+  getTapeColor: (id: number): Promise<AxiosResponse<TapeColorResponseDto>> =>
+    apiClient.get(`/TapeColor/${id}`),
+
+  // POST /api/TapeColor - Create new tape color
+  createTapeColor: (data: CreateTapeColorRequestDto): Promise<AxiosResponse<TapeColorResponseDto>> =>
+    apiClient.post('/TapeColor', data),
+
+  // PUT /api/TapeColor/{id} - Update tape color
+  updateTapeColor: (id: number, data: UpdateTapeColorRequestDto): Promise<AxiosResponse<TapeColorResponseDto>> =>
+    apiClient.put(`/TapeColor/${id}`, data),
+
+  // DELETE /api/TapeColor/{id} - Delete tape color
+  deleteTapeColor: (id: number): Promise<AxiosResponse<void>> =>
+    apiClient.delete(`/TapeColor/${id}`),
+
+  // GET /api/TapeColor/search - Search tape colors
+  searchTapeColors: (params: TapeColorSearchRequestDto): Promise<AxiosResponse<TapeColorResponseDto[]>> =>
+    apiClient.get('/TapeColor/search', { params }),
+};
+
+// ============================================
+// SHIFT API (/api/Shift)
+// ============================================
+
+export const shiftApi = {
+  // GET /api/Shift - Get all shifts
+  getAllShifts: (): Promise<AxiosResponse<ShiftResponseDto[]>> =>
+    apiClient.get('/Shift'),
+
+  // GET /api/Shift/{id} - Get shift by ID
+  getShift: (id: number): Promise<AxiosResponse<ShiftResponseDto>> =>
+    apiClient.get(`/Shift/${id}`),
+
+  // POST /api/Shift - Create new shift
+  createShift: (data: CreateShiftRequestDto): Promise<AxiosResponse<ShiftResponseDto>> =>
+    apiClient.post('/Shift', data),
+
+  // PUT /api/Shift/{id} - Update shift
+  updateShift: (id: number, data: UpdateShiftRequestDto): Promise<AxiosResponse<ShiftResponseDto>> =>
+    apiClient.put(`/Shift/${id}`, data),
+
+  // DELETE /api/Shift/{id} - Delete shift
+  deleteShift: (id: number): Promise<AxiosResponse<void>> =>
+    apiClient.delete(`/Shift/${id}`),
+
+  // GET /api/Shift/search - Search shifts
+  searchShifts: (params: ShiftSearchRequestDto): Promise<AxiosResponse<ShiftResponseDto[]>> =>
+    apiClient.get('/Shift/search', { params }),
+};
+
+// ============================================
 // VOUCHERS API (/api/Vouchers)
 // ============================================
 
@@ -444,6 +519,14 @@ export const productionAllotmentApi = {
   // POST /api/ProductionAllotment/stkprint/{id} - Generate QR codes for machine allocation
   generateQRCodes: (id: number): Promise<AxiosResponse<{ message: string }>> =>
     apiClient.post(`/ProductionAllotment/stkprint/${id}`),
+    
+  // POST /api/ProductionAllotment/stkprint/roll-assignment/{id} - Generate QR codes for specific roll numbers in a roll assignment
+  generateQRCodesForRollAssignment: (id: number, rollNumbers: number[]): Promise<AxiosResponse<{ message: string }>> =>
+    apiClient.post(`/ProductionAllotment/stkprint/roll-assignment/${id}`, { rollNumbers }),
+    
+  // POST /api/ProductionAllotment/fgsticker/{id} - Print FG Roll sticker
+  printFGRollSticker: (id: number): Promise<AxiosResponse<{ message: string }>> =>
+    apiClient.post(`/ProductionAllotment/fgsticker/${id}`),
 };
 
 // ============================================
@@ -462,4 +545,48 @@ export const rollConfirmationApi = {
   // GET /api/RollConfirmation/by-allot-id/{allotId} - Get roll confirmations by AllotId
   getRollConfirmationsByAllotId: (allotId: string): Promise<AxiosResponse<RollConfirmationResponseDto[]>> =>
     apiClient.get(`/RollConfirmation/by-allot-id/${allotId}`),
+
+  // PUT /api/RollConfirmation/{id} - Update roll confirmation with weight data
+  updateRollConfirmation: (id: number, data: RollConfirmationUpdateDto): Promise<AxiosResponse<RollConfirmationResponseDto>> =>
+    apiClient.put(`/RollConfirmation/${id}`, data),
+};
+
+// ============================================
+// ROLL ASSIGNMENT API (/api/RollAssignment)
+// ============================================
+
+export const rollAssignmentApi = {
+  // POST /api/RollAssignment - Create new roll assignment
+  createRollAssignment: (data: CreateRollAssignmentRequest): Promise<AxiosResponse<RollAssignmentResponseDto>> =>
+    apiClient.post('/RollAssignment', data),
+
+  // POST /api/RollAssignment/generate-stickers - Generate stickers for roll assignment
+  generateStickers: (data: GenerateStickersRequest): Promise<AxiosResponse<RollAssignmentResponseDto>> =>
+    apiClient.post('/RollAssignment/generate-stickers', data),
+
+  // POST /api/RollAssignment/generate-barcodes - Generate barcodes for roll assignment
+  generateBarcodes: (data: GenerateBarcodesRequest): Promise<AxiosResponse<RollAssignmentResponseDto>> =>
+    apiClient.post('/RollAssignment/generate-barcodes', data),
+
+  // GET /api/RollAssignment/by-machine-allocation/{machineAllocationId} - Get roll assignments by MachineAllocationId
+  getRollAssignmentsByMachineAllocationId: (machineAllocationId: number): Promise<AxiosResponse<RollAssignmentResponseDto[]>> =>
+    apiClient.get(`/RollAssignment/by-machine-allocation/${machineAllocationId}`),
+};
+
+// ============================================
+// INSPECTION API (/api/Inspection)
+// ============================================
+
+export const inspectionApi = {
+  // POST /api/Inspection - Create new inspection
+  createInspection: (data: InspectionRequestDto): Promise<AxiosResponse<InspectionResponseDto>> =>
+    apiClient.post('/Inspection', data),
+
+  // GET /api/Inspection/{id} - Get inspection by ID
+  getInspection: (id: number): Promise<AxiosResponse<InspectionResponseDto>> =>
+    apiClient.get(`/Inspection/${id}`),
+
+  // GET /api/Inspection/by-allot-id/{allotId} - Get inspections by AllotId
+  getInspectionsByAllotId: (allotId: string): Promise<AxiosResponse<InspectionResponseDto[]>> =>
+    apiClient.get(`/Inspection/by-allot-id/${allotId}`),
 };

@@ -671,58 +671,65 @@ export interface SalesOrderDto {
 // ============================================
 
 export interface CreateProductionAllotmentRequest {
-  allotmentId: string;
-  voucherNumber: string;
-  itemName: string;
-  salesOrderId: number;
-  salesOrderItemId: number;
-  actualQuantity: number;
-  yarnCount: string;
-  diameter: number;
-  gauge: number;
-  fabricType: string;
-  slitLine: string;
-  stitchLength: number;
-  efficiency: number;
-  composition: string;
-  yarnLotNo?: string;
-  counter?: string;
-  colourCode?: string;
-  reqGreyGsm?: number | null;
-  reqGreyWidth?: number | null;
-  reqFinishGsm?: number | null;
-  reqFinishWidth?: number | null;
-  partyName?: string;
-  machineAllocations: MachineAllocationRequest[];
+    allotmentId: string;
+    voucherNumber: string;
+    itemName: string;
+    salesOrderId: number;
+    salesOrderItemId: number;
+    actualQuantity: number;
+    yarnCount: string;
+    diameter: number;
+    gauge: number;
+    fabricType: string;
+    slitLine: string;
+    stitchLength: number;
+    efficiency: number;
+    composition: string;
+    yarnLotNo: string;
+    counter: string;
+    colourCode: string;
+    reqGreyGsm: number | null;
+    reqGreyWidth: number | null;
+    reqFinishGsm: number | null;
+    reqFinishWidth: number | null;
+    partyName: string;
+    // Packaging Details
+    tubeWeight: number;
+    tapeColor: string;
+    machineAllocations: MachineAllocationRequest[];
 }
 
 export interface ProductionAllotmentResponseDto {
-  id: number;
-  allotmentId: string;
-  voucherNumber: string;
-  itemName: string;
-  salesOrderId: number;
-  salesOrderItemId: number;
-  actualQuantity: number;
-  yarnCount: string;
-  diameter: number;
-  gauge: number;
-  fabricType: string;
-  slitLine: string;
-  stitchLength: number;
-  efficiency: number;
-  composition: string;
-  totalProductionTime: number;
-  createdDate: string; // ISO 8601 datetime
-  yarnLotNo?: string;
-  counter?: string;
-  colourCode?: string;
-  reqGreyGsm?: number | null;
-  reqGreyWidth?: number | null;
-  reqFinishGsm?: number | null;
-  reqFinishWidth?: number | null;
-  partyName?: string;
-  machineAllocations: MachineAllocationResponseDto[];
+    id: number;
+    allotmentId: string;
+    voucherNumber: string;
+    itemName: string;
+    salesOrderId: number;
+    salesOrderItemId: number;
+    actualQuantity: number;
+    yarnCount: string;
+    diameter: number;
+    gauge: number;
+    fabricType: string;
+    slitLine: string;
+    stitchLength: number;
+    efficiency: number;
+    composition: string;
+    totalProductionTime: number;
+    createdDate: string;
+    yarnLotNo: string;
+    counter: string;
+    colourCode: string;
+    reqGreyGsm: number | null;
+    reqGreyWidth: number | null;
+    reqFinishGsm: number | null;
+    reqFinishWidth: number | null;
+    partyName: string;
+    // Packaging Details
+    tubeWeight: number;
+    tapeColor: string;
+    serialNo: string;
+    machineAllocations: MachineAllocationResponseDto[];
 }
 
 export interface MachineAllocationResponseDto {
@@ -780,6 +787,12 @@ export interface RollConfirmationRequestDto {
   polyester: number;
   spandex: number;
   rollNo: string;
+  // Weight fields for FG Sticker Confirmation
+  grossWeight?: number;
+  tareWeight?: number;
+  netWeight?: number;
+  // Flag to indicate if FG Sticker has been generated
+  isFGStickerGenerated?: boolean;
 }
 
 export interface RollConfirmationResponseDto {
@@ -794,5 +807,206 @@ export interface RollConfirmationResponseDto {
   polyester: number;
   spandex: number;
   rollNo: string;
+  // Weight fields for FG Sticker Confirmation
+  grossWeight?: number;
+  tareWeight?: number;
+  netWeight?: number;
+  // FG Roll Number - Auto-incremented per AllotId
+  fgRollNo?: number;
+  // Flag to indicate if FG Sticker has been generated
+  isFGStickerGenerated: boolean;
   createdDate: string;
 }
+
+export interface RollConfirmationUpdateDto {
+  grossWeight?: number;
+  tareWeight?: number;
+  netWeight?: number;
+  // FG Roll Number - Auto-incremented per AllotId
+  fgRollNo?: number;
+  // Flag to indicate if FG Sticker has been generated
+  isFGStickerGenerated?: boolean;
+}
+
+// ============================================
+// ROLL ASSIGNMENT DTOs
+// ============================================
+
+export interface CreateRollAssignmentRequest {
+  machineAllocationId: number;
+  shiftId: number;
+  assignedRolls: number;
+  operatorName: string;
+  timestamp: string;
+}
+
+export interface GenerateStickersRequest {
+  rollAssignmentId: number;
+  stickerCount: number;
+}
+
+export interface GenerateBarcodesRequest {
+  rollAssignmentId: number;
+  barcodeCount: number;
+}
+
+// New interface for generating stickers for specific roll numbers
+export interface GenerateStickersForRollsRequest {
+  rollNumbers: number[];
+}
+
+export interface RollAssignmentResponseDto {
+  id: number;
+  machineAllocationId: number;
+  shiftId: number;
+  assignedRolls: number;
+  generatedStickers: number;
+  remainingRolls: number;
+  operatorName: string;
+  timestamp: string;
+  generatedBarcodes: GeneratedBarcodeDto[];
+}
+
+export interface GeneratedBarcodeDto {
+  id: number;
+  rollAssignmentId: number;
+  barcode: string;
+  rollNumber: number;
+  generatedAt: string;
+}
+
+// ============================================
+// INSPECTION DTOs
+// ============================================
+
+export interface InspectionRequestDto {
+  allotId: string;
+  machineName: string;
+  rollNo: string;
+  // Spinning Faults
+  thinPlaces: number;
+  thickPlaces: number;
+  thinLines: number;
+  thickLines: number;
+  doubleParallelYarn: number;
+  // Contamination Faults
+  haidJute: number;
+  colourFabric: number;
+  // Column 3 Faults
+  holes: number;
+  dropStitch: number;
+  lycraStitch: number;
+  lycraBreak: number;
+  ffd: number;
+  needleBroken: number;
+  knitFly: number;
+  oilSpots: number;
+  oilLines: number;
+  verticalLines: number;
+  // Summary
+  grade: string;
+  totalFaults: number;
+  remarks: string;
+  createdDate: string;
+  // Flag for approval status (true = approved, false = rejected)
+  flag: boolean;
+}
+
+export interface InspectionResponseDto {
+  id: number;
+  allotId: string;
+  machineName: string;
+  rollNo: string;
+  // Spinning Faults
+  thinPlaces: number;
+  thickPlaces: number;
+  thinLines: number;
+  thickLines: number;
+  doubleParallelYarn: number;
+  // Contamination Faults
+  haidJute: number;
+  colourFabric: number;
+  // Column 3 Faults
+  holes: number;
+  dropStitch: number;
+  lycraStitch: number;
+  lycraBreak: number;
+  ffd: number;
+  needleBroken: number;
+  knitFly: number;
+  oilSpots: number;
+  oilLines: number;
+  verticalLines: number;
+  // Summary
+  grade: string;
+  totalFaults: number;
+  remarks: string;
+  createdDate: string;
+  // Flag for approval status (true = approved, false = rejected)
+  flag: boolean;
+}
+
+// ============================================
+// TAPE COLOR DTOs (AvyyanBackend.DTOs.TapeColor)
+// ============================================
+
+export interface TapeColorResponseDto {
+  id: number;
+  tapeColor: string;
+  createdAt: string;
+  updatedAt?: string;
+  isActive: boolean;
+}
+
+export interface CreateTapeColorRequestDto {
+  tapeColor: string;
+}
+
+export interface UpdateTapeColorRequestDto {
+  tapeColor: string;
+  isActive: boolean;
+}
+
+export interface TapeColorSearchRequestDto {
+  tapeColor?: string;
+  isActive?: boolean;
+}
+
+// ============================================
+// SHIFT DTOs (AvyyanBackend.DTOs.Shift)
+// ============================================
+
+export interface ShiftResponseDto {
+  id: number;
+  shiftName: string;
+  startTime: string; // ISO 8601 time format
+  endTime: string; // ISO 8601 time format
+  durationInHours: number;
+  createdAt: string;
+  updatedAt?: string;
+  isActive: boolean;
+}
+
+export interface CreateShiftRequestDto {
+  shiftName: string;
+  startTime: string; // ISO 8601 time format
+  endTime: string; // ISO 8601 time format
+  durationInHours: number;
+}
+
+export interface UpdateShiftRequestDto {
+  shiftName: string;
+  startTime: string; // ISO 8601 time format
+  endTime: string; // ISO 8601 time format
+  durationInHours: number;
+  isActive: boolean;
+}
+
+export interface ShiftSearchRequestDto {
+  shiftName?: string;
+  isActive?: boolean;
+}
+
+// ============================================
+// PRODUCTION ALLOTMENT API (/api/ProductionAllotment)
+// ============================================

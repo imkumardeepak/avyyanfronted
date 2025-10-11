@@ -13,7 +13,7 @@ const Layout = () => {
 };
 
 const LayoutContent = () => {
-  const { isSidebarCollapsed, isMobileSidebarOpen, toggleSidebar, toggleMobileSidebar } =
+  const { isMobileSidebarOpen, toggleMobileSidebar } =
     useSidebar();
 
   return (

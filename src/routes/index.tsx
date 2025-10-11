@@ -46,6 +46,14 @@ const LocationForm = lazy(() => import('../pages/LocationManagement/LocationForm
 const YarnTypeManagement = lazy(() => import('../pages/YarnTypeManagement'));
 const YarnTypeForm = lazy(() => import('../pages/YarnTypeManagement/YarnTypeForm'));
 
+// Tape Color Management Pages
+const TapeColorManagement = lazy(() => import('../pages/TapeColorManagement'));
+const TapeColorForm = lazy(() => import('../pages/TapeColorManagement/TapeColorForm'));
+
+// Shift Management Pages
+const ShiftManagement = lazy(() => import('../pages/ShiftManagement'));
+const ShiftForm = lazy(() => import('../pages/ShiftManagement/ShiftForm'));
+
 // Sales Order Management Pages
 const SalesOrderManagement = lazy(() => import('../pages/SalesOrderManagement'));
 const SalesOrderItemProcessing = lazy(
@@ -57,7 +65,9 @@ const ProductionAllotment = lazy(() => import('../pages/ProductionAllotment'));
 
 // Production Confirmation Page
 const ProductionConfirmation = lazy(() => import('../pages/ProductionConfirmation'));
+const RollInspection = lazy(() => import('../pages/RollInspection'));
 const StorageCapture = lazy(() => import('../pages/StorageCapture'));
+const FGStickerConfirmation = lazy(() => import('../pages/FGStickerConfirmation'));
 
 // Chat and Notifications Pages
 const Chat = lazy(() => import('../pages/Chat'));
@@ -288,6 +298,58 @@ const Router = () => {
               }
             />
 
+            {/* Tape Color Management Routes */}
+            <Route
+              path="tape-colors"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <TapeColorManagement />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="tape-colors/create"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <TapeColorForm />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="tape-colors/:id/edit"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <TapeColorForm />
+                </LazyRoute>
+              }
+            />
+
+            {/* Shift Management Routes */}
+            <Route
+              path="shifts"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <ShiftManagement />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="shifts/create"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <ShiftForm />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="shifts/:id/edit"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <ShiftForm />
+                </LazyRoute>
+              }
+            />
+
             {/* Sales Order Management Routes */}
             <Route
               path="sales-orders"
@@ -401,6 +463,16 @@ const Router = () => {
               }
             />
 
+            {/* Roll Inspection Route */}
+            <Route
+              path="rollInspection"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <RollInspection />
+                </LazyRoute>
+              }
+            />
+
             {/* Storage Capture Route */}
             <Route
               path="storage-capture"
@@ -410,6 +482,18 @@ const Router = () => {
                 </LazyRoute>
               }
             />
+
+            {/* FG Sticker Confirmation Route */}
+            <Route
+              path="fg-sticker-confirmation"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <FGStickerConfirmation />
+                </LazyRoute>
+              }
+            />
+
+        
           </Route>
         </Routes>
       </Suspense>
