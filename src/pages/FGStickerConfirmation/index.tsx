@@ -53,8 +53,7 @@ const FGStickerConfirmation: React.FC = () => {
   const [salesOrderData, setSalesOrderData] = useState<SalesOrderDto | null>(null);
   const [selectedMachine, setSelectedMachine] = useState<MachineAllocationResponseDto | null>(null);
   const [isFGStickerGenerated, setIsFGStickerGenerated] = useState<boolean | null>(null);
-  const [rollConfirmationData, setRollConfirmationData] =
-    useState<RollConfirmationResponseDto | null>(null);
+  const [, setRollConfirmationData] = useState<RollConfirmationResponseDto | null>(null);
 
   const scanBuffer = useRef<string>('');
   const isScanning = useRef<boolean>(false);
@@ -86,22 +85,22 @@ const FGStickerConfirmation: React.FC = () => {
       setIsWeightMonitoring(false);
     });
 
-    hubConnection.current.start();
+    hubConnection.current.start().then(() => {
+      // Automatically start weight monitoring when connection is established
+      if (formData.ipAddress) {
+        setIsWeightMonitoring(true);
+        hubConnection.current?.invoke('StartWeightMonitoring', formData.ipAddress, 23);
+      }
+    });
 
     return () => {
       hubConnection.current?.stop();
+      // Stop weight monitoring when component unmounts
+      if (isWeightMonitoring) {
+        hubConnection.current?.invoke('StopWeightMonitoring');
+      }
     };
   }, []);
-
-  const startWeightMonitoring = async () => {
-    if (!formData.ipAddress) {
-      toast.error('Error', 'Please enter a valid IP address for the weight machine');
-      return;
-    }
-
-    setIsWeightMonitoring(true);
-    await hubConnection.current?.invoke('StartWeightMonitoring', formData.ipAddress, 23);
-  };
 
   const stopWeightMonitoring = async () => {
     setIsWeightMonitoring(false);
@@ -346,9 +345,9 @@ const FGStickerConfirmation: React.FC = () => {
               netWeight: parseFloat(weightData.netWeight),
               isFGStickerGenerated: true,
             });
-          } catch (updateError: any) {
+          } catch (updateError: unknown) {
             if (
-              updateError.message &&
+              updateError instanceof Error &&
               updateError.message.includes('FG Sticker has already been generated')
             ) {
               toast.error(
@@ -380,6 +379,11 @@ const FGStickerConfirmation: React.FC = () => {
         }
       }
 
+      // Stop weight monitoring after successful save
+      if (isWeightMonitoring) {
+        await stopWeightMonitoring();
+      }
+
       setFormData({
         rollId: '',
         ipAddress: '192.168.10.75',
@@ -400,11 +404,8 @@ const FGStickerConfirmation: React.FC = () => {
       setSelectedMachine(null);
       setIsFGStickerGenerated(null);
       setRollConfirmationData(null);
-
-      if (isWeightMonitoring) {
-        stopWeightMonitoring();
-      }
-    } catch (err) {
+    } catch (error) {
+      console.error('Error in handleSubmit:', error);
       toast.error(
         'Error',
         'FG Sticker has already been generated for this roll. Please scan next roll.'
@@ -633,24 +634,7 @@ const FGStickerConfirmation: React.FC = () => {
                   />
                 </div>
 
-                <div className="flex items-end space-x-2">
-                  {!isWeightMonitoring ? (
-                    <Button
-                      type="button"
-                      onClick={startWeightMonitoring}
-                      className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 h-8 text-xs"
-                    >
-                      Start Monitoring
-                    </Button>
-                  ) : (
-                    <Button
-                      type="button"
-                      onClick={stopWeightMonitoring}
-                      className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 h-8 text-xs"
-                    >
-                      Stop Monitoring
-                    </Button>
-                  )}
+                <div className="flex items-end">
                   <div className="text-xs px-2 py-1 bg-white border rounded">
                     Status:{' '}
                     <span
@@ -695,15 +679,7 @@ const FGStickerConfirmation: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex justify-center pt-2 space-x-3">
-              <Button
-                type="button"
-                onClick={isWeightMonitoring ? stopWeightMonitoring : startWeightMonitoring}
-                className={`${isWeightMonitoring ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} text-white px-4 py-1.5 h-8 min-w-32`}
-              >
-                {isWeightMonitoring ? 'Stop Monitoring' : 'Start Monitoring'}
-              </Button>
-
+            <div className="flex justify-center pt-2">
               <Button
                 type="submit"
                 disabled={isLoading || isFetchingData}
