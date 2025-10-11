@@ -142,7 +142,7 @@ export function PackagingDetails({
                   onChange={(e) => onTubeWeightChange(parseFloat(e.target.value) || 0)}
                   className="w-full"
                 />
-                <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-sm text-muted-foreground">
+                <span className="absolute right-7 top-1/2 transform -translate-y-1/2 text-sm text-muted-foreground">
                   kg
                 </span>
               </div>
@@ -164,7 +164,7 @@ export function PackagingDetails({
                 className="w-full"
                 readOnly
               />
-              <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-sm text-muted-foreground">
+              <span className="absolute right-7 top-1/2 transform -translate-y-1/2 text-sm text-muted-foreground">
                 kg
               </span>
             </div>
