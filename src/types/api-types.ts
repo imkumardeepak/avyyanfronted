@@ -811,6 +811,8 @@ export interface RollConfirmationResponseDto {
   grossWeight?: number;
   tareWeight?: number;
   netWeight?: number;
+  // FG Roll Number - Auto-incremented per AllotId
+  fgRollNo?: number;
   // Flag to indicate if FG Sticker has been generated
   isFGStickerGenerated: boolean;
   createdDate: string;
@@ -820,6 +822,8 @@ export interface RollConfirmationUpdateDto {
   grossWeight?: number;
   tareWeight?: number;
   netWeight?: number;
+  // FG Roll Number - Auto-incremented per AllotId
+  fgRollNo?: number;
   // Flag to indicate if FG Sticker has been generated
   isFGStickerGenerated?: boolean;
 }

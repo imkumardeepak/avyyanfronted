@@ -4,7 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useTapeColors } from '@/hooks/queries/useTapeColorQueries';
-import { getTapeColorStyle, TAPE_COLOR_MAP } from '@/utils/tapeColorUtils';
+import { getTapeColorStyle } from '@/utils/tapeColorUtils';
 
 interface PackagingDetailsProps {
   rollPerKg?: number;
@@ -15,7 +15,6 @@ interface PackagingDetailsProps {
   tapeColorId: number | null;
 }
 
-// Define types for our color options
 type ColorOption = {
   id: string;
   type: 'color';
@@ -37,7 +36,6 @@ export function PackagingDetails({
   rollPerKg = 0,
   onCoreTypeChange,
   onTubeWeightChange,
-  onTapeColorChange,
   tubeWeight,
   tapeColorId
 }: PackagingDetailsProps) {
@@ -45,77 +43,52 @@ export function PackagingDetails({
   const [coreType, setCoreType] = useState<'with' | 'without'>('with');
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
 
-  // Generate all possible color options (individual colors + combinations)
   const colorOptions = useMemo(() => {
-    const options: TapeColorOption[] = [];
+    const options: TapeColorOption[] = tapeColors.map(color => ({
+      id: `color-${color.id}`,
+      type: 'color',
+      name: color.tapeColor,
+      colorId: color.id
+    }));
     
-    // Add individual colors
-    tapeColors.forEach(color => {
-      options.push({
-        id: `color-${color.id}`,
-        type: 'color',
-        name: color.tapeColor,
-        colorId: color.id
+    tapeColors.forEach((color, i) => {
+      tapeColors.slice(i + 1).forEach(nextColor => {
+        options.push({
+          id: `combo-${color.id}-${nextColor.id}`,
+          type: 'combination',
+          name: `${color.tapeColor} + ${nextColor.tapeColor}`,
+          color1Id: color.id,
+          color2Id: nextColor.id
+        });
       });
     });
-    
-    // Add combinations (including same color combinations)
-    for (let i = 0; i < tapeColors.length; i++) {
-      for (let j = i; j < tapeColors.length; j++) {
-        options.push({
-          id: `combo-${tapeColors[i].id}-${tapeColors[j].id}`,
-          type: 'combination',
-          name: `${tapeColors[i].tapeColor} + ${tapeColors[j].tapeColor}`,
-          color1Id: tapeColors[i].id,
-          color2Id: tapeColors[j].id
-        });
-      }
-    }
     
     return options;
   }, [tapeColors]);
 
   useEffect(() => {
-    // Initialize selected option based on tapeColorId
     if (tapeColorId !== null) {
       const colorOption = colorOptions.find(
         option => option.type === 'color' && option.colorId === tapeColorId
       );
-      if (colorOption) {
-        setSelectedOptionId(colorOption.id);
-      }
+      setSelectedOptionId(colorOption?.id || null);
     }
   }, [tapeColorId, colorOptions]);
 
-  const handleCoreTypeChange = (value: string) => {
-    const newCoreType = value as 'with' | 'without';
-    setCoreType(newCoreType);
-    onCoreTypeChange(newCoreType);
-    
-    if (newCoreType === 'without') {
-      onTubeWeightChange(0);
-    } else if (tubeWeight === 0) {
-      onTubeWeightChange(1);
-    }
+  const handleCoreTypeChange = (value: 'with' | 'without') => {
+    setCoreType(value);
+    onCoreTypeChange(value);
+    if (value === 'without') onTubeWeightChange(0);
+    else if (tubeWeight === 0) onTubeWeightChange(1);
   };
 
-  // Handle option selection
   const handleOptionSelect = (option: TapeColorOption) => {
     setSelectedOptionId(option.id);
-    
-    // For now, we'll just pass the first color ID for both colors and combinations
-    // In a real implementation, you might want to handle combinations differently
-    if (option.type === 'color') {
-      onTapeColorChange(option.colorId);
-    } else {
-      onTapeColorChange(option.color1Id);
-    }
+    onTapeColorChange(option.type === 'color' ? option.colorId : option.color1Id);
   };
 
-  // Find the currently selected option
-  const selectedOption = selectedOptionId 
-    ? colorOptions.find(option => option.id === selectedOptionId)
-    : null;
+  const selectedOption = colorOptions.find(option => option.id === selectedOptionId);
+  const getColorStyle = (colorName: string) => ({ backgroundColor: getTapeColorStyle(colorName) });
 
   return (
     <Card className="w-full max-w-md">
@@ -124,35 +97,24 @@ export function PackagingDetails({
       </CardHeader>
       
       <CardContent className="space-y-5">
-        {/* Roll per Kg - Compact display */}
         <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
           <Label className="text-sm font-medium">Roll per Kg</Label>
-          <div className="text-lg font-bold text-primary">
-            {(rollPerKg || 0).toFixed(2)} rolls/kg
-          </div>
+          <div className="text-lg font-bold text-primary">{(rollPerKg || 0).toFixed(2)} rolls/kg</div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          {/* Core Type */}
           <div className="space-y-3">
             <Label className="text-sm font-medium">Core Type</Label>
-            <RadioGroup 
-              value={coreType} 
-              onValueChange={handleCoreTypeChange}
-              className="space-y-2"
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="with" id="with-core" />
-                <Label htmlFor="with-core" className="text-sm">With Core</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="without" id="without-core" />
-                <Label htmlFor="without-core" className="text-sm">No Core</Label>
-              </div>
+            <RadioGroup value={coreType} onValueChange={handleCoreTypeChange} className="space-y-2">
+              {['with', 'without'].map(type => (
+                <div key={type} className="flex items-center space-x-2">
+                  <RadioGroupItem value={type} id={`${type}-core`} />
+                  <Label htmlFor={`${type}-core`} className="text-sm capitalize">{type === 'with' ? 'With Core' : 'No Core'}</Label>
+                </div>
+              ))}
             </RadioGroup>
           </div>
 
-          {/* Tube Weight */}
           {coreType === 'with' && (
             <div className="space-y-3">
               <Label htmlFor="tube-weight" className="text-sm font-medium">Tube Weight</Label>
@@ -166,15 +128,12 @@ export function PackagingDetails({
                   onChange={(e) => onTubeWeightChange(parseFloat(e.target.value) || 0)}
                   className="w-full"
                 />
-                <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-sm text-muted-foreground">
-                  kg
-                </span>
+                <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-sm text-muted-foreground">kg</span>
               </div>
             </div>
           )}
         </div>
 
-        {/* All Tape Colors and Combinations Grid */}
         <div className="space-y-3">
           <Label className="text-sm font-medium">Tape Colors & Combinations</Label>
           <div className="grid grid-cols-4 gap-2 max-h-60 overflow-y-auto p-2 border rounded-lg bg-gray-50">
@@ -182,35 +141,24 @@ export function PackagingDetails({
               <div
                 key={option.id}
                 className={`flex flex-col items-center p-2 rounded cursor-pointer transition-all ${
-                  selectedOptionId === option.id
-                    ? 'ring-2 ring-blue-500 bg-blue-50'
-                    : 'hover:bg-gray-100'
+                  selectedOptionId === option.id ? 'ring-2 ring-blue-500 bg-blue-50' : 'hover:bg-gray-100'
                 }`}
                 onClick={() => handleOptionSelect(option)}
               >
                 {option.type === 'color' ? (
                   <>
-                    <div
-                      className="w-6 h-6 rounded-full border border-gray-300 mb-1"
-                      style={{ backgroundColor: getTapeColorStyle(option.name) }}
-                    />
+                    <div className="w-6 h-6 rounded-full border border-gray-300 mb-1" style={getColorStyle(option.name)} />
                     <span className="text-xs text-center truncate w-full">{option.name}</span>
                   </>
                 ) : (
                   <>
                     <div className="flex items-center mb-1">
-                      <div
-                        className="w-3 h-3 rounded-full border border-gray-300"
-                        style={{ backgroundColor: getTapeColorStyle(
-                          tapeColors.find(c => c.id === option.color1Id)?.tapeColor || ''
-                        )}}
-                      />
-                      <div
-                        className="w-3 h-3 rounded-full border border-gray-300 -ml-1"
-                        style={{ backgroundColor: getTapeColorStyle(
-                          tapeColors.find(c => c.id === option.color2Id)?.tapeColor || ''
-                        )}}
-                      />
+                      <div className="w-3 h-3 rounded-full border border-gray-300" style={getColorStyle(
+                        tapeColors.find(c => c.id === option.color1Id)?.tapeColor || ''
+                      )} />
+                      <div className="w-3 h-3 rounded-full border border-gray-300 -ml-1" style={getColorStyle(
+                        tapeColors.find(c => c.id === option.color2Id)?.tapeColor || ''
+                      )} />
                     </div>
                     <span className="text-xs text-center truncate w-full">{option.name}</span>
                   </>
@@ -220,32 +168,22 @@ export function PackagingDetails({
           </div>
         </div>
 
-        {/* Selected Option Display */}
         {selectedOption && (
           <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg border border-blue-200">
             {selectedOption.type === 'color' ? (
               <>
-                <div
-                  className="w-5 h-5 rounded-full border border-gray-300"
-                  style={{ backgroundColor: getTapeColorStyle(selectedOption.name) }}
-                />
+                <div className="w-5 h-5 rounded-full border border-gray-300" style={getColorStyle(selectedOption.name)} />
                 <span className="text-sm font-medium">Selected: {selectedOption.name}</span>
               </>
             ) : (
               <>
                 <div className="flex items-center">
-                  <div
-                    className="w-4 h-4 rounded-full border border-gray-300"
-                    style={{ backgroundColor: getTapeColorStyle(
-                      tapeColors.find(c => c.id === selectedOption.color1Id)?.tapeColor || ''
-                    )}}
-                  />
-                  <div
-                    className="w-4 h-4 rounded-full border border-gray-300 -ml-1"
-                    style={{ backgroundColor: getTapeColorStyle(
-                      tapeColors.find(c => c.id === selectedOption.color2Id)?.tapeColor || ''
-                    )}}
-                  />
+                  <div className="w-4 h-4 rounded-full border border-gray-300" style={getColorStyle(
+                    tapeColors.find(c => c.id === selectedOption.color1Id)?.tapeColor || ''
+                  )} />
+                  <div className="w-4 h-4 rounded-full border border-gray-300 -ml-1" style={getColorStyle(
+                    tapeColors.find(c => c.id === selectedOption.color2Id)?.tapeColor || ''
+                  )} />
                 </div>
                 <span className="text-sm font-medium">Selected: {selectedOption.name}</span>
               </>
@@ -255,4 +193,8 @@ export function PackagingDetails({
       </CardContent>
     </Card>
   );
+}
+
+function onTapeColorChange(arg0: number) {
+  throw new Error('Function not implemented.');
 }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { HubConnectionBuilder, LogLevel, HubConnection } from '@microsoft/signalr';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -17,7 +18,14 @@ interface RollDetails {
   machineName: string;
   rollNo: string;
   greyGsm?: number;
+  fgRollNo?: number;
 }
+
+const getBaseUrl = () => {
+  const apiUrl = import.meta.env.VITE_API_URL || 'https://localhost:7009';
+  // Remove /api suffix if present
+  return apiUrl.replace(/\/api$/, '');
+};
 
 const FGStickerConfirmation: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -30,7 +38,7 @@ const FGStickerConfirmation: React.FC = () => {
   });
   const [formData, setFormData] = useState({
     rollId: '',
-    ipAddress: '192.168.1.100', // Default IP for weight machine
+    ipAddress: '192.168.10.75',
     allotId: '',
     machineName: '',
     rollNo: ''
@@ -45,49 +53,61 @@ const FGStickerConfirmation: React.FC = () => {
   const scanBuffer = useRef<string>('');
   const isScanning = useRef<boolean>(false);
   const lastKeyTime = useRef<number>(Date.now());
-  const weightIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const hubConnection = useRef<HubConnection | null>(null);
 
-  // Simulate fetching weight data from machine
-  const fetchWeightData = () => {
-    // In a real implementation, this would fetch from the actual machine via IP
-    // For demo purposes, we'll generate random weight data
-    const randomGrossWeight = (Math.random() * 100 + 50).toFixed(2); // 50-150 kg
-    const tareWeight = parseFloat(weightData.tareWeight) || 0;
-    const netWeight = (parseFloat(randomGrossWeight) - tareWeight).toFixed(2);
-    
-    setWeightData({
-      grossWeight: randomGrossWeight,
-      tareWeight: tareWeight.toFixed(2),
-      netWeight: netWeight
+  useEffect(() => {
+    // Initialize SignalR connection
+    hubConnection.current = new HubConnectionBuilder()
+      .withUrl(`${getBaseUrl()}/weightHub`) // Adjust URL based on your backend setup
+      .configureLogging(LogLevel.Information)
+      .build();
+
+    hubConnection.current.on('WeightUpdate', (data) => {
+      setWeightData({
+        grossWeight: data.grossWeight,
+        tareWeight: data.tareWeight,
+        netWeight: data.netWeight
+      });
     });
-  };
 
-  const startWeightMonitoring = () => {
+    hubConnection.current.on('WeightStatus', (message) => {
+      toast.success('Status', message);
+    });
+
+    hubConnection.current.on('WeightError', (message) => {
+      toast.error('Error', message);
+      setIsWeightMonitoring(false);
+    });
+
+    hubConnection.current.start().catch(err => {
+      console.error('SignalR Connection Error:', err);
+      toast.error('Error', 'Failed to connect to weight monitoring service');
+    });
+
+    return () => {
+      hubConnection.current?.stop();
+    };
+  }, []);
+
+  const startWeightMonitoring = async () => {
     if (!formData.ipAddress) {
       toast.error('Error', 'Please enter a valid IP address for the weight machine');
       return;
     }
     
     setIsWeightMonitoring(true);
-    // Simulate fetching data every 2 seconds
-    weightIntervalRef.current = setInterval(fetchWeightData, 2000);
-    toast.success('Success', 'Started monitoring weight machine');
+    await hubConnection.current?.invoke('StartWeightMonitoring', formData.ipAddress, 23);
   };
 
-  const stopWeightMonitoring = () => {
+  const stopWeightMonitoring = async () => {
     setIsWeightMonitoring(false);
-    if (weightIntervalRef.current) {
-      clearInterval(weightIntervalRef.current);
-      weightIntervalRef.current = null;
-    }
-    toast.success('Success', 'Stopped monitoring weight machine');
+    await hubConnection.current?.invoke('StopWeightMonitoring');
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     
-    // If tare weight changes, recalculate net weight
     if (name === 'tareWeight') {
       const tareWeight = parseFloat(value) || 0;
       const grossWeight = parseFloat(weightData.grossWeight) || 0;
@@ -108,13 +128,11 @@ const FGStickerConfirmation: React.FC = () => {
       const allotmentData = await ProductionAllotmentService.getProductionAllotmentByAllotId(allotId);
       setAllotmentData(allotmentData);
       
-      // Set tare weight from tube weight when allotment data is loaded
       if (allotmentData.tubeWeight) {
         const tubeWeight = parseFloat(allotmentData.tubeWeight.toString()).toFixed(2);
         setWeightData(prev => ({
           ...prev,
           tareWeight: tubeWeight,
-          // Recalculate net weight with new tare weight
           netWeight: (parseFloat(prev.grossWeight) - parseFloat(tubeWeight)).toFixed(2)
         }));
       }
@@ -137,8 +155,7 @@ const FGStickerConfirmation: React.FC = () => {
         setSelectedMachine(selectedMachineData);
       }
       
-      // Check if FG sticker has been generated for this roll
-      setIsFGStickerGenerated(null); // Reset the flag
+      setIsFGStickerGenerated(null);
       
       toast.success('Success', 'Production planning data loaded successfully.');
     } catch (err) {
@@ -154,10 +171,8 @@ const FGStickerConfirmation: React.FC = () => {
     }
   };
 
-  // Handle barcode scanning for roll details
   const handleRollBarcodeScan = async (barcodeData: string) => {
     try {
-      // Parse the barcode data (assuming format: allotId#machineName#rollNo)
       const parts = barcodeData.split('#');
       if (parts.length >= 3) {
         const [allotId, machineName, rollNo] = parts;
@@ -167,21 +182,19 @@ const FGStickerConfirmation: React.FC = () => {
           allotId: allotId || '',
           machineName: machineName || '',
           rollNo: rollNo || '',
-          rollId: barcodeData // Also set the full barcode as rollId
+          rollId: barcodeData
         }));
         
-        // Set roll details
         const newRollDetails: RollDetails = {
           allotId,
           machineName,
           rollNo,
+          fgRollNo: undefined
         };
         setRollDetails(newRollDetails);
         
-        // Fetch allotment data automatically when barcode is scanned
         await fetchAllotmentData(allotId, machineName);
         
-        // Check if FG sticker has been generated for this roll and fetch roll confirmation data
         try {
           const rollConfirmations = await RollConfirmationService.getRollConfirmationsByAllotId(allotId);
           const rollConfirmation = rollConfirmations.find((rc: RollConfirmationResponseDto) => 
@@ -191,13 +204,11 @@ const FGStickerConfirmation: React.FC = () => {
           if (rollConfirmation) {
             setIsFGStickerGenerated(rollConfirmation.isFGStickerGenerated);
             setRollConfirmationData(rollConfirmation);
-            // Update roll details with GreyGsm from roll confirmation
             setRollDetails(prev => prev ? {
               ...prev,
-              greyGsm: rollConfirmation.greyGsm
+              greyGsm: rollConfirmation.greyGsm,
+              fgRollNo: rollConfirmation.fgRollNo
             } : null);
-            // Note: We're removing the toast error here as it's duplicate with the useEffect
-            // The useEffect will handle setting the state and we'll show the status in the UI
           } else {
             setIsFGStickerGenerated(false);
             setRollConfirmationData(null);
@@ -249,16 +260,10 @@ const FGStickerConfirmation: React.FC = () => {
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
-      // Clean up interval on unmount
-      if (weightIntervalRef.current) {
-        clearInterval(weightIntervalRef.current);
-      }
-      // Reset FG sticker status on unmount
-      setIsFGStickerGenerated(null);
+      stopWeightMonitoring();
     };
   }, []);
 
-  // Fetch roll confirmation data when rollDetails change
   useEffect(() => {
     const fetchRollConfirmationData = async () => {
       if (rollDetails && rollDetails.allotId && rollDetails.machineName && rollDetails.rollNo) {
@@ -271,10 +276,10 @@ const FGStickerConfirmation: React.FC = () => {
           if (rollConfirmation) {
             setIsFGStickerGenerated(rollConfirmation.isFGStickerGenerated);
             setRollConfirmationData(rollConfirmation);
-            // Update roll details with GreyGsm from roll confirmation
             setRollDetails(prev => prev ? {
               ...prev,
-              greyGsm: rollConfirmation.greyGsm
+              greyGsm: rollConfirmation.greyGsm,
+              fgRollNo: rollConfirmation.fgRollNo
             } : null);
           } else {
             setIsFGStickerGenerated(false);
@@ -304,24 +309,15 @@ const FGStickerConfirmation: React.FC = () => {
       return;
     }
     
-    
-
-    
     setIsLoading(true);
     try {
-      // Update the roll confirmation with weight data
       if (rollDetails && allotmentData) {
-        // Find the roll confirmation for this roll
         const rollConfirmations = await RollConfirmationService.getRollConfirmationsByAllotId(rollDetails.allotId);
         const rollConfirmation = rollConfirmations.find((rc: RollConfirmationResponseDto) => 
           rc.machineName === rollDetails.machineName && rc.rollNo === rollDetails.rollNo
         );
         
         if (rollConfirmation) {
-          // Double-check if FG sticker has already been generated
-        
-          
-          // Update the roll confirmation with weight data and set FG Sticker generated flag
           try {
             await RollConfirmationService.updateRollConfirmation(rollConfirmation.id, {
               grossWeight: parseFloat(weightData.grossWeight),
@@ -330,21 +326,17 @@ const FGStickerConfirmation: React.FC = () => {
               isFGStickerGenerated: true
             });
           } catch (updateError: any) {
-            // Check if it's a conflict error (FG sticker already generated)
             if (updateError.message && updateError.message.includes('FG Sticker has already been generated')) {
               toast.error('Error', 'FG Sticker has already been generated for this roll. Please scan next roll.');
               setIsLoading(false);
               return;
             }
-            // Re-throw other errors
             throw updateError;
           }
           
-          // Update the state
           setIsFGStickerGenerated(true);
           setRollConfirmationData({...rollConfirmation, isFGStickerGenerated: true});
           
-          // Print the FG sticker
           try {
             const printResult = await FGStickerService.printFGRollSticker(rollConfirmation.id);
             if (printResult.success) {
@@ -361,23 +353,20 @@ const FGStickerConfirmation: React.FC = () => {
         }
       }
       
-      // Reset form
       setFormData({
         rollId: '',
-        ipAddress: '192.168.1.100',
+        ipAddress: '192.168.10.75',
         allotId: '',
         machineName: '',
         rollNo: ''
       });
       
-      // Reset weight data
       setWeightData({
         grossWeight: '0.00',
         tareWeight: '0.00',
         netWeight: '0.00'
       });
       
-      // Reset roll details
       setRollDetails(null);
       setAllotmentData(null);
       setSalesOrderData(null);
@@ -385,12 +374,10 @@ const FGStickerConfirmation: React.FC = () => {
       setIsFGStickerGenerated(null);
       setRollConfirmationData(null);
       
-      // Stop monitoring if it was running
       if (isWeightMonitoring) {
         stopWeightMonitoring();
       }
     } catch (err) {
-    
       toast.error('Error', 'FG Sticker has already been generated for this roll. Please scan next roll.');
     } finally {
       setIsLoading(false);
@@ -459,7 +446,8 @@ const FGStickerConfirmation: React.FC = () => {
                       { label: 'Party:', value: salesOrderData.partyName || 'N/A' },
                       { label: 'Order Date:', value: salesOrderData.salesDate ? new Date(salesOrderData.salesDate).toLocaleDateString() : 'N/A' },
                       { label: 'Machine:', value: selectedMachine?.machineName || 'N/A' },
-                      { label: 'Rolls/Kg:', value: selectedMachine?.rollPerKg?.toFixed(3) || 'N/A' }
+                      { label: 'Rolls/Kg:', value: selectedMachine?.rollPerKg?.toFixed(3) || 'N/A' },
+                      { label: 'FG Roll No:', value: rollDetails?.fgRollNo || 'N/A' }
                     ].map((item, index) => (
                       <div key={index} className="flex">
                         <span className="text-gray-600 mr-1">{item.label}</span>
@@ -484,7 +472,6 @@ const FGStickerConfirmation: React.FC = () => {
                 </div>
               )}
 
-              {/* Packaging Details Section */}
               {allotmentData && (
                 <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-md p-2 mt-3">
                   <div className="flex items-center justify-between mb-1">
@@ -503,10 +490,8 @@ const FGStickerConfirmation: React.FC = () => {
                             <span className="mr-1">{allotmentData.tapeColor || 'N/A'}</span>
                             {allotmentData.tapeColor && (
                               (() => {
-                                // Check if this is a color combination (contains " + ")
                                 const isCombination = allotmentData.tapeColor.includes(' + ');
                                 if (isCombination) {
-                                  // Split the combination into individual colors
                                   const colors = allotmentData.tapeColor.split(' + ');
                                   return (
                                     <div className="flex items-center">
@@ -521,7 +506,6 @@ const FGStickerConfirmation: React.FC = () => {
                                     </div>
                                   );
                                 } else {
-                                  // Single color
                                   return (
                                     <div 
                                       className="w-3 h-3 rounded-full border border-gray-300"
@@ -534,7 +518,8 @@ const FGStickerConfirmation: React.FC = () => {
                           </div>
                         )
                       },
-                      { label: 'F-GSM:', value: `${rollDetails?.greyGsm?.toFixed(2) || allotmentData?.reqFinishGsm || 'N/A'}` }
+                      { label: 'F-GSM:', value: `${rollDetails?.greyGsm?.toFixed(2) || allotmentData?.reqFinishGsm || 'N/A'}` },
+                      { label: 'FG Roll No:', value: rollDetails?.fgRollNo || 'N/A' }
                     ].map((item, index) => (
                       <div key={index} className="flex">
                         <span className="text-gray-600 mr-1">{item.label}</span>
@@ -546,11 +531,8 @@ const FGStickerConfirmation: React.FC = () => {
                   </div>
                 </div>
               )}
-
-           
             </div>
 
-            {/* Weight Machine Configuration */}
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-md p-3">
               <h3 className="text-xs font-semibold text-blue-800 mb-2">Weight Machine Configuration</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
@@ -592,7 +574,6 @@ const FGStickerConfirmation: React.FC = () => {
               </div>
             </div>
             
-            {/* Real-time Weight Display */}
             <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-md p-3">
               <h3 className="text-xs font-semibold text-green-800 mb-2">Real-time Weight Data</h3>
               <div className="grid grid-cols-3 md:grid-cols-3 gap-3">
@@ -606,7 +587,7 @@ const FGStickerConfirmation: React.FC = () => {
                     id="tareWeight" 
                     name="tareWeight" 
                     value={weightData.tareWeight} 
-                    onChange={(e) => handleChange(e as any)} 
+                    onChange={handleChange} 
                     type="number" 
                     step="0.01" 
                     className="text-xl font-bold text-center h-6 p-0" 
@@ -621,8 +602,6 @@ const FGStickerConfirmation: React.FC = () => {
                 Net Weight = Gross Weight - Tare Weight (Tube Weight: {allotmentData?.tubeWeight || 'N/A'} kg)
               </div>
             </div>
-
-         
 
             <div className="flex justify-center pt-2 space-x-3">
               <Button 
