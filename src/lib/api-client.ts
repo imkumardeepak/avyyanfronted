@@ -54,7 +54,11 @@ import type {
   CreateRollAssignmentRequest,
   RollAssignmentResponseDto,
   GenerateStickersRequest,
-  GenerateBarcodesRequest
+  GenerateBarcodesRequest,
+  StorageCaptureResponseDto,
+  CreateStorageCaptureRequestDto,
+  UpdateStorageCaptureRequestDto,
+  StorageCaptureSearchRequestDto,
 } from '@/types/api-types';
 
 // API Configuration
@@ -589,4 +593,37 @@ export const inspectionApi = {
   // GET /api/Inspection/by-allot-id/{allotId} - Get inspections by AllotId
   getInspectionsByAllotId: (allotId: string): Promise<AxiosResponse<InspectionResponseDto[]>> =>
     apiClient.get(`/Inspection/by-allot-id/${allotId}`),
+};
+
+// ============================================
+// STORAGE CAPTURE API (/api/StorageCapture)
+// ============================================
+
+export const storageCaptureApi = {
+  // GET /api/StorageCapture - Get all storage captures
+  getAllStorageCaptures: (): Promise<AxiosResponse<StorageCaptureResponseDto[]>> =>
+    apiClient.get('/StorageCapture'),
+
+  // GET /api/StorageCapture/{id} - Get storage capture by ID
+  getStorageCapture: (id: number): Promise<AxiosResponse<StorageCaptureResponseDto>> =>
+    apiClient.get(`/StorageCapture/${id}`),
+
+  // POST /api/StorageCapture - Create new storage capture
+  createStorageCapture: (data: CreateStorageCaptureRequestDto): Promise<AxiosResponse<StorageCaptureResponseDto>> =>
+    apiClient.post('/StorageCapture', data),
+
+  // PUT /api/StorageCapture/{id} - Update storage capture
+  updateStorageCapture: (id: number, data: UpdateStorageCaptureRequestDto): Promise<AxiosResponse<StorageCaptureResponseDto>> =>
+    apiClient.put(`/StorageCapture/${id}`, data),
+
+  // DELETE /api/StorageCapture/{id} - Delete storage capture
+  deleteStorageCapture: (id: number): Promise<AxiosResponse<void>> =>
+    apiClient.delete(`/StorageCapture/${id}`),
+
+  // GET /api/StorageCapture/search - Search storage captures
+  searchStorageCaptures: (params: StorageCaptureSearchRequestDto): Promise<AxiosResponse<StorageCaptureResponseDto[]>> =>
+    apiClient.get('/StorageCapture/search', { params }),
+
+  getRollConfirmationsByAllotId: (allotId: string): Promise<AxiosResponse<RollConfirmationResponseDto[]>> =>
+    apiClient.get(`/StorageCapture/by-allot-id/${allotId}`),
 };
