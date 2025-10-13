@@ -1,16 +1,233 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DataTable } from '@/components/DataTable';
 import { DeleteConfirmationDialog } from '@/components/ui/confirmation-dialog';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, QrCode } from 'lucide-react';
 import { useLocations, useDeleteLocation } from '@/hooks/queries';
 import { apiUtils } from '@/lib/api-client';
 import { useQueryClient } from '@tanstack/react-query';
+import { pdf, Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
+import QRCode from 'qrcode';
+import logo from '@/assets/Images/avyaanlogo.png';
 import type { Row } from '@tanstack/react-table';
 import type { LocationResponseDto } from '@/types/api-types';
+
+// Create styles for the PDF
+const styles = StyleSheet.create({
+  page: {
+    flexDirection: 'column',
+    backgroundColor: '#FFFFFF',
+    padding: 40, // Increased padding for better A4 margins
+    fontFamily: 'Helvetica', // Use a clean font (or import custom if needed)
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 30,
+    paddingBottom: 15,
+    borderBottom: '2px solid #2563eb',
+  },
+  logoContainer: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+  },
+  logo: {
+    width: 120, // Slightly larger for impact
+    height: 80,
+    marginBottom: 5,
+  },
+  companyName: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1e40af',
+  },
+  companyTagline: {
+    fontSize: 12,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  companyDetails: {
+    fontSize: 12,
+    color: '#64748b',
+    textAlign: 'right',
+  },
+  section: {
+    flexGrow: 1,
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 28,
+    textAlign: 'center',
+    marginBottom: 15,
+    color: '#1e40af',
+    fontWeight: 'bold',
+    letterSpacing: 1, // Subtle spacing for elegance
+  },
+  qrContainer: {
+    margin: 20,
+    padding: 30,
+    border: '3px solid #2563eb',
+    borderRadius: 20, // Softer corners
+    alignItems: 'center',
+    backgroundColor: '#f0f9ff', // Subtle blue tint for background
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 5, // Enhanced shadow for depth
+    width: '80%', // Better fit on A4
+  },
+  qrCode: {
+    width: 240, // Larger QR for scannability
+    height: 240,
+    marginBottom: 20,
+  },
+  locationInfo: {
+    fontSize: 20,
+    textAlign: 'center',
+    fontWeight: 'bold',
+    color: '#1e293b',
+    marginBottom: 15,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 8,
+    paddingHorizontal: 10,
+  },
+  infoLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#334155',
+    flex: 1, // Even spacing
+  },
+  infoValue: {
+    fontSize: 14,
+    color: '#64748b',
+    flex: 2,
+    textAlign: 'right',
+  },
+  code: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginTop: 15,
+    color: '#2563eb',
+    backgroundColor: '#dbeafe',
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#93c5fd',
+    textAlign: 'center',
+    width: '60%',
+  },
+  footer: {
+    position: 'absolute',
+    bottom: 30,
+    left: 40,
+    right: 40,
+    paddingTop: 10,
+    borderTop: '1px solid #cbd5e1',
+    textAlign: 'center',
+    fontSize: 10,
+    color: '#64748b',
+  },
+  footerDetails: {
+    textAlign: 'center',
+    marginTop: 5,
+  },
+});
+// PDF component with actual QR code
+const LocationQRCodePDF = ({ location }: { location: LocationResponseDto }) => {
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Generate QR code as data URL
+    QRCode.toDataURL(location.locationcode, {
+      width: 300,
+      margin: 2,
+      color: {
+        dark: '#000000',
+        light: '#FFFFFF',
+      },
+    })
+      .then((url) => {
+        setQrCodeDataUrl(url);
+      })
+      .catch((err) => {
+        console.error('Error generating QR code:', err);
+      });
+  }, [location.locationcode]);
+
+  return (
+    <Document>
+      <Page size="A4" style={styles.page}>
+        {/* Company Header */}
+        <View style={styles.header}>
+          <View style={styles.logoContainer}>
+            <Image src={logo} style={styles.logo} />
+            <Text style={styles.companyName}>Avyaan Knitfab</Text>
+            <Text style={styles.companyTagline}>Quality Fabrics & Logistics</Text>
+          </View>
+          <Text style={styles.companyDetails}>
+            123 Fabric Lane, Industrial Park{'\n'}
+            City, State 12345{'\n'}
+            Phone: (123) 456-7890 | Email: info@avyaanknitfab.com
+          </Text>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.title}>Location QR Code</Text>
+
+          <View style={styles.qrContainer}>
+            {qrCodeDataUrl ? (
+              <Image src={qrCodeDataUrl} style={styles.qrCode} />
+            ) : (
+              <Text>Loading QR Code...</Text>
+            )}
+
+            <Text style={styles.locationInfo}>{location.location}</Text>
+
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Warehouse:</Text>
+              <Text style={styles.infoValue}>{location.warehousename}</Text>
+            </View>
+
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Description:</Text>
+              <Text style={styles.infoValue}>{location.description || 'N/A'}</Text>
+            </View>
+
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Coordinates:</Text>
+              <Text style={styles.infoValue}>{location.coordinates || 'N/A'}</Text>
+            </View>
+
+            <Text style={styles.code}>Code: {location.locationcode}</Text>
+          </View>
+        </View>
+
+        {/* Footer */}
+        <View style={styles.footer} fixed>
+          {' '}
+          {/* 'fixed' makes it repeat on multi-page if needed */}
+          <Text>
+            Scan this QR code to access location information • Generated on{' '}
+            {new Date().toLocaleDateString()}
+          </Text>
+          <View style={styles.footerDetails}>
+            <Text>Avyaan Knitfab © {new Date().getFullYear()} • All rights reserved</Text>
+            {/* <Text render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} /> */}
+          </View>
+        </View>
+      </Page>
+    </Document>
+  );
+};
 
 type LocationCellProps = { row: Row<LocationResponseDto> };
 
@@ -27,6 +244,39 @@ const LocationManagement = () => {
     open: false,
     location: null,
   });
+
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const generateAndDownloadPDF = async (location: LocationResponseDto) => {
+    setIsGenerating(true);
+    try {
+      // Create the PDF document
+      const doc = <LocationQRCodePDF location={location} />;
+
+      // Generate the PDF blob
+      const asPdf = pdf(doc);
+      const blob = await asPdf.toBlob();
+
+      // Create a download link
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `location-${location.locationcode}-qrcode.pdf`;
+
+      // Trigger the download
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Clean up
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Failed to generate QR code PDF. Please try again.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   const columns = [
     {
@@ -82,6 +332,18 @@ const LocationManagement = () => {
               onClick={() => navigate(`/locations/${location.id}/edit`)}
             >
               <Edit className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => generateAndDownloadPDF(location)}
+              disabled={isGenerating}
+            >
+              {isGenerating ? (
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              ) : (
+                <QrCode className="h-4 w-4" />
+              )}
             </Button>
             <Button variant="destructive" size="sm" onClick={() => handleDelete(location.id)}>
               <Trash2 className="h-4 w-4" />

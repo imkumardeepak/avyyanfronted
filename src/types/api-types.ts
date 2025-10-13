@@ -1010,3 +1010,45 @@ export interface ShiftSearchRequestDto {
 // ============================================
 // PRODUCTION ALLOTMENT API (/api/ProductionAllotment)
 // ============================================
+
+export interface StorageCaptureResponseDto {
+  id: number;
+  lotNo: string;
+  fgRollNo: string;
+  locationCode: string;
+  tape: string;
+  customerName: string;
+  createdAt: string;
+  updatedAt?: string;
+  isActive: boolean;
+}
+
+export interface CreateStorageCaptureRequestDto {
+  lotNo: string;
+  fgRollNo: string;
+  locationCode: string;
+  tape: string;
+  customerName: string;
+}
+
+export interface UpdateStorageCaptureRequestDto {
+  lotNo: string;
+  fgRollNo: string;
+  locationCode: string;
+  tape: string;
+  customerName: string;
+  isActive: boolean;
+}
+
+export interface StorageCaptureSearchRequestDto {
+  lotNo?: string;
+  fgRollNo?: string;
+  locationCode?: string;
+  tape?: string;
+  customerName?: string;
+  isActive?: boolean;
+}
+
+// ============================================
+// PRODUCTION ALLOTMENT API (/api/ProductionAllotment)
+// ============================================
