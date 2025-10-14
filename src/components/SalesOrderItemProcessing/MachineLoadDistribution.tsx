@@ -48,6 +48,9 @@ interface MachineLoadDistributionProps {
   onUpdateMachineAllocation: (machineId: number, allocatedWeight: number) => void;
   onAutoDistributeLoad: () => void;
   onClearAllMachines: () => void;
+  // New props for filtering machines by diameter and gauge
+  machineDiameter?: number;
+  machineGauge?: number;
 }
 
 export function MachineLoadDistribution({
@@ -65,6 +68,8 @@ export function MachineLoadDistribution({
   onUpdateMachineAllocation,
   onAutoDistributeLoad,
   onClearAllMachines,
+  machineDiameter,
+  machineGauge,
 }: MachineLoadDistributionProps) {
   return (
     <Card>
@@ -102,7 +107,13 @@ export function MachineLoadDistribution({
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {machines?.map((machine) => {
+                      {/* Filter machines by diameter and gauge if provided */}
+                      {machines?.filter(machine => {
+                        // If diameter and gauge are not provided, show all machines
+                        if (!machineDiameter || !machineGauge) return true;
+                        // Otherwise, only show machines with matching diameter and gauge
+                        return machine.dia === machineDiameter && machine.gg === machineGauge;
+                      }).map((machine) => {
                         const isSelected = selectedMachines.some(
                           (m) => m.machineId === machine.id
                         );

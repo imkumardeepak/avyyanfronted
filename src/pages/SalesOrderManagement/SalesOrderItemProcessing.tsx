@@ -40,7 +40,7 @@ const SalesOrderItemProcessingRefactored = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isItemProcessing, setIsItemProcessing] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [allotmentId, setAllotmentId] = useState<string | null>(null);
+  const [lotmentId, setLotmentId] = useState<string | null>(null);
   const [isGeneratingId, setIsGeneratingId] = useState(false);
   
   const [additionalFields, setAdditionalFields] = useState<AdditionalFields>({ yarnLotNo: '', counter: '', colourCode: '', reqGreyGsm: null, reqGreyWidth: null, reqFinishGsm: null, reqFinishWidth: null });
@@ -438,7 +438,7 @@ const SalesOrderItemProcessingRefactored = () => {
       const itemDescription = (selectedItem.stockItemName + ' ' + (selectedItem.descriptions || '')).toLowerCase();
 
       // Find fabric structure in master data
-      let fabricTypeCode = 'SJ'; // Default fallback
+      let fabricTypeCode: string | null = null; // Remove default fallback
       if (fabricStructures && fabricTypeFromDescription) {
         // Try to find exact match first
         const matchingFabric = fabricStructures.find(f => 
@@ -487,7 +487,7 @@ const SalesOrderItemProcessingRefactored = () => {
           'single jersey': 'SJ', '1x1 rib': '1R', '2x1 rib': '2R', '3x1 rib': '3R', 'two thread fleece': '2F', 'three thread fleece': '3F',
           'variegated rib': 'VR', 'popcorn strip': 'PS', 'honey comb': 'HC', 'honeycomb strip': 'HS', 'pop corn': 'PO', 'pique crinkle': 'PC',
           'rice knit': 'RK', 'single pique': 'SP', 'double pique': 'DP', 'single jersey pleated': 'PL', 'single jersysmall biscuit': 'SB',
-          waffle: 'WA', 'waffle miss cam': 'WM', 'pointelle rib': 'PR', herringbone: 'HB', stripe: 'ST'
+            waffle: 'WA', 'waffle miss cam': 'WM', 'pointelle rib': 'PR', herringbone: 'HB', stripe: 'ST'
         };
 
         for (const [key, code] of Object.entries(fabricTypeMap)) {
@@ -500,29 +500,64 @@ const SalesOrderItemProcessingRefactored = () => {
 
       const fourthChar = itemDescription.includes('lycra') ? 'L' : 'X';
       
-      let fifthChar = '1';
+      let fifthChar: string | null = null;
       const countRegex = /count:\s*(\d+)\/(\d+)/i;
       const countMatch = selectedItem.descriptions?.match(countRegex);
       if (countMatch && countMatch[2]) fifthChar = countMatch[2] === '2' ? '2' : '1';
 
-      let yarnCount = '30';
+      let yarnCount: string | null = null;
       if (countMatch && countMatch[1]) yarnCount = countMatch[1].padStart(2, '0').substring(0, 2);
 
       const eighthChar = itemDescription.includes('carded') ? 'K' : 'C';
 
-      let machineDiameter = '30';
-      let machineGauge = '28';
-      if (selectedMachines.length > 0 && machines) {
+      let machineDiameter: string | null = null;
+      let machineGauge: string | null = null;
+      
+      // Extract diameter and gauge from description first
+      if (parsedDescriptionValues.diameter > 0) {
+        machineDiameter = parsedDescriptionValues.diameter.toString().padStart(2, '0').substring(0, 2);
+      } else if (selectedMachines.length > 0 && machines) {
         const firstMachine = machines.find(m => m.id === selectedMachines[0].machineId);
         if (firstMachine) {
           machineDiameter = firstMachine.dia.toString().padStart(2, '0').substring(0, 2);
+        }
+      }
+
+      if (parsedDescriptionValues.gauge > 0) {
+        machineGauge = parsedDescriptionValues.gauge.toString().padStart(2, '0').substring(0, 2);
+      } else if (selectedMachines.length > 0 && machines) {
+        const firstMachine = machines.find(m => m.id === selectedMachines[0].machineId);
+        if (firstMachine) {
           machineGauge = firstMachine.gg.toString().padStart(2, '0').substring(0, 2);
         }
       }
 
-      let financialYear = '25';
-      const voucherMatch = selectedOrder.voucherNumber.match(/\/(\d{2})-(\d{2})\//);
-      if (voucherMatch) financialYear = voucherMatch[1];
+      // Validate required fields before generating lotment ID
+      if (!fabricTypeCode) {
+        throw new Error('Fabric type code not found. Please ensure the sales order was created properly with correct fabric information.');
+      }
+      
+      if (!fifthChar) {
+        throw new Error('Fifth character (yarn type) not found. Please ensure the sales order was created properly with correct yarn information.');
+      }
+      
+      if (!yarnCount) {
+        throw new Error('Yarn count not found. Please ensure the sales order was created properly with correct yarn count information.');
+      }
+      
+      if (!machineDiameter) {
+        throw new Error('Machine diameter not found. Please ensure the sales order was created properly with correct diameter information.');
+      }
+      
+      if (!machineGauge) {
+        throw new Error('Machine gauge not found. Please ensure the sales order was created properly with correct gauge information.');
+      }
+
+      // Calculate financial year based on current date
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth() + 1; // getMonth() returns 0-11
+      let financialYear = currentMonth >= 4 ? (currentYear % 100 ).toString().padStart(2, '0') : (currentYear % 100).toString().padStart(2, '0');
 
       const serialNumber = await ProductionAllotmentService.getNextSerialNumber();
 
@@ -536,20 +571,21 @@ const SalesOrderItemProcessingRefactored = () => {
 
       return `${part1}-${part2}-${part3}`;
     } catch (error) {
-      console.error('Error generating allotment ID:', error);
+      console.error('Error generating lotment ID:', error);
       return null;
     }
   };
 
   useEffect(() => {
     const generateId = async () => {
-      if (selectedOrder && selectedItem && !allotmentId && !isGeneratingId) {
+      if (selectedOrder && selectedItem && !lotmentId && !isGeneratingId) {
         setIsGeneratingId(true);
         try {
           const id = await generateAllotmentId();
-          setAllotmentId(id);
-        } catch (error) {
-          console.error('Error generating allotment ID:', error);
+          setLotmentId(id);
+        } catch (error: any) {
+          console.error('Error generating lotment ID:', error);
+          alert(`Error generating lotment ID: ${error.message}\n\nPlease ensure the sales order was created properly with all required information before creating production planning.`);
         } finally {
           setIsGeneratingId(false);
         }
@@ -574,9 +610,17 @@ const SalesOrderItemProcessingRefactored = () => {
       return;
     }
 
-    const allotmentId = await generateAllotmentId();
-    if (!allotmentId) {
-      alert('Error generating allotment ID. Please try again.'); return;
+    let lotmentId: string | null = null;
+    try {
+      lotmentId = await generateAllotmentId();
+    } catch (error: any) {
+      alert(`Error generating lotment ID: ${error.message}\n\nPlease ensure the sales order was created properly with all required information before creating production planning.`);
+      return;
+    }
+    
+    if (!lotmentId) {
+      alert('Error generating lotment ID. Please try again.');
+      return;
     }
 
     setIsProcessing(true);
@@ -615,13 +659,22 @@ const SalesOrderItemProcessingRefactored = () => {
         return matches ? matches.join(' + ') : 'N/A';
       };
 
+      const extractSlitLineFromDescription = (desc: string) => {
+        if (!desc) return 'N/A';
+        // Look for slit line pattern (note: description has "Slit Iine" typo instead of "Slit Line")
+        const slitLineRegex = /slit\s*(?:iine|line)\s*:\s*([^|]+)/i;
+        const match = desc.match(slitLineRegex);
+        return match ? match[1].trim() : 'N/A';
+      };
+
       const requestData = {
-        allotmentId, voucherNumber: selectedOrder.voucherNumber,
+        allotmentId: lotmentId, voucherNumber: selectedOrder.voucherNumber,
         itemName: selectedItem.stockItemName, salesOrderId: selectedOrder.id, salesOrderItemId: selectedItem.id,
         actualQuantity, yarnCount: extractYarnCount(selectedItem.descriptions || ''),
         diameter: parsedDescriptionValues.diameter || productionCalc.needle,
         gauge: parsedDescriptionValues.gauge || productionCalc.feeder,
-        fabricType: extractFabricType(selectedItem.stockItemName), slitLine: 'N/A',
+        fabricType: selectedItem?.descriptions ? extractFabricTypeFromDescription(selectedItem.descriptions) || extractFabricType(selectedItem.stockItemName) : extractFabricType(selectedItem.stockItemName),
+        slitLine: selectedItem?.descriptions ? extractSlitLineFromDescription(selectedItem.descriptions) : 'N/A',
         stitchLength: productionCalc.stichLength, efficiency: productionCalc.efficiency,
         composition: extractComposition(selectedItem.descriptions || ''),
         yarnLotNo: additionalFields.yarnLotNo, counter: additionalFields.counter, colourCode: additionalFields.colourCode,
@@ -646,7 +699,7 @@ const SalesOrderItemProcessingRefactored = () => {
         setIsItemProcessing(false);
       }
 
-      alert(`Successfully processed item: ${selectedItem.stockItemName} from order ${selectedOrder.voucherNumber}\nAllotment ID: ${allotmentId}`);
+      alert(`Successfully processed item: ${selectedItem.stockItemName} from order ${selectedOrder.voucherNumber}\nLotment ID: ${lotmentId}`);
       navigate('/sales-orders');
     } catch (error) {
       console.error('Error processing item:', error);
@@ -688,10 +741,21 @@ const SalesOrderItemProcessingRefactored = () => {
                   <span className="text-muted-foreground">Customer:</span>
                   <span className="font-medium max-w-[150px] truncate">{selectedOrder?.partyName}</span>
                 </div>
-                {allotmentId && (
+                {lotmentId ? (
                   <div className="flex items-center space-x-2">
-                    <span className="text-muted-foreground">Allotment:</span>
-                    <span className="font-mono font-semibold text-primary">{allotmentId}</span>
+                    <span className="text-muted-foreground">Lotment:</span>
+                    <span className="font-mono font-semibold text-primary">{lotmentId}</span>
+                  </div>
+                ) : isGeneratingId ? (
+                  <div className="flex items-center space-x-2">
+                    <span className="text-muted-foreground">Generating Lotment ID...</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-2 bg-red-100 p-2 rounded">
+                    <span className="text-red-800 font-medium">
+                      Lotment ID not generated. Required values not found in sales order. 
+                      Please ensure the sales order was created properly before creating production planning.
+                    </span>
                   </div>
                 )}
               </div>
@@ -729,6 +793,8 @@ const SalesOrderItemProcessingRefactored = () => {
             onToggleMachineEdit={toggleMachineEdit} onSaveMachineParameters={saveMachineParameters}
             onUpdateMachineParameters={updateMachineParameters} onUpdateMachineAllocation={updateMachineAllocation}
             onAutoDistributeLoad={autoDistributeLoad} onClearAllMachines={() => setSelectedMachines([])}
+            machineDiameter={parsedDescriptionValues.diameter || undefined}
+            machineGauge={parsedDescriptionValues.gauge || undefined}
           />
         </>
       )}

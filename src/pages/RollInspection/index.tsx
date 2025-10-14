@@ -93,13 +93,13 @@ const RollInspection: React.FC = () => {
         setSelectedMachine(selectedMachineData);
       }
       
-      toast.success('Success', 'Allotment data loaded successfully');
+      toast.success('Success', 'Lotment data loaded successfully');
     } catch (err) {
-      console.error('Error fetching allotment data:', err);
+      console.error('Error fetching lotment data:', err);
       setAllotmentData(null);
       setSalesOrderData(null);
       setSelectedMachine(null);
-      toast.error('Error', 'Failed to fetch allotment data. Please check the allotment ID and try again.');
+      toast.error('Error', 'Failed to fetch lotment data. Please check the lotment ID and try again.');
     } finally {
       setIsFetchingData(false);
     }
@@ -167,7 +167,7 @@ const RollInspection: React.FC = () => {
 
   const submitInspection = async (flag: boolean, actionType: 'approve' | 'hold' | 'reject') => {
     const requiredFields = [
-      { value: formData.allotId, name: 'Allot ID' },
+      { value: formData.allotId, name: 'Lot ID' },
       { value: formData.machineName, name: 'Machine Name' },
       { value: formData.rollNo, name: 'Roll No' }
     ];
@@ -362,13 +362,13 @@ const RollInspection: React.FC = () => {
               <div className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="space-y-1">
-                    <Label htmlFor="allotId" className="text-xs font-medium">Allot ID *</Label>
+                    <Label htmlFor="allotId" className="text-xs font-medium">Lot ID *</Label>
                     <Input
                       id="allotId"
                       name="allotId"
                       value={formData.allotId}
                       onChange={handleChange}
-                      placeholder="Enter Allot ID"
+                      placeholder="Enter Lot ID"
                       required
                       disabled={!!allotmentData}
                       className="h-8 text-sm"

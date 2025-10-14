@@ -110,10 +110,10 @@ const navConfig: NavItem[] = [
     isParentOnly: true,
     children: [
       {
-        title: 'Production Allotment',
+        title: 'Production Lotment',
         href: '/production-allotment',
         icon: Cog,
-        description: 'View production allotment details',
+        description: 'View production lotment details',
       },
     ],
   },
@@ -125,10 +125,16 @@ const navConfig: NavItem[] = [
     isParentOnly: true,
     children: [
       {
-        title: 'Quality Checking',
+        title: 'Roll Capture',
         href: '/confirmation',
         icon: Check,
         description: 'rolls confirmation',
+      },
+        {
+        title: 'Quality Checking',
+        href: '/quality-checking',
+        icon: Check,
+        description: 'Perform quality checking for rolls',
       },
       {
         title: 'roll Inspection',
@@ -136,18 +142,19 @@ const navConfig: NavItem[] = [
         icon: Eye,
         description: 'check all rolls good conditon or not',
       },
+       {
+        title: 'FG Roll Capture',
+        href: '/fg-sticker-confirmation',
+        icon: Check,
+        description: 'Confirm FG sticker details for finished goods',
+      },
       {
         title: 'Storage Capture',
         href: '/storage-capture',
         icon: Package,
         description: 'Capture and allocate FG rolls to storage locations',
       },
-      {
-        title: 'FG Sticker Confirmation',
-        href: '/fg-sticker-confirmation',
-        icon: Check,
-        description: 'Confirm FG sticker details for finished goods',
-      },
+    
     ],
   },
   {

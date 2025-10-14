@@ -822,6 +822,13 @@ export interface RollConfirmationUpdateDto {
   grossWeight?: number;
   tareWeight?: number;
   netWeight?: number;
+  // Fabric specification fields
+  greyGsm?: number;
+  greyWidth?: number;
+  blendPercent?: number;
+  cotton?: number;
+  polyester?: number;
+  spandex?: number;
   // FG Roll Number - Auto-incremented per AllotId
   fgRollNo?: number;
   // Flag to indicate if FG Sticker has been generated

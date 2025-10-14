@@ -309,7 +309,13 @@ const ProductionAllotment: React.FC = () => {
         .slice(-barcodeCount)
         .map((barcode: GeneratedBarcodeDto) => barcode.rollNumber);
       
-      // Update local state with the updated assignment from the API
+      // Now, generate QR codes for the specific roll numbers
+      const qrResponse = await productionAllotmentApi.generateQRCodesForRollAssignment(
+        assignmentId, 
+        generatedRollNumbers
+      );
+      
+      // Only update local state if both operations succeed
       setShiftAssignments(prev => 
         prev.map(a => 
           a.id === assignmentId ? updatedAssignment : a
@@ -323,24 +329,48 @@ const ProductionAllotment: React.FC = () => {
         return newCounts;
       });
       
-      // Now, generate QR codes for the specific roll numbers
-      const qrResponse = await productionAllotmentApi.generateQRCodesForRollAssignment(
-        assignmentId, 
-        generatedRollNumbers
-      );
       toast.success(qrResponse.data.message || `Successfully generated ${barcodeCount} barcodes and QR codes`);
     } catch (error: unknown) {
       console.error('Error generating barcodes:', error);
       const axiosError = error as AxiosError;
-      const errorMessage = axiosError.response?.data || axiosError.message || 'Error generating barcodes';
-      toast.error(`Error: ${errorMessage}`);
+      
+      // Handle different types of errors
+      if (axiosError.response?.status === 500) {
+        // Server-side error, likely printer issue
+        toast.error('Printer not connected or printing failed. Please check printer connection and try again.');
+      } else if (axiosError.response?.status === 400) {
+        // Client-side validation error
+        const errorMessage = axiosError.response?.data || 'Invalid request. Please check your input.';
+        toast.error(`Validation Error: ${errorMessage}`);
+      } else {
+        // Other errors
+        const errorMessage = axiosError.response?.data || axiosError.message || 'Error generating barcodes';
+        toast.error(`Error: ${errorMessage}`);
+      }
+      
+      // Do not update the generated sticker count if there was an error
+      // The UI will reflect that no stickers were actually generated
     }
   };
 
   // Modified function to handle sticker generation with confirmation
   const handleGenerateStickers = (assignmentId: number, barcodeCount: number) => {
     const assignment = shiftAssignments.find(a => a.id === assignmentId);
-    if (!assignment) return;
+    if (!assignment) {
+      toast.error('Assignment not found');
+      return;
+    }
+    
+    // Validate barcode count before showing confirmation
+    if (barcodeCount <= 0) {
+      toast.error('Please enter a valid number of barcodes to generate');
+      return;
+    }
+    
+    if (barcodeCount > assignment.remainingRolls) {
+      toast.error(`Cannot generate more than ${assignment.remainingRolls} barcodes`);
+      return;
+    }
     
     // Set confirmation data and show dialog
     setStickerConfirmationData({
@@ -360,7 +390,12 @@ const ProductionAllotment: React.FC = () => {
     setStickerConfirmationData(null);
     
     // Call the original generateBarcodes function
-    await generateBarcodes(assignmentId, barcodeCount);
+    try {
+      await generateBarcodes(assignmentId, barcodeCount);
+    } catch (error) {
+      // Error handling is already done in generateBarcodes function
+      console.error('Sticker generation failed:', error);
+    }
   };
 
   // Function to cancel sticker generation
@@ -432,8 +467,25 @@ const ProductionAllotment: React.FC = () => {
     } catch (error: unknown) {
       console.error('Error reprinting sticker:', error);
       const axiosError = error as AxiosError;
-      const errorMessage = axiosError.response?.data || axiosError.message || 'Error reprinting sticker';
-      toast.error(`Error: ${errorMessage}`);
+      
+      // Handle different types of errors for reprint
+      if (axiosError.response?.status === 500) {
+        // Server-side error, likely printer issue
+        toast.error('Printer not connected or printing failed. Please check printer connection and try again.');
+      } else if (axiosError.response?.status === 400) {
+        // Client-side validation error
+        const errorMessage = axiosError.response?.data || 'Invalid request. Please check your input.';
+        toast.error(`Validation Error: ${errorMessage}`);
+      } else if (axiosError.response?.status === 404) {
+        // Not found error
+        toast.error(`Roll number ${reprintData.rollNumber} not found. Please verify the roll number.`);
+      } else {
+        // Other errors
+        const errorMessage = axiosError.response?.data || axiosError.message || 'Error reprinting sticker';
+        toast.error(`Error: ${errorMessage}`);
+      }
+      
+      // Keep the dialog open so user can try again
     }
   };
 
@@ -451,7 +503,7 @@ const ProductionAllotment: React.FC = () => {
       <div className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <h3 className="font-semibold">Allotment Information</h3>
+            <h3 className="font-semibold">Lotment Information</h3>
             <p>
               <span className="font-medium">ID:</span> {allotment.allotmentId}
             </p>
@@ -640,7 +692,7 @@ const ProductionAllotment: React.FC = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex justify-between items-center">
-            <span>Production Allotments</span>
+            <span>Production Lotments</span>
             <Badge variant="secondary">
               {productionAllotments?.length || 0} items
             </Badge>
@@ -651,7 +703,7 @@ const ProductionAllotment: React.FC = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Allotment ID</TableHead>
+                  <TableHead>Lotment ID</TableHead>
                   <TableHead>Item Name</TableHead>
                   <TableHead>Voucher Number</TableHead>
                   <TableHead>Quantity</TableHead>
@@ -693,7 +745,7 @@ const ProductionAllotment: React.FC = () => {
             </Table>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
-              No production allotments found
+              No production lotments found
             </div>
           )}
         </CardContent>
@@ -710,7 +762,7 @@ const ProductionAllotment: React.FC = () => {
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <h3 className="font-semibold">Allotment Information</h3>
+                  <h3 className="font-semibold">Lotment Information</h3>
                   <p><span className="font-medium">ID:</span> {selectedAllotment.allotmentId}</p>
                   <p><span className="font-medium">Item:</span> {selectedAllotment.itemName}</p>
                   <p><span className="font-medium">Machine:</span> {selectedMachine.machineName}</p>

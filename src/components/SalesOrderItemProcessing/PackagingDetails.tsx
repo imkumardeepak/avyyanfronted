@@ -45,7 +45,7 @@ export function PackagingDetails({
   tapeColorId,
 }: PackagingDetailsProps) {
   const { data: tapeColors = [] } = useTapeColors();
-  const [coreType, setCoreType] = useState<'with' | 'without'>('with');
+  const [coreType, setCoreType] = useState<'with' | 'without'>('without');
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
 
   const colorOptions = useMemo(() => {
@@ -116,11 +116,11 @@ export function PackagingDetails({
           <div className="space-y-3">
             <Label className="text-sm font-medium">Core Type</Label>
             <RadioGroup value={coreType} onValueChange={handleCoreTypeChange} className="space-y-2">
-              {['with', 'without'].map((type) => (
+              {['without', 'with'].map((type) => (
                 <div key={type} className="flex items-center space-x-2">
                   <RadioGroupItem value={type} id={`${type}-core`} />
                   <Label htmlFor={`${type}-core`} className="text-sm capitalize">
-                    {type === 'with' ? 'With Core' : 'No Core'}
+                    {type === 'with' ? 'With Core' : 'No Core '}
                   </Label>
                 </div>
               ))}
@@ -136,7 +136,7 @@ export function PackagingDetails({
                 <Input
                   id="tube-weight"
                   type="number"
-                  step="0.01"
+                  step="1"
                   min="0"
                   value={tubeWeight}
                   onChange={(e) => onTubeWeightChange(parseFloat(e.target.value) || 0)}
@@ -157,7 +157,7 @@ export function PackagingDetails({
               <Input
                 id="shrink-rap-weight"
                 type="number"
-                step="0.001"
+                step="1"
                 min="0"
                 value={shrinkRapWeight}
                 onChange={(e) => onShrinkRapWeightChange?.(parseFloat(e.target.value) || 0)}

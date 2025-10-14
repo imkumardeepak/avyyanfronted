@@ -61,11 +61,11 @@ const ProductionConfirmation: React.FC = () => {
       
       toast.success('Success', 'Production planning data loaded successfully.');
     } catch (err) {
-      console.error('Error fetching allotment data:', err);
+      console.error('Error fetching lotment data:', err);
       setAllotmentData(null);
       setSalesOrderData(null);
       setSelectedMachine(null);
-      toast.error('Error', err instanceof Error ? err.message : 'Failed to fetch allotment data.');
+      toast.error('Error', err instanceof Error ? err.message : 'Failed to fetch lotment data.');
     } finally {
       setIsFetchingData(false);
     }
@@ -128,11 +128,9 @@ const ProductionConfirmation: React.FC = () => {
     e.preventDefault();
     
     const requiredFields = [
-      { value: formData.allotId, name: 'Allot ID' },
+      { value: formData.allotId, name: 'Lot ID' },
       { value: formData.machineName, name: 'Machine Name' },
-      { value: formData.rollNo, name: 'Roll No' },
-      { value: formData.greyGsm, name: 'GREY GSM' },
-      { value: formData.greyWidth, name: 'GREY WIDTH' }
+      { value: formData.rollNo, name: 'Roll No' }
     ];
     
     const emptyFields = requiredFields.filter(field => !field.value);
@@ -143,21 +141,22 @@ const ProductionConfirmation: React.FC = () => {
     
     setIsLoading(true);
     try {
+      // Create roll confirmation data with default fabric specifications
       const rollConfirmationData: RollConfirmationRequestDto = {
         allotId: formData.allotId,
         machineName: formData.machineName,
         rollPerKg: selectedMachine?.rollPerKg || 0,
-        greyGsm: parseFloat(formData.greyGsm) || 0,
-        greyWidth: parseFloat(formData.greyWidth) || 0,
-        blendPercent: parseFloat(formData.blendPercent) || 0,
-        cotton: parseFloat(formData.cotton) || 0,
-        polyester: parseFloat(formData.polyester) || 0,
-        spandex: parseFloat(formData.spandex) || 0,
+        greyGsm: 0, // Default value
+        greyWidth: 0, // Default value
+        blendPercent: 0, // Default value
+        cotton: 0, // Default value
+        polyester: 0, // Default value
+        spandex: 0, // Default value
         rollNo: formData.rollNo
       };
       
       await RollConfirmationService.createRollConfirmation(rollConfirmationData);
-      toast.success('Success', 'Quality checking data saved successfully');
+      toast.success('Success', 'Roll capture saved successfully');
       
       // Reset form
       setFormData({
@@ -178,7 +177,7 @@ const ProductionConfirmation: React.FC = () => {
     <div className="p-2 max-w-4xl mx-auto">
       <Card className="shadow-md border-0">
         <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-t-lg py-3">
-          <CardTitle className="text-white text-base font-semibold text-center">Quality Checking Details</CardTitle>
+          <CardTitle className="text-white text-base font-semibold text-center">Production Capture</CardTitle>
         </CardHeader>
         
         <CardContent className="p-3">
@@ -188,7 +187,7 @@ const ProductionConfirmation: React.FC = () => {
             {/* Main Input Fields - Compact 4-column grid */}
             <div className="grid grid-cols-3 sm:grid-cols-3 gap-2 p-2 bg-gray-50 rounded-md">
               {[
-                { id: 'allotId', label: 'Allot ID *', value: formData.allotId, disabled: !!allotmentData },
+                { id: 'allotId', label: 'Lot ID *', value: formData.allotId, disabled: !!allotmentData },
                 { id: 'machineName', label: 'Machine Name *', value: formData.machineName, disabled: !!selectedMachine },
                 { id: 'rollNo', label: 'Roll No. *', value: formData.rollNo, disabled: !!formData.allotId && !!formData.machineName },
           
@@ -249,62 +248,11 @@ const ProductionConfirmation: React.FC = () => {
               </div>
             )}
 
-            {/* Quality Checking Section - Compact layout */}
-            <div className="border border-gray-200 rounded-md p-3 bg-white">
-              <div className="flex items-center mb-2">
-                <div className="w-1 h-3 bg-blue-600 rounded mr-1.5"></div>
-                <h3 className="text-sm font-semibold text-gray-80">Fabric Specifications</h3>
-              </div>
-              
-              {/* Reduced size for Grey GSM and Grey Width */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3 p-2 bg-blue-50 rounded-md">
-                {[
-                  { label: 'Plan GSM', value: allotmentData?.reqGreyGsm?.toFixed(2) || 'N/A' },
-                  { label: 'Plan Width', value: allotmentData?.reqGreyWidth?.toFixed(2) || 'N/A' },
-                  { label: 'Act GSM *', value: '' },
-                  { label: 'Act Width *', value: '' }
-                ].map((item, index) => (
-                  <div key={index} className="text-center">
-                    <Label className="text-[12px] text-blue-700 font-medium block mb-0.5">{item.label}</Label>
-                    {index < 2 ? (
-                      <div className="text-sm font-bold text-blue-900">{item.value}</div>
-                    ) : (
-                      <Input 
-                        id={index === 2 ? 'greyGsm' : 'greyWidth'}
-                        name={index === 2 ? 'greyGsm' : 'greyWidth'}
-                        value={formData[index === 2 ? 'greyGsm' : 'greyWidth']}
-                        onChange={handleChange}
-                        type="number"
-                        step="1"
-                        className="h-7 text-xs p-1"
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
-              
-              {/* Blend composition fields in a compact row */}
-              <div className="grid grid-cols-4 gap-2">
-                {[
-                  { id: 'cotton', label: 'COTTON', value: formData.cotton },
-                  { id: 'polyester', label: 'POLYESTER', value: formData.polyester },
-                  { id: 'spandex', label: 'SPANDEX', value: formData.spandex },
-                 { id: 'blendPercent', label: 'Blend %', value: formData.blendPercent }
-                ].map((field) => (
-                  <div key={field.id} className="space-y-1">
-                    <Label htmlFor={field.id} className="text-[10px] font-medium text-gray-700">{field.label}</Label>
-                    <Input 
-                      id={field.id} 
-                      name={field.id} 
-                      value={field.value} 
-                      onChange={handleChange} 
-                      type="number" 
-                      step="1" 
-                      className="h-7 text-xs p-1" 
-                    />
-                  </div>
-                ))}
-              </div>
+            {/* Note about fabric specifications */}
+            <div className="bg-blue-50 border border-blue-200 rounded-md p-2 text-center">
+              <p className="text-xs text-blue-700">
+                Fabric specifications will be entered in the <strong>Quality Checking</strong> section after production.
+              </p>
             </div>
             
             <div className="flex justify-center pt-1">
@@ -315,7 +263,7 @@ const ProductionConfirmation: React.FC = () => {
                     <span className="text-xs">{isLoading ? 'Saving...' : 'Loading...'}</span>
                   </div>
                 ) : (
-                  <span className="text-xs">Save Quality Check</span>
+                  <span className="text-xs">Save Roll Capture</span>
                 )}
               </Button>
             </div>
