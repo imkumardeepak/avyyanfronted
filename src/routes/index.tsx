@@ -68,6 +68,7 @@ const ProductionConfirmation = lazy(() => import('../pages/ProductionConfirmatio
 const RollInspection = lazy(() => import('../pages/RollInspection'));
 const StorageCapture = lazy(() => import('../pages/StorageCapture'));
 const FGStickerConfirmation = lazy(() => import('../pages/FGStickerConfirmation'));
+const QualityChecking = lazy(() => import('../pages/QualityChecking'));
 
 // Chat and Notifications Pages
 const Chat = lazy(() => import('../pages/Chat'));
@@ -489,6 +490,18 @@ const Router = () => {
               element={
                 <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
                   <FGStickerConfirmation />
+                </LazyRoute>
+              }
+            />
+
+    
+
+            {/* Quality Checking Route */}
+            <Route
+              path="quality-checking"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <QualityChecking />
                 </LazyRoute>
               }
             />

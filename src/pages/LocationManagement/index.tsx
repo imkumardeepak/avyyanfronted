@@ -211,6 +211,7 @@ const LocationQRCodePDF = ({ location }: { location: LocationResponseDto }) => {
           </View>
         </View>
 
+
         {/* Footer */}
         <View style={styles.footer} fixed>
           {' '}
