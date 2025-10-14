@@ -18,6 +18,7 @@ export const PAGE_NAMES = {
     STORAGE_CAPTURE: 'Storage Capture',
     TAPE_COLOR_MASTER: 'Tape Color',
     SHIFT_MASTER: 'Shift Master',
+    DISPATCH_PLANNING: 'Dispatch Planning',
 } as const;
 
 // Array of all page names for role management

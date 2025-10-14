@@ -60,6 +60,9 @@ import type {
   UpdateStorageCaptureRequestDto,
   StorageCaptureSearchRequestDto,
   StorageCaptureRollDataResponseDto,
+  DispatchPlanningSummaryDto,
+  DispatchPlanningRecordDto,
+  DispatchPlanningSearchRequestDto,
 } from '@/types/api-types';
 
 // API Configuration
@@ -605,26 +608,65 @@ export const storageCaptureApi = {
   getAllStorageCaptures: (): Promise<AxiosResponse<StorageCaptureResponseDto[]>> =>
     apiClient.get('/StorageCapture'),
 
-  // GET /api/StorageCapture/{id} - Get storage capture by ID
-  getStorageCapture: (id: number): Promise<AxiosResponse<StorageCaptureResponseDto>> =>
-    apiClient.get(`/StorageCapture/${id}`),
-
-  // POST /api/StorageCapture - Create new storage capture
-  createStorageCapture: (data: CreateStorageCaptureRequestDto): Promise<AxiosResponse<StorageCaptureResponseDto>> =>
-    apiClient.post('/StorageCapture', data),
-
-  // PUT /api/StorageCapture/{id} - Update storage capture
-  updateStorageCapture: (id: number, data: UpdateStorageCaptureRequestDto): Promise<AxiosResponse<StorageCaptureResponseDto>> =>
-    apiClient.put(`/StorageCapture/${id}`, data),
-
-  // DELETE /api/StorageCapture/{id} - Delete storage capture
-  deleteStorageCapture: (id: number): Promise<AxiosResponse<void>> =>
-    apiClient.delete(`/StorageCapture/${id}`),
-
   // GET /api/StorageCapture/search - Search storage captures
-  searchStorageCaptures: (params: StorageCaptureSearchRequestDto): Promise<AxiosResponse<StorageCaptureResponseDto[]>> =>
+  searchStorageCaptures: (
+    params: StorageCaptureSearchRequestDto
+  ): Promise<AxiosResponse<StorageCaptureResponseDto[]>> =>
     apiClient.get('/StorageCapture/search', { params }),
 
-  getRollConfirmationsByAllotId: (allotId: string): Promise<AxiosResponse<StorageCaptureRollDataResponseDto>> =>
+  // POST /api/StorageCapture - Create a new storage capture
+  createStorageCapture: (
+    data: CreateStorageCaptureRequestDto
+  ): Promise<AxiosResponse<StorageCaptureResponseDto>> =>
+    apiClient.post('/StorageCapture', data),
+
+  // GET /api/StorageCapture/by-allot-id/{allotId} - Get roll confirmations by Allot ID
+  getRollConfirmationsByAllotId: (
+    allotId: string
+  ): Promise<AxiosResponse<StorageCaptureRollDataResponseDto>> =>
     apiClient.get(`/StorageCapture/by-allot-id/${allotId}`),
+};
+
+// Dispatch Planning API (/api/DispatchPlanning)
+export const dispatchPlanningApi = {
+  // GET /api/DispatchPlanning/summary - Get dispatch planning summary
+  getDispatchPlanningSummary: (): Promise<AxiosResponse<DispatchPlanningSummaryDto>> =>
+    apiClient.get('/DispatchPlanning/summary'),
+
+  // GET /api/DispatchPlanning - Get all dispatch planning records
+  getAllDispatchPlanningRecords: (): Promise<AxiosResponse<DispatchPlanningRecordDto[]>> =>
+    apiClient.get('/DispatchPlanning'),
+
+  // GET /api/DispatchPlanning/search - Search dispatch planning records
+  searchDispatchPlanningRecords: (
+    params: DispatchPlanningSearchRequestDto
+  ): Promise<AxiosResponse<DispatchPlanningRecordDto[]>> =>
+    apiClient.get('/DispatchPlanning/search', { params }),
+
+  // PUT /api/DispatchPlanning/{id}/dispatch - Update dispatch status
+  updateDispatchStatus: (
+    id: number,
+    isDispatched: boolean
+  ): Promise<AxiosResponse<boolean>> =>
+    apiClient.put(`/DispatchPlanning/${id}/dispatch`, isDispatched),
+};
+
+// Export all APIs grouped by functionality
+export const api = {
+  auth: authApi,
+  user: userApi,
+  role: roleApi,
+  machine: machineApi,
+  fabricStructure: fabricStructureApi,
+  location: locationApi,
+  yarnType: yarnTypeApi,
+  salesOrder: salesOrderApi,
+  tapeColor: tapeColorApi,
+  shift: shiftApi,
+  productionAllotment: productionAllotmentApi,
+  rollConfirmation: rollConfirmationApi,
+  inspection: inspectionApi,
+  rollAssignment: rollAssignmentApi,
+  storageCapture: storageCaptureApi,
+  dispatchPlanning: dispatchPlanningApi,
 };

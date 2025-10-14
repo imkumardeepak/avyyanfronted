@@ -1025,6 +1025,7 @@ export interface StorageCaptureResponseDto {
   locationCode: string;
   tape: string;
   customerName: string;
+  isDispatched: boolean;
   createdAt: string;
   updatedAt?: string;
   isActive: boolean;
@@ -1036,6 +1037,7 @@ export interface CreateStorageCaptureRequestDto {
   locationCode: string;
   tape: string;
   customerName: string;
+  isDispatched?: boolean;
 }
 
 export interface UpdateStorageCaptureRequestDto {
@@ -1044,6 +1046,7 @@ export interface UpdateStorageCaptureRequestDto {
   locationCode: string;
   tape: string;
   customerName: string;
+  isDispatched?: boolean;
   isActive: boolean;
 }
 

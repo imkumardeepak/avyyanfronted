@@ -130,7 +130,7 @@ const navConfig: NavItem[] = [
         icon: Check,
         description: 'rolls confirmation',
       },
-        {
+      {
         title: 'Quality Checking',
         href: '/quality-checking',
         icon: Check,
@@ -142,7 +142,7 @@ const navConfig: NavItem[] = [
         icon: Eye,
         description: 'check all rolls good conditon or not',
       },
-       {
+      {
         title: 'FG Roll Capture',
         href: '/fg-sticker-confirmation',
         icon: Check,
@@ -154,7 +154,12 @@ const navConfig: NavItem[] = [
         icon: Package,
         description: 'Capture and allocate FG rolls to storage locations',
       },
-    
+      {
+        title: 'Dispatch Planning',
+        href: '/dispatch-planning',
+        icon: Package,
+        description: 'Plan and manage dispatch of finished goods',
+      },
     ],
   },
   {
