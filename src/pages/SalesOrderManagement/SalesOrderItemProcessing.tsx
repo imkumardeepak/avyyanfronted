@@ -40,7 +40,7 @@ const SalesOrderItemProcessingRefactored = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isItemProcessing, setIsItemProcessing] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [allotmentId, setAllotmentId] = useState<string | null>(null);
+  const [lotmentId, setLotmentId] = useState<string | null>(null);
   const [isGeneratingId, setIsGeneratingId] = useState(false);
   
   const [additionalFields, setAdditionalFields] = useState<AdditionalFields>({ yarnLotNo: '', counter: '', colourCode: '', reqGreyGsm: null, reqGreyWidth: null, reqFinishGsm: null, reqFinishWidth: null });
@@ -487,7 +487,7 @@ const SalesOrderItemProcessingRefactored = () => {
           'single jersey': 'SJ', '1x1 rib': '1R', '2x1 rib': '2R', '3x1 rib': '3R', 'two thread fleece': '2F', 'three thread fleece': '3F',
           'variegated rib': 'VR', 'popcorn strip': 'PS', 'honey comb': 'HC', 'honeycomb strip': 'HS', 'pop corn': 'PO', 'pique crinkle': 'PC',
           'rice knit': 'RK', 'single pique': 'SP', 'double pique': 'DP', 'single jersey pleated': 'PL', 'single jersysmall biscuit': 'SB',
-          waffle: 'WA', 'waffle miss cam': 'WM', 'pointelle rib': 'PR', herringbone: 'HB', stripe: 'ST'
+            waffle: 'WA', 'waffle miss cam': 'WM', 'pointelle rib': 'PR', herringbone: 'HB', stripe: 'ST'
         };
 
         for (const [key, code] of Object.entries(fabricTypeMap)) {
@@ -532,7 +532,7 @@ const SalesOrderItemProcessingRefactored = () => {
         }
       }
 
-      // Validate required fields before generating allotment ID
+      // Validate required fields before generating lotment ID
       if (!fabricTypeCode) {
         throw new Error('Fabric type code not found. Please ensure the sales order was created properly with correct fabric information.');
       }
@@ -571,21 +571,21 @@ const SalesOrderItemProcessingRefactored = () => {
 
       return `${part1}-${part2}-${part3}`;
     } catch (error) {
-      console.error('Error generating allotment ID:', error);
+      console.error('Error generating lotment ID:', error);
       return null;
     }
   };
 
   useEffect(() => {
     const generateId = async () => {
-      if (selectedOrder && selectedItem && !allotmentId && !isGeneratingId) {
+      if (selectedOrder && selectedItem && !lotmentId && !isGeneratingId) {
         setIsGeneratingId(true);
         try {
           const id = await generateAllotmentId();
-          setAllotmentId(id);
+          setLotmentId(id);
         } catch (error: any) {
-          console.error('Error generating allotment ID:', error);
-          alert(`Error generating allotment ID: ${error.message}\n\nPlease ensure the sales order was created properly with all required information before creating production planning.`);
+          console.error('Error generating lotment ID:', error);
+          alert(`Error generating lotment ID: ${error.message}\n\nPlease ensure the sales order was created properly with all required information before creating production planning.`);
         } finally {
           setIsGeneratingId(false);
         }
@@ -610,16 +610,16 @@ const SalesOrderItemProcessingRefactored = () => {
       return;
     }
 
-    let allotmentId: string | null = null;
+    let lotmentId: string | null = null;
     try {
-      allotmentId = await generateAllotmentId();
+      lotmentId = await generateAllotmentId();
     } catch (error: any) {
-      alert(`Error generating allotment ID: ${error.message}\n\nPlease ensure the sales order was created properly with all required information before creating production planning.`);
+      alert(`Error generating lotment ID: ${error.message}\n\nPlease ensure the sales order was created properly with all required information before creating production planning.`);
       return;
     }
     
-    if (!allotmentId) {
-      alert('Error generating allotment ID. Please try again.');
+    if (!lotmentId) {
+      alert('Error generating lotment ID. Please try again.');
       return;
     }
 
@@ -668,7 +668,7 @@ const SalesOrderItemProcessingRefactored = () => {
       };
 
       const requestData = {
-        allotmentId, voucherNumber: selectedOrder.voucherNumber,
+        allotmentId: lotmentId, voucherNumber: selectedOrder.voucherNumber,
         itemName: selectedItem.stockItemName, salesOrderId: selectedOrder.id, salesOrderItemId: selectedItem.id,
         actualQuantity, yarnCount: extractYarnCount(selectedItem.descriptions || ''),
         diameter: parsedDescriptionValues.diameter || productionCalc.needle,
@@ -699,7 +699,7 @@ const SalesOrderItemProcessingRefactored = () => {
         setIsItemProcessing(false);
       }
 
-      alert(`Successfully processed item: ${selectedItem.stockItemName} from order ${selectedOrder.voucherNumber}\nAllotment ID: ${allotmentId}`);
+      alert(`Successfully processed item: ${selectedItem.stockItemName} from order ${selectedOrder.voucherNumber}\nLotment ID: ${lotmentId}`);
       navigate('/sales-orders');
     } catch (error) {
       console.error('Error processing item:', error);
@@ -741,19 +741,19 @@ const SalesOrderItemProcessingRefactored = () => {
                   <span className="text-muted-foreground">Customer:</span>
                   <span className="font-medium max-w-[150px] truncate">{selectedOrder?.partyName}</span>
                 </div>
-                {allotmentId ? (
+                {lotmentId ? (
                   <div className="flex items-center space-x-2">
-                    <span className="text-muted-foreground">Allotment:</span>
-                    <span className="font-mono font-semibold text-primary">{allotmentId}</span>
+                    <span className="text-muted-foreground">Lotment:</span>
+                    <span className="font-mono font-semibold text-primary">{lotmentId}</span>
                   </div>
                 ) : isGeneratingId ? (
                   <div className="flex items-center space-x-2">
-                    <span className="text-muted-foreground">Generating Allotment ID...</span>
+                    <span className="text-muted-foreground">Generating Lotment ID...</span>
                   </div>
                 ) : (
                   <div className="flex items-center space-x-2 bg-red-100 p-2 rounded">
                     <span className="text-red-800 font-medium">
-                      Allotment ID not generated. Required values not found in sales order. 
+                      Lotment ID not generated. Required values not found in sales order. 
                       Please ensure the sales order was created properly before creating production planning.
                     </span>
                   </div>

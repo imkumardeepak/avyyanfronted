@@ -165,13 +165,13 @@ const FGStickerConfirmation: React.FC = () => {
 
       toast.success('Success', 'Production planning data loaded successfully.');
     } catch (err) {
-      console.error('Error fetching allotment data:', err);
+      console.error('Error fetching lotment data:', err);
       setAllotmentData(null);
       setSalesOrderData(null);
       setSelectedMachine(null);
       setIsFGStickerGenerated(null);
       setRollConfirmationData(null);
-      toast.error('Error', err instanceof Error ? err.message : 'Failed to fetch allotment data.');
+      toast.error('Error', err instanceof Error ? err.message : 'Failed to fetch lotment data.');
     } finally {
       setIsFetchingData(false);
     }

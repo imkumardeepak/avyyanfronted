@@ -110,10 +110,10 @@ const navConfig: NavItem[] = [
     isParentOnly: true,
     children: [
       {
-        title: 'Production Allotment',
+        title: 'Production Lotment',
         href: '/production-allotment',
         icon: Cog,
-        description: 'View production allotment details',
+        description: 'View production lotment details',
       },
     ],
   },

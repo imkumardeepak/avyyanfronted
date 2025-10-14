@@ -61,11 +61,11 @@ const ProductionConfirmation: React.FC = () => {
       
       toast.success('Success', 'Production planning data loaded successfully.');
     } catch (err) {
-      console.error('Error fetching allotment data:', err);
+      console.error('Error fetching lotment data:', err);
       setAllotmentData(null);
       setSalesOrderData(null);
       setSelectedMachine(null);
-      toast.error('Error', err instanceof Error ? err.message : 'Failed to fetch allotment data.');
+      toast.error('Error', err instanceof Error ? err.message : 'Failed to fetch lotment data.');
     } finally {
       setIsFetchingData(false);
     }
@@ -128,7 +128,7 @@ const ProductionConfirmation: React.FC = () => {
     e.preventDefault();
     
     const requiredFields = [
-      { value: formData.allotId, name: 'Allot ID' },
+      { value: formData.allotId, name: 'Lot ID' },
       { value: formData.machineName, name: 'Machine Name' },
       { value: formData.rollNo, name: 'Roll No' },
       { value: formData.greyGsm, name: 'GREY GSM' },
@@ -178,7 +178,7 @@ const ProductionConfirmation: React.FC = () => {
     <div className="p-2 max-w-4xl mx-auto">
       <Card className="shadow-md border-0">
         <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-t-lg py-3">
-          <CardTitle className="text-white text-base font-semibold text-center">Quality Checking Details</CardTitle>
+          <CardTitle className="text-white text-base font-semibold text-center">Production Capture</CardTitle>
         </CardHeader>
         
         <CardContent className="p-3">
@@ -188,7 +188,7 @@ const ProductionConfirmation: React.FC = () => {
             {/* Main Input Fields - Compact 4-column grid */}
             <div className="grid grid-cols-3 sm:grid-cols-3 gap-2 p-2 bg-gray-50 rounded-md">
               {[
-                { id: 'allotId', label: 'Allot ID *', value: formData.allotId, disabled: !!allotmentData },
+                { id: 'allotId', label: 'Lot ID *', value: formData.allotId, disabled: !!allotmentData },
                 { id: 'machineName', label: 'Machine Name *', value: formData.machineName, disabled: !!selectedMachine },
                 { id: 'rollNo', label: 'Roll No. *', value: formData.rollNo, disabled: !!formData.allotId && !!formData.machineName },
           

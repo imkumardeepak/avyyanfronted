@@ -451,7 +451,7 @@ const ProductionAllotment: React.FC = () => {
       <div className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <h3 className="font-semibold">Allotment Information</h3>
+            <h3 className="font-semibold">Lotment Information</h3>
             <p>
               <span className="font-medium">ID:</span> {allotment.allotmentId}
             </p>
@@ -640,7 +640,7 @@ const ProductionAllotment: React.FC = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex justify-between items-center">
-            <span>Production Allotments</span>
+            <span>Production Lotments</span>
             <Badge variant="secondary">
               {productionAllotments?.length || 0} items
             </Badge>
@@ -651,7 +651,7 @@ const ProductionAllotment: React.FC = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Allotment ID</TableHead>
+                  <TableHead>Lotment ID</TableHead>
                   <TableHead>Item Name</TableHead>
                   <TableHead>Voucher Number</TableHead>
                   <TableHead>Quantity</TableHead>
@@ -693,7 +693,7 @@ const ProductionAllotment: React.FC = () => {
             </Table>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
-              No production allotments found
+              No production lotments found
             </div>
           )}
         </CardContent>
@@ -710,7 +710,7 @@ const ProductionAllotment: React.FC = () => {
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <h3 className="font-semibold">Allotment Information</h3>
+                  <h3 className="font-semibold">Lotment Information</h3>
                   <p><span className="font-medium">ID:</span> {selectedAllotment.allotmentId}</p>
                   <p><span className="font-medium">Item:</span> {selectedAllotment.itemName}</p>
                   <p><span className="font-medium">Machine:</span> {selectedMachine.machineName}</p>
