@@ -59,6 +59,7 @@ import type {
   CreateStorageCaptureRequestDto,
   UpdateStorageCaptureRequestDto,
   StorageCaptureSearchRequestDto,
+  StorageCaptureRollDataResponseDto,
 } from '@/types/api-types';
 
 // API Configuration
@@ -624,6 +625,6 @@ export const storageCaptureApi = {
   searchStorageCaptures: (params: StorageCaptureSearchRequestDto): Promise<AxiosResponse<StorageCaptureResponseDto[]>> =>
     apiClient.get('/StorageCapture/search', { params }),
 
-  getRollConfirmationsByAllotId: (allotId: string): Promise<AxiosResponse<RollConfirmationResponseDto[]>> =>
+  getRollConfirmationsByAllotId: (allotId: string): Promise<AxiosResponse<StorageCaptureRollDataResponseDto>> =>
     apiClient.get(`/StorageCapture/by-allot-id/${allotId}`),
 };

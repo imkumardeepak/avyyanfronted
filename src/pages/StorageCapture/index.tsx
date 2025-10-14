@@ -7,11 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import { Save, ArrowLeft, Calendar, Scan } from 'lucide-react';
 import { toast } from '@/lib/toast';
-import { rollConfirmationApi, locationApi, apiUtils, storageCaptureApi } from '@/lib/api-client';
-import type { LocationResponseDto } from '@/types/api-types';
+import { locationApi, apiUtils, storageCaptureApi } from '@/lib/api-client';
+import type {
+  LocationResponseDto,
+  CreateStorageCaptureRequestDto,
+  StorageCaptureRollDataResponseDto,
+} from '@/types/api-types';
 
 // Define form data types
 interface StorageCaptureFormData {
@@ -32,14 +35,14 @@ const StorageCapture = () => {
   const [hasError, setHasError] = useState(false);
   const [scannedLocationCode, setScannedLocationCode] = useState('');
   const [selectedLocation, setSelectedLocation] = useState<LocationResponseDto | null>(null);
-  const locationInputRef = useRef<HTMLInputElement>(null);
+  const [rollData, setRollData] = useState<StorageCaptureRollDataResponseDto | null>(null);
 
   // Handle location code scan
   const handleLocationCodeScan = async (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && scannedLocationCode) {
       try {
         // Call API to search for location by code
-        const response = await locationApi.searchLocations({ code: scannedLocationCode });
+        const response = await locationApi.searchLocations({ locationcode: scannedLocationCode });
         const locations = response.data;
 
         if (locations && locations.length > 0) {
@@ -62,14 +65,7 @@ const StorageCapture = () => {
   };
 
   // React Hook Form setup
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    watch,
-    reset,
-    formState: { errors },
-  } = useForm<StorageCaptureFormData>({
+  const { register, handleSubmit, setValue, watch, reset } = useForm<StorageCaptureFormData>({
     defaultValues: {
       rollNumber: '',
       locationId: '',
@@ -89,14 +85,18 @@ const StorageCapture = () => {
   // Mock mutation for allocating FG roll (in a real app, this would call an actual API)
   const allocateRollMutation = useMutation({
     mutationFn: async (data: StorageCaptureFormData) => {
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Prepare the data to match the CreateStorageCaptureRequestDto interface
+      const storageCaptureData: CreateStorageCaptureRequestDto = {
+        lotNo: rollData?.rollConfirmation.allotId || '',
+        fgRollNo: rollData?.rollConfirmation?.fgRollNo?.toString() || '',
+        locationCode: selectedLocation?.locationcode || '',
+        tape: rollData?.productionAllotment?.tapeColor || '',
+        customerName: rollData?.productionAllotment.partyName || '',
+      };
 
-      // In a real app, you would call an API endpoint here
-      // For example: return storageApi.allocateRoll(data);
-
-      // For now, we'll just return a mock response
-      return { success: true, message: 'FG Roll allocated to location successfully' };
+      // Call the actual API endpoint
+      const response = await storageCaptureApi.createStorageCapture(storageCaptureData);
+      return apiUtils.extractData(response);
     },
     onSuccess: () => {
       // Invalidate and refetch queries if needed
@@ -114,6 +114,10 @@ const StorageCapture = () => {
         quality: '',
       });
 
+      // Clear selected location
+      setSelectedLocation(null);
+      setScannedLocationCode('');
+
       // Clear error state
       setHasError(false);
 
@@ -126,7 +130,7 @@ const StorageCapture = () => {
         }
       }, 100);
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       const errorMessage = apiUtils.handleError(error);
       toast.error('Error', errorMessage);
 
@@ -142,9 +146,10 @@ const StorageCapture = () => {
 
   // Focus on roll number input when component mounts
   useEffect(() => {
-    if (rollNumberInputRef.current) {
-      rollNumberInputRef.current.focus();
-    }
+    // Focus on the roll number input field using react-hook-form's focus method
+    setTimeout(() => {
+      document.getElementById('rollNumber')?.focus();
+    }, 100);
   }, []);
 
   // Function to fetch data based on scanned roll number
@@ -155,6 +160,8 @@ const StorageCapture = () => {
 
       const parts = scannedData.split('#');
       const allotId = parts[0];
+      console.log('Fetching data for AllotId:', allotId);
+
       if (!allotId) {
         toast.error('Error', 'Invalid QR code format');
         setHasError(true);
@@ -167,44 +174,69 @@ const StorageCapture = () => {
       }
 
       // Call API to get roll confirmation data by allotId
+      console.log('Calling API with AllotId:', allotId);
       const response = await storageCaptureApi.getRollConfirmationsByAllotId(allotId);
-      console.log('Roll Data:', response);
-      const rollData = apiUtils.extractData(response);
 
-      if (rollData && rollData.length > 0) {
-        // Use the first roll confirmation data
-        const data = rollData[0];
-        setValue('rollNumber', data.allotId);
-        setValue('lotNumber', data.rollNo || '');
-        setValue('product', data.machineName || '');
-        setValue('quantity', data.greyWidth || 0);
-        setValue('quality', `${data.greyGsm || 0} GSM`);
+      // Extract data using apiUtils (this handles the AxiosResponse structure)
+      const rollDataResponse = apiUtils.extractData(response);
+      console.log('Extracted Roll Data Response:', rollDataResponse);
 
-        toast.success('Success', 'FG Roll data retrieved successfully');
+      // Check the structure of the response
+      if (!rollDataResponse) {
+        throw new Error('Empty response from server');
+      }
+      // Handle the new response structure with single items
+      let rollConfirmation;
+
+      // Case 1: Response has rollConfirmation (new structure with single item)
+      if (rollDataResponse.rollConfirmation && rollDataResponse.rollConfirmation.allotId) {
+        rollConfirmation = rollDataResponse.rollConfirmation;
+        console.log('Using roll confirmation from rollConfirmation object:', rollConfirmation);
+      }
+      // Case 2: Direct access to rollConfirmation property
+      else if (rollDataResponse.rollConfirmation) {
+        rollConfirmation = rollDataResponse.rollConfirmation;
+        console.log('Using roll confirmation from direct property:', rollConfirmation);
+      }
+
+      console.log('Selected roll confirmation:', rollConfirmation);
+
+      if (rollConfirmation) {
+        // Store the complete roll data
+        setRollData(rollDataResponse);
+
+        // Use the roll confirmation data - all properties are camelCase
+        const allotIdValue = rollConfirmation.allotId;
+        const rollNoValue = rollConfirmation.rollNo;
+        const machineNameValue = rollConfirmation.machineName;
+        const greyWidthValue = rollConfirmation.greyWidth;
+        const greyGsmValue = rollConfirmation.greyGsm;
+
+        if (allotIdValue) {
+          setValue('rollNumber', allotIdValue);
+          setValue('lotNumber', rollNoValue || '');
+          setValue('product', machineNameValue || '');
+          setValue('quantity', greyWidthValue || 0);
+          setValue('quality', `${greyGsmValue || 0} GSM`);
+
+          toast.success('Success', 'FG Roll data retrieved successfully');
+        } else {
+          throw new Error('Roll confirmation data missing required allotId field');
+        }
       } else {
-        toast.error('Error', 'No roll data found for this QR code');
-        // Reset form fields
-        setValue('lotNumber', '');
-        setValue('product', '');
-        setValue('quantity', 0);
-        setValue('quality', '');
-        setValue('rollNumber', '');
-        // Set error state and refocus
-        setHasError(true);
-        setTimeout(() => {
-          if (rollNumberInputRef.current) {
-            rollNumberInputRef.current.focus();
-          }
-        }, 100);
+        throw new Error('No valid roll confirmation data found in response');
       }
     } catch (error) {
+      console.error('Error fetching roll data:', error);
       const errorMessage = apiUtils.handleError(error);
-      toast.error('Error', errorMessage);
+      toast.error('Error', errorMessage || 'Failed to fetch roll data');
       // Reset form fields on error
       setValue('lotNumber', '');
       setValue('product', '');
       setValue('quantity', 0);
       setValue('quality', '');
+      setValue('rollNumber', '');
+      setRollData(null);
 
       // Set error state and refocus
       setHasError(true);
@@ -279,7 +311,6 @@ const StorageCapture = () => {
                   <div className="relative">
                     <Scan className="absolute left-2 top-2 h-3 w-3 text-muted-foreground" />
                     <Input
-                      ref={rollNumberInputRef}
                       id="rollNumber"
                       {...register('rollNumber')}
                       onKeyPress={handleRollNumberKeyPress}
@@ -291,53 +322,80 @@ const StorageCapture = () => {
 
                 {rollNumber && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
-                    <div className="space-y-1">
-                      <Label htmlFor="lotNumber" className="text-xs font-medium text-gray-700">
-                        Lot Number
-                      </Label>
-                      <Input
-                        id="lotNumber"
-                        {...register('lotNumber')}
-                        readOnly
-                        className="text-xs h-8 bg-white"
-                      />
-                    </div>
+                    {/* Additional Roll Data Display */}
+                    {rollData && (
+                      <div className="md:col-span-2 mt-3 pt-3 border-t border-blue-200">
+                        <h4 className="text-xs font-semibold text-blue-700 mb-2">
+                          Additional Roll Details
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
+                          <div className="bg-blue-50 p-2 rounded">
+                            <p className="font-medium text-blue-800">Machine Name</p>
+                            <p className="text-blue-600">
+                              {rollData.rollConfirmation?.machineName || 'N/A'}
+                            </p>
+                          </div>
+                          <div className="bg-blue-50 p-2 rounded">
+                            <p className="font-medium text-blue-800">Grey Width</p>
+                            <p className="text-blue-600">
+                              {rollData.rollConfirmation?.greyWidth || 0} inches
+                            </p>
+                          </div>
+                          <div className="bg-blue-50 p-2 rounded">
+                            <p className="font-medium text-blue-800">Grey GSM</p>
+                            <p className="text-blue-600">
+                              {rollData.rollConfirmation?.greyGsm || 0} GSM
+                            </p>
+                          </div>
+                          <div className="bg-blue-50 p-2 rounded">
+                            <p className="font-medium text-blue-800">Net Weight</p>
+                            <p className="text-blue-600">
+                              {rollData.rollConfirmation?.netWeight || 0} kg
+                            </p>
+                          </div>
+                          <div className="bg-blue-50 p-2 rounded">
+                            <p className="font-medium text-blue-800">Roll No</p>
+                            <p className="text-blue-600">
+                              {rollData.rollConfirmation?.rollNo || 'N/A'}
+                            </p>
+                          </div>
+                          <div className="bg-blue-50 p-2 rounded">
+                            <p className="font-medium text-blue-800">FG Roll No</p>
+                            <p className="text-blue-600">
+                              {rollData.rollConfirmation?.fgRollNo || 'N/A'}
+                            </p>
+                          </div>
+                        </div>
 
-                    <div className="space-y-1">
-                      <Label htmlFor="product" className="text-xs font-medium text-gray-700">
-                        Product
-                      </Label>
-                      <Input
-                        id="product"
-                        {...register('product')}
-                        readOnly
-                        className="text-xs h-8 bg-white"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <Label htmlFor="quantity" className="text-xs font-medium text-gray-700">
-                        Width (inches)
-                      </Label>
-                      <Input
-                        id="quantity"
-                        type="number"
-                        {...register('quantity', { valueAsNumber: true })}
-                        readOnly
-                        className="text-xs h-8 bg-white"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="quality" className="text-xs font-medium text-gray-700">
-                        Quality (GSM)
-                      </Label>
-                      <Input
-                        id="quality"
-                        {...register('quality')}
-                        readOnly
-                        className="text-xs h-8 bg-white"
-                      />
-                    </div>
+                        {rollData.productionAllotment && (
+                          <div className="mt-3 pt-3 border-t border-blue-200">
+                            <h4 className="text-xs font-semibold text-blue-700 mb-2">
+                              Production Allotment Details
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
+                              <div className="bg-purple-50 p-2 rounded">
+                                <p className="font-medium text-purple-800">Item Name</p>
+                                <p className="text-purple-600">
+                                  {rollData.productionAllotment.itemName || 'N/A'}
+                                </p>
+                              </div>
+                              <div className="bg-purple-50 p-2 rounded">
+                                <p className="font-medium text-purple-800">Actual Quantity</p>
+                                <p className="text-purple-600">
+                                  {rollData.productionAllotment.actualQuantity || 0} kg
+                                </p>
+                              </div>
+                              <div className="bg-purple-50 p-2 rounded">
+                                <p className="font-medium text-purple-800">Party Name</p>
+                                <p className="text-purple-600">
+                                  {rollData.productionAllotment.partyName || 'N/A'}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -346,100 +404,69 @@ const StorageCapture = () => {
             {/* Allocation Details Section */}
             <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-md p-3">
               <h3 className="text-xs font-semibold text-green-800 mb-2">Allocation Details</h3>
-              <p className="text-xs text-green-700/80 mb-2">
-                Specify where to store the roll and when
-              </p>
 
               <div className="space-y-2">
                 <div className="space-y-1">
-                  <Label htmlFor="locationCode" className="text-xs font-medium text-gray-700">
-                    Scan Location Code
+                  <Label htmlFor="locationId" className="text-xs font-medium text-gray-700">
+                    Storage Location (Scan Location Code)
                   </Label>
                   <div className="relative">
                     <Scan className="absolute left-2 top-2 h-3 w-3 text-muted-foreground" />
                     <Input
-                      ref={locationInputRef}
-                      id="locationCode"
-                      value={scannedLocationCode}
-                      onChange={(e) => setScannedLocationCode(e.target.value)}
+                      id="locationId"
+                      {...register('locationId')}
                       onKeyPress={handleLocationCodeScan}
-                      placeholder="Scan location code"
-                      className="pl-7 text-xs h-8"
+                      onChange={(e) => setScannedLocationCode(e.target.value)}
+                      placeholder="Scan location code or enter location ID"
+                      className={`pl-7 text-xs h-8 ${hasError ? 'bg-red-50 border-red-300' : 'bg-white'}`}
                     />
                   </div>
+                  {selectedLocation && (
+                    <div className="mt-1 text-xs text-green-700 flex items-center">
+                      <span className="font-medium">Selected:</span>
+                      <span className="ml-1">
+                        {selectedLocation.warehousename} - {selectedLocation.location}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
-                {/* Location Details Display */}
-                {selectedLocation && (
-                  <div className="bg-white border border-gray-200 rounded-md p-2">
-                    <h4 className="text-xs font-semibold text-gray-800 mb-1">Location Details</h4>
-                    <div className="grid grid-cols-2 gap-1 text-[10px]">
-                      <div className="flex">
-                        <span className="text-gray-600 mr-1">Name:</span>
-                        <span className="font-medium">{selectedLocation.location}</span>
-                      </div>
-                      <div className="flex">
-                        <span className="text-gray-600 mr-1">Warehouse:</span>
-                        <span className="font-medium">{selectedLocation.warehousename}</span>
-                      </div>
-                      <div className="flex">
-                        <span className="text-gray-600 mr-1">Code:</span>
-                        <span className="font-medium">{selectedLocation.locationcode}</span>
-                      </div>
-                      <div className="flex">
-                        <span className="text-gray-600 mr-1">Status:</span>
-                        <span
-                          className={`font-medium ${selectedLocation.isActive ? 'text-green-600' : 'text-red-600'}`}
-                        >
-                          {selectedLocation.isActive ? 'Active' : 'Inactive'}
-                        </span>
-                      </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label htmlFor="date" className="text-xs font-medium text-gray-700">
+                      Date
+                    </Label>
+                    <div className="relative">
+                      <Calendar className="absolute left-2 top-2 h-3 w-3 text-muted-foreground" />
+                      <Input
+                        id="date"
+                        type="date"
+                        {...register('date')}
+                        className="pl-7 text-xs h-8"
+                      />
                     </div>
                   </div>
-                )}
 
-                <div className="space-y-1">
-                  <Label htmlFor="date" className="text-xs font-medium text-gray-700">
-                    Allocation Date
-                  </Label>
-                  <div className="relative">
-                    <Calendar className="absolute left-2 top-2 h-3 w-3 text-muted-foreground" />
-                    <Input
-                      id="date"
-                      type="text"
-                      value={new Date().toLocaleDateString('en-CA')}
-                      readOnly
-                      className="pl-7 text-xs h-8 bg-muted"
-                    />
-                    <input
-                      type="hidden"
-                      {...register('date')}
-                      value={new Date().toISOString().split('T')[0]}
+                  <div className="space-y-1">
+                    <Label htmlFor="remarks" className="text-xs font-medium text-gray-700">
+                      Remarks
+                    </Label>
+                    <Textarea
+                      id="remarks"
+                      {...register('remarks')}
+                      placeholder="Any additional remarks"
+                      className="text-xs h-8 resize-none"
                     />
                   </div>
-                </div>
-
-                <div className="space-y-1">
-                  <Label htmlFor="remarks" className="text-xs font-medium text-gray-700">
-                    Remarks
-                  </Label>
-                  <Textarea
-                    id="remarks"
-                    {...register('remarks')}
-                    placeholder="Enter any additional remarks"
-                    rows={2}
-                    className="text-xs"
-                  />
                 </div>
               </div>
             </div>
 
             {/* Action Buttons */}
-            <div className="flex justify-center space-x-2 pt-2">
+            <div className="flex justify-end space-x-2 pt-2">
               <Button
                 type="button"
                 variant="outline"
-                size="sm"
                 onClick={() => {
                   reset({
                     rollNumber: '',
@@ -451,6 +478,8 @@ const StorageCapture = () => {
                     quantity: 0,
                     quality: '',
                   });
+                  setSelectedLocation(null);
+                  setScannedLocationCode('');
                   // Clear error state and refocus
                   setHasError(false);
                   setTimeout(() => {

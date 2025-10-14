@@ -1056,6 +1056,58 @@ export interface StorageCaptureSearchRequestDto {
   isActive?: boolean;
 }
 
+// New DTOs for StorageCapture roll data response
+export interface StorageCaptureRollDataResponseDto {
+  rollConfirmation: RollConfirmationResponseDto;
+  machineAllocation: MachineAllocationDto;
+  productionAllotment: ProductionAllotmentDto;
+}
+
+export interface MachineAllocationDto {
+  id: number;
+  productionAllotmentId: number;
+  machineName: string;
+  machineId: number;
+  numberOfNeedles: number;
+  feeders: number;
+  rpm: number;
+  rollPerKg: number;
+  totalLoadWeight: number;
+  totalRolls: number;
+  rollBreakdown: string;
+  estimatedProductionTime: number;
+}
+
+export interface ProductionAllotmentDto {
+  id: number;
+  allotmentId: string;
+  voucherNumber: string;
+  itemName: string;
+  salesOrderId: number;
+  salesOrderItemId: number;
+  actualQuantity: number;
+  yarnCount: string;
+  diameter: number;
+  gauge: number;
+  fabricType: string;
+  slitLine: string;
+  stitchLength: number;
+  efficiency: number;
+  composition: string;
+  totalProductionTime: number;
+  createdDate: string;
+  yarnLotNo: string;
+  counter: string;
+  colourCode: string;
+  reqGreyGsm?: number;
+  reqGreyWidth?: number;
+  reqFinishGsm?: number;
+  reqFinishWidth?: number;
+  partyName: string;
+  tubeWeight: number;
+  tapeColor: string;
+}
+
 // ============================================
 // PRODUCTION ALLOTMENT API (/api/ProductionAllotment)
 // ============================================
