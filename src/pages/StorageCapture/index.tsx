@@ -160,6 +160,7 @@ const StorageCapture = () => {
 
       const parts = scannedData.split('#');
       const allotId = parts[0];
+      const fgRollNo = parts[3];
       console.log('Fetching data for AllotId:', allotId);
 
       if (!allotId) {
@@ -175,7 +176,7 @@ const StorageCapture = () => {
 
       // Call API to get roll confirmation data by allotId
       console.log('Calling API with AllotId:', allotId);
-      const response = await storageCaptureApi.getRollConfirmationsByAllotId(allotId);
+      const response = await storageCaptureApi.getRollConfirmationsByAllotId(allotId, fgRollNo);
 
       // Extract data using apiUtils (this handles the AxiosResponse structure)
       const rollDataResponse = apiUtils.extractData(response);

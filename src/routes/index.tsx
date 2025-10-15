@@ -6,6 +6,7 @@ import Layout from '../components/Layout';
 import AuthLayout from '../components/AuthLayout';
 import { ProtectedRoute, PublicRoute } from '../components/ProtectedRoute';
 import { Loader } from '../components/loader';
+import QualityChecking from '@/pages/QualityChecking';
 
 // Lazy-loaded pages
 const Home = lazy(() => import('../pages/Home'));
@@ -68,7 +69,7 @@ const ProductionConfirmation = lazy(() => import('../pages/ProductionConfirmatio
 const RollInspection = lazy(() => import('../pages/RollInspection'));
 const StorageCapture = lazy(() => import('../pages/StorageCapture'));
 const FGStickerConfirmation = lazy(() => import('../pages/FGStickerConfirmation'));
-const QualityChecking = lazy(() => import('../pages/QualityChecking'));
+const DispatchPlanning = lazy(() => import('../pages/DispatchPlanning'));
 
 // Chat and Notifications Pages
 const Chat = lazy(() => import('../pages/Chat'));
@@ -497,6 +498,15 @@ const Router = () => {
     
 
             {/* Quality Checking Route */}
+            {/* Dispatch Planning Route */}
+            <Route
+              path="dispatch-planning"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <DispatchPlanning />
+                </LazyRoute>
+              }
+            />
             <Route
               path="quality-checking"
               element={
@@ -506,7 +516,6 @@ const Router = () => {
               }
             />
 
-        
           </Route>
         </Routes>
       </Suspense>
