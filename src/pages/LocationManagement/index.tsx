@@ -20,49 +20,35 @@ const styles = StyleSheet.create({
   page: {
     flexDirection: 'column',
     backgroundColor: '#FFFFFF',
-    padding: 40, // Increased padding for better A4 margins
+    padding: 30, // Increased padding for better A4 margins
     fontFamily: 'Helvetica', // Use a clean font (or import custom if needed)
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 15,
     paddingBottom: 15,
     borderBottom: '2px solid #2563eb',
   },
   logoContainer: {
-    flexDirection: 'column',
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   logo: {
-    width: 120, // Slightly larger for impact
-    height: 80,
+    width: 200,
+    height: 100,
     marginBottom: 5,
   },
-  companyName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1e40af',
-  },
-  companyTagline: {
-    fontSize: 12,
-    color: '#64748b',
-    marginTop: 2,
-  },
-  companyDetails: {
-    fontSize: 12,
-    color: '#64748b',
-    textAlign: 'right',
-  },
+
   section: {
     flexGrow: 1,
     alignItems: 'center',
   },
   title: {
-    fontSize: 28,
+    fontSize: 25,
     textAlign: 'center',
-    marginBottom: 15,
+    marginBottom: 5,
     color: '#1e40af',
     fontWeight: 'bold',
     letterSpacing: 1, // Subtle spacing for elegance
@@ -82,16 +68,16 @@ const styles = StyleSheet.create({
     width: '80%', // Better fit on A4
   },
   qrCode: {
-    width: 240, // Larger QR for scannability
-    height: 240,
+    width: 260, // Larger QR for scannability
+    height: 260,
     marginBottom: 20,
   },
   locationInfo: {
-    fontSize: 20,
+    fontSize: 50,
     textAlign: 'center',
     fontWeight: 'bold',
     color: '#1e293b',
-    marginBottom: 15,
+    marginBottom: 10,
   },
   infoRow: {
     flexDirection: 'row',
@@ -113,9 +99,9 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   code: {
-    fontSize: 18,
+    fontSize: 28,
     fontWeight: 'bold',
-    marginTop: 15,
+    marginTop: 5,
     color: '#2563eb',
     backgroundColor: '#dbeafe',
     padding: 10,
@@ -124,21 +110,6 @@ const styles = StyleSheet.create({
     borderColor: '#93c5fd',
     textAlign: 'center',
     width: '60%',
-  },
-  footer: {
-    position: 'absolute',
-    bottom: 30,
-    left: 40,
-    right: 40,
-    paddingTop: 10,
-    borderTop: '1px solid #cbd5e1',
-    textAlign: 'center',
-    fontSize: 10,
-    color: '#64748b',
-  },
-  footerDetails: {
-    textAlign: 'center',
-    marginTop: 5,
   },
 });
 // PDF component with actual QR code
@@ -170,14 +141,7 @@ const LocationQRCodePDF = ({ location }: { location: LocationResponseDto }) => {
         <View style={styles.header}>
           <View style={styles.logoContainer}>
             <Image src={logo} style={styles.logo} />
-            <Text style={styles.companyName}>Avyaan Knitfab</Text>
-            <Text style={styles.companyTagline}>Quality Fabrics & Logistics</Text>
           </View>
-          <Text style={styles.companyDetails}>
-            123 Fabric Lane, Industrial Park{'\n'}
-            City, State 12345{'\n'}
-            Phone: (123) 456-7890 | Email: info@avyaanknitfab.com
-          </Text>
         </View>
 
         <View style={styles.section}>
@@ -198,31 +162,16 @@ const LocationQRCodePDF = ({ location }: { location: LocationResponseDto }) => {
             </View>
 
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Description:</Text>
-              <Text style={styles.infoValue}>{location.description || 'N/A'}</Text>
+              <Text style={styles.infoLabel}>Location:</Text>
+              <Text style={styles.infoValue}>{location.location || 'N/A'}</Text>
             </View>
 
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Coordinates:</Text>
-              <Text style={styles.infoValue}>{location.coordinates || 'N/A'}</Text>
+              <Text style={styles.infoLabel}>Sub Location:</Text>
+              <Text style={styles.infoValue}>{location.sublocation || 'N/A'}</Text>
             </View>
 
             <Text style={styles.code}>Code: {location.locationcode}</Text>
-          </View>
-        </View>
-
-
-        {/* Footer */}
-        <View style={styles.footer} fixed>
-          {' '}
-          {/* 'fixed' makes it repeat on multi-page if needed */}
-          <Text>
-            Scan this QR code to access location information • Generated on{' '}
-            {new Date().toLocaleDateString()}
-          </Text>
-          <View style={styles.footerDetails}>
-            <Text>Avyaan Knitfab © {new Date().getFullYear()} • All rights reserved</Text>
-            {/* <Text render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} /> */}
           </View>
         </View>
       </Page>
