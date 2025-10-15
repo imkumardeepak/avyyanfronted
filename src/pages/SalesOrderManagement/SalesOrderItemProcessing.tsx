@@ -75,7 +75,7 @@ interface AdditionalFields {
 interface PackagingDetailsState {
   coreType: 'with' | 'without';
   tubeWeight: number;
-  tapeColorId: number | null;
+  tapeColorId: number | { color1Id: number; color2Id: number } | null;
   shrinkRapWeight?: number;
 }
 
@@ -721,7 +721,7 @@ const SalesOrderItemProcessingRefactored = () => {
     setPackagingDetails((prev) => ({ ...prev, tubeWeight: weight }));
   };
 
-  const handleTapeColorChange = (tapeColorId: number) => {
+  const handleTapeColorChange = (tapeColorId: number | { color1Id: number; color2Id: number }) => {
     setPackagingDetails((prev) => ({ ...prev, tapeColorId }));
   };
 
@@ -1099,14 +1099,16 @@ const SalesOrderItemProcessingRefactored = () => {
         reqFinishGsm: additionalFields.reqFinishGsm,
         reqFinishWidth: additionalFields.reqFinishWidth,
         partyName: selectedOrder.partyName,
-        tubeWeight: packagingDetails.tubeWeight,
+        tubeWeight: packagingDetails.coreType === 'with' ? packagingDetails.tubeWeight : 0,
         shrinkRapWeight: packagingDetails.shrinkRapWeight,
         totalWeight:
           packagingDetails.coreType === 'with'
             ? (packagingDetails.tubeWeight || 0) + (packagingDetails.shrinkRapWeight || 0)
             : packagingDetails.shrinkRapWeight || 0,
         tapeColor: packagingDetails.tapeColorId
-          ? tapeColors.find((color) => color.id === packagingDetails.tapeColorId)?.tapeColor || ''
+          ? typeof packagingDetails.tapeColorId === 'number'
+            ? tapeColors.find((color) => color.id === packagingDetails.tapeColorId)?.tapeColor || ''
+            : `${tapeColors.find((color) => color.id === (packagingDetails.tapeColorId as { color1Id: number; color2Id: number }).color1Id)?.tapeColor || ''} + ${tapeColors.find((color) => color.id === (packagingDetails.tapeColorId as { color1Id: number; color2Id: number }).color2Id)?.tapeColor || ''}`
           : '',
         machineAllocations,
       };

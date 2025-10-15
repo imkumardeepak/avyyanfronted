@@ -6,17 +6,6 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useTapeColors } from '@/hooks/queries/useTapeColorQueries';
 import { getTapeColorStyle } from '@/utils/tapeColorUtils';
 
-interface PackagingDetailsProps {
-  rollPerKg?: number;
-  onCoreTypeChange: (coreType: 'with' | 'without') => void;
-  onTubeWeightChange: (weight: number) => void;
-  onTapeColorChange: (tapeColorId: number) => void;
-  onShrinkRapWeightChange?: (weight: number) => void;
-  tubeWeight: number;
-  shrinkRapWeight?: number;
-  tapeColorId: number | null;
-}
-
 type ColorOption = {
   id: string;
   type: 'color';
@@ -33,6 +22,17 @@ type CombinationOption = {
 };
 
 type TapeColorOption = ColorOption | CombinationOption;
+
+interface PackagingDetailsProps {
+  rollPerKg?: number;
+  onCoreTypeChange: (coreType: 'with' | 'without') => void;
+  onTubeWeightChange: (weight: number) => void;
+  onTapeColorChange: (tapeColorId: number | { color1Id: number; color2Id: number }) => void;
+  onShrinkRapWeightChange?: (weight: number) => void;
+  tubeWeight: number;
+  shrinkRapWeight?: number;
+  tapeColorId: number | { color1Id: number; color2Id: number } | null;
+}
 
 export function PackagingDetails({
   rollPerKg = 0,
@@ -73,10 +73,22 @@ export function PackagingDetails({
 
   useEffect(() => {
     if (tapeColorId !== null) {
-      const colorOption = colorOptions.find(
-        (option) => option.type === 'color' && option.colorId === tapeColorId
-      );
-      setSelectedOptionId(colorOption?.id || null);
+      if (typeof tapeColorId === 'number') {
+        // Single color
+        const colorOption = colorOptions.find(
+          (option) => option.type === 'color' && option.colorId === tapeColorId
+        );
+        setSelectedOptionId(colorOption?.id || null);
+      } else {
+        // Combination color
+        const combinationOption = colorOptions.find(
+          (option) =>
+            option.type === 'combination' &&
+            option.color1Id === tapeColorId.color1Id &&
+            option.color2Id === tapeColorId.color2Id
+        );
+        setSelectedOptionId(combinationOption?.id || null);
+      }
     }
   }, [tapeColorId, colorOptions]);
 
@@ -89,7 +101,14 @@ export function PackagingDetails({
 
   const handleOptionSelect = (option: TapeColorOption) => {
     setSelectedOptionId(option.id);
-    onTapeColorChange(option.type === 'color' ? option.colorId : option.color1Id);
+    if (option.type === 'color') {
+      onTapeColorChange(option.colorId);
+    } else {
+      onTapeColorChange({
+        color1Id: option.color1Id,
+        color2Id: option.color2Id,
+      });
+    }
   };
 
   const selectedOption = colorOptions.find((option) => option.id === selectedOptionId);

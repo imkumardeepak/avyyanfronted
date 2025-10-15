@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { HubConnectionBuilder, LogLevel, HubConnection } from '@microsoft/signalr';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -26,15 +25,8 @@ interface RollDetails {
   fgRollNo?: number;
 }
 
-const getBaseUrl = () => {
-  const apiUrl = import.meta.env.VITE_API_URL || 'https://localhost:7009';
-  // Remove /api suffix if present
-  return apiUrl.replace(/\/api$/, '');
-};
-
 const FGStickerConfirmation: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const [isWeightMonitoring, setIsWeightMonitoring] = useState(false);
   const [isFetchingData, setIsFetchingData] = useState(false);
   const [weightData, setWeightData] = useState({
     grossWeight: '0.00',
@@ -58,54 +50,6 @@ const FGStickerConfirmation: React.FC = () => {
   const scanBuffer = useRef<string>('');
   const isScanning = useRef<boolean>(false);
   const lastKeyTime = useRef<number>(Date.now());
-  const hubConnection = useRef<HubConnection | null>(null);
-
-  useEffect(() => {
-    // Initialize SignalR connection
-    hubConnection.current = new HubConnectionBuilder()
-      .withUrl(`${getBaseUrl()}/weightHub`) // Adjust URL based on your backend setup
-      .configureLogging(LogLevel.Information)
-      .build();
-
-    hubConnection.current.on('WeightUpdate', (data) => {
-      console.log('Weight Update:', data);
-      setWeightData({
-        grossWeight: data.grossWeight,
-        tareWeight: data.tareWeight,
-        netWeight: data.netWeight,
-      });
-    });
-
-    hubConnection.current.on('WeightStatus', (message) => {
-      toast.success('Status', message);
-    });
-
-    hubConnection.current.on('WeightError', (message) => {
-      toast.error('Error', message);
-      setIsWeightMonitoring(false);
-    });
-
-    hubConnection.current.start().then(() => {
-      // Automatically start weight monitoring when connection is established
-      if (formData.ipAddress) {
-        setIsWeightMonitoring(true);
-        hubConnection.current?.invoke('StartWeightMonitoring', formData.ipAddress, 23);
-      }
-    });
-
-    return () => {
-      hubConnection.current?.stop();
-      // Stop weight monitoring when component unmounts
-      if (isWeightMonitoring) {
-        hubConnection.current?.invoke('StopWeightMonitoring');
-      }
-    };
-  }, []);
-
-  const stopWeightMonitoring = async () => {
-    setIsWeightMonitoring(false);
-    await hubConnection.current?.invoke('StopWeightMonitoring');
-  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -124,6 +68,37 @@ const FGStickerConfirmation: React.FC = () => {
     }
   };
 
+  // Add new function to fetch weight data from TCP client
+  const fetchWeightData = async () => {
+    if (!formData.ipAddress) {
+      toast.error('Error', 'Please enter a valid IP address');
+      return;
+    }
+
+    try {
+      const data = await RollConfirmationService.getWeightData({
+        ipAddress: formData.ipAddress,
+        port: 23,
+      });
+
+      // Only update gross weight, keep tare weight as total weight and calculate net weight
+      const currentTareWeight = weightData.tareWeight;
+      const newGrossWeight = data.grossWeight;
+      const newNetWeight = (parseFloat(newGrossWeight) - parseFloat(currentTareWeight)).toFixed(2);
+
+      setWeightData({
+        grossWeight: newGrossWeight,
+        tareWeight: currentTareWeight, // Keep existing tare weight
+        netWeight: newNetWeight, // Calculate new net weight
+      });
+
+      toast.success('Success', 'Weight data fetched successfully');
+    } catch (error) {
+      console.error('Error fetching weight data:', error);
+      toast.error('Error', 'Failed to fetch weight data');
+    }
+  };
+
   const fetchAllotmentData = async (allotId: string, machineNameFromBarcode?: string) => {
     if (!allotId) return;
     setIsFetchingData(true);
@@ -132,14 +107,19 @@ const FGStickerConfirmation: React.FC = () => {
         await ProductionAllotmentService.getProductionAllotmentByAllotId(allotId);
       setAllotmentData(allotmentData);
 
-      if (allotmentData.tubeWeight) {
-        const tubeWeight = parseFloat(allotmentData.tubeWeight.toString()).toFixed(2);
-        setWeightData((prev) => ({
-          ...prev,
-          tareWeight: tubeWeight,
-          netWeight: (parseFloat(prev.grossWeight) - parseFloat(tubeWeight)).toFixed(2),
-        }));
+      // Set tare weight to total weight if available, otherwise use tube weight
+      let tareWeightValue = '0.00';
+      if (allotmentData.totalWeight !== undefined && allotmentData.totalWeight !== null) {
+        tareWeightValue = parseFloat(allotmentData.totalWeight.toString()).toFixed(2);
+      } else if (allotmentData.tubeWeight) {
+        tareWeightValue = parseFloat(allotmentData.tubeWeight.toString()).toFixed(2);
       }
+
+      setWeightData((prev) => ({
+        ...prev,
+        tareWeight: tareWeightValue,
+        netWeight: (parseFloat(prev.grossWeight) - parseFloat(tareWeightValue)).toFixed(2),
+      }));
 
       if (allotmentData.salesOrderId) {
         try {
@@ -272,7 +252,6 @@ const FGStickerConfirmation: React.FC = () => {
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
-      stopWeightMonitoring();
     };
   }, []);
 
@@ -323,6 +302,20 @@ const FGStickerConfirmation: React.FC = () => {
     const emptyFields = requiredFields.filter((field) => !field.value);
     if (emptyFields.length > 0) {
       toast.error('Error', `Please fill in: ${emptyFields.map((field) => field.name).join(', ')}`);
+      return;
+    }
+
+    // Validate weight data before submitting
+    const grossWeight = parseFloat(weightData.grossWeight);
+    const netWeight = parseFloat(weightData.netWeight);
+
+    if (grossWeight <= 0) {
+      toast.error('Error', 'Gross weight must be greater than 0');
+      return;
+    }
+
+    if (netWeight < 0) {
+      toast.error('Error', 'Net weight cannot be negative');
       return;
     }
 
@@ -380,9 +373,6 @@ const FGStickerConfirmation: React.FC = () => {
       }
 
       // Stop weight monitoring after successful save
-      if (isWeightMonitoring) {
-        await stopWeightMonitoring();
-      }
 
       setFormData({
         rollId: '',
@@ -398,6 +388,7 @@ const FGStickerConfirmation: React.FC = () => {
         netWeight: '0.00',
       });
 
+      setRollDetails(null);
       setRollDetails(null);
       setAllotmentData(null);
       setSalesOrderData(null);
@@ -555,60 +546,103 @@ const FGStickerConfirmation: React.FC = () => {
                   </div>
 
                   <div className="grid grid-cols-2 gap-1 text-[13px]">
-                    {[
-                      { label: 'Tube Weight:', value: `${allotmentData.tubeWeight || 'N/A'} kg` },
-                      {
-                        label: 'Tape Color:',
-                        value: (
-                          <div className="flex items-center">
-                            <span className="mr-1">{allotmentData.tapeColor || 'N/A'}</span>
-                            {allotmentData.tapeColor &&
-                              (() => {
-                                const isCombination = allotmentData.tapeColor.includes(' + ');
-                                if (isCombination) {
-                                  const colors = allotmentData.tapeColor.split(' + ');
-                                  return (
-                                    <div className="flex items-center">
-                                      <div
-                                        className="w-3 h-3 rounded-full border border-gray-300"
-                                        style={{ backgroundColor: getTapeColorStyle(colors[0]) }}
-                                      />
-                                      <div
-                                        className="w-3 h-3 rounded-full border border-gray-300 -ml-1"
-                                        style={{ backgroundColor: getTapeColorStyle(colors[1]) }}
-                                      />
-                                    </div>
-                                  );
-                                } else {
-                                  return (
+                    <div className="flex">
+                      <span className="text-gray-600 mr-1">Tube Weight:</span>
+                      <div
+                        className="font-small truncate"
+                        title={`${allotmentData.tubeWeight || 'N/A'} kg`}
+                      >
+                        {allotmentData.tubeWeight || 'N/A'} kg
+                      </div>
+                    </div>
+                    <div className="flex">
+                      <span className="text-gray-600 mr-1">Shrink Rap Weight:</span>
+                      <div
+                        className="font-small truncate"
+                        title={
+                          allotmentData.shrinkRapWeight !== undefined &&
+                          allotmentData.shrinkRapWeight !== null
+                            ? `${allotmentData.shrinkRapWeight} kg`
+                            : 'N/A'
+                        }
+                      >
+                        {allotmentData.shrinkRapWeight !== undefined &&
+                        allotmentData.shrinkRapWeight !== null
+                          ? `${allotmentData.shrinkRapWeight} kg`
+                          : 'N/A'}
+                      </div>
+                    </div>
+                    <div className="flex">
+                      <span className="text-gray-600 mr-1">Total Weight:</span>
+                      <div
+                        className="font-small truncate"
+                        title={
+                          allotmentData.totalWeight !== undefined &&
+                          allotmentData.totalWeight !== null
+                            ? `${allotmentData.totalWeight} kg`
+                            : 'N/A'
+                        }
+                      >
+                        {allotmentData.totalWeight !== undefined &&
+                        allotmentData.totalWeight !== null
+                          ? `${allotmentData.totalWeight} kg`
+                          : 'N/A'}
+                      </div>
+                    </div>
+                    <div className="flex">
+                      <span className="text-gray-600 mr-1">Tape Color:</span>
+                      <div className="font-small truncate">
+                        <div className="flex items-center">
+                          <span className="mr-1">{allotmentData.tapeColor || 'N/A'}</span>
+                          {allotmentData.tapeColor &&
+                            (() => {
+                              const isCombination = allotmentData.tapeColor.includes(' + ');
+                              if (isCombination) {
+                                const colors = allotmentData.tapeColor.split(' + ');
+                                return (
+                                  <div className="flex items-center">
                                     <div
                                       className="w-3 h-3 rounded-full border border-gray-300"
-                                      style={{
-                                        backgroundColor: getTapeColorStyle(allotmentData.tapeColor),
-                                      }}
+                                      style={{ backgroundColor: getTapeColorStyle(colors[0]) }}
                                     />
-                                  );
-                                }
-                              })()}
-                          </div>
-                        ),
-                      },
-                      {
-                        label: 'F-GSM:',
-                        value: `${rollDetails?.greyGsm?.toFixed(2) || allotmentData?.reqFinishGsm || 'N/A'}`,
-                      },
-                      { label: 'FG Roll No:', value: rollDetails?.fgRollNo || 'N/A' },
-                    ].map((item, index) => (
-                      <div key={index} className="flex">
-                        <span className="text-gray-600 mr-1">{item.label}</span>
-                        <div
-                          className="font-small truncate"
-                          title={typeof item.value === 'string' ? item.value : undefined}
-                        >
-                          {item.value}
+                                    <div
+                                      className="w-3 h-3 rounded-full border border-gray-300 -ml-1"
+                                      style={{ backgroundColor: getTapeColorStyle(colors[1]) }}
+                                    />
+                                  </div>
+                                );
+                              } else {
+                                return (
+                                  <div
+                                    className="w-3 h-3 rounded-full border border-gray-300"
+                                    style={{
+                                      backgroundColor: getTapeColorStyle(allotmentData.tapeColor),
+                                    }}
+                                  />
+                                );
+                              }
+                            })()}
                         </div>
                       </div>
-                    ))}
+                    </div>
+                    <div className="flex">
+                      <span className="text-gray-600 mr-1">F-GSM:</span>
+                      <div
+                        className="font-small truncate"
+                        title={`${rollDetails?.greyGsm?.toFixed(2) || allotmentData?.reqFinishGsm || 'N/A'}`}
+                      >
+                        {rollDetails?.greyGsm?.toFixed(2) || allotmentData?.reqFinishGsm || 'N/A'}
+                      </div>
+                    </div>
+                    <div className="flex">
+                      <span className="text-gray-600 mr-1">FG Roll No:</span>
+                      <div
+                        className="font-small truncate"
+                        title={`${rollDetails?.fgRollNo || 'N/A'}`}
+                      >
+                        {rollDetails?.fgRollNo || 'N/A'}
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -635,16 +669,13 @@ const FGStickerConfirmation: React.FC = () => {
                 </div>
 
                 <div className="flex items-end">
-                  <div className="text-xs px-2 py-1 bg-white border rounded">
-                    Status:{' '}
-                    <span
-                      className={
-                        isWeightMonitoring ? 'text-green-600 font-medium' : 'text-gray-500'
-                      }
-                    >
-                      {isWeightMonitoring ? 'Active' : 'Inactive'}
-                    </span>
-                  </div>
+                  <Button
+                    type="button"
+                    onClick={fetchWeightData}
+                    className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 h-8 text-xs"
+                  >
+                    Get Weight
+                  </Button>
                 </div>
               </div>
             </div>
@@ -674,8 +705,11 @@ const FGStickerConfirmation: React.FC = () => {
                 </div>
               </div>
               <div className="mt-2 text-[10px] text-gray-600 italic">
-                Net Weight = Gross Weight - Tare Weight (Tube Weight:{' '}
-                {allotmentData?.tubeWeight || 'N/A'} kg)
+                Net Weight = Gross Weight - Tare Weight (Total Weight:{' '}
+                {allotmentData?.totalWeight !== undefined && allotmentData?.totalWeight !== null
+                  ? `${allotmentData?.totalWeight} kg`
+                  : `${allotmentData?.tubeWeight || 'N/A'} kg`}
+                )
               </div>
             </div>
 

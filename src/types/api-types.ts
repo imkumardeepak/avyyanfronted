@@ -777,6 +777,21 @@ export interface RollBreakdown {
 }
 
 // ============================================
+// PRODUCTION CONFIRMATION DTOs (AvyyanBackend.DTOs.ProductionConfirmation)
+// ============================================
+
+export interface WeightDataRequestDto {
+    ipAddress: string;
+    port?: number; // Optional, default: 23
+}
+
+export interface WeightDataResponseDto {
+    grossWeight: string;
+    tareWeight: string;
+    netWeight: string;
+}
+
+// ============================================
 // ROLL CONFIRMATION DTOs
 // ============================================
 

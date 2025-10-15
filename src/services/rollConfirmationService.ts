@@ -2,7 +2,9 @@ import { rollConfirmationApi } from '@/lib/api-client';
 import type { 
   RollConfirmationRequestDto,
   RollConfirmationResponseDto,
-  RollConfirmationUpdateDto
+  RollConfirmationUpdateDto,
+  WeightDataRequestDto,
+  WeightDataResponseDto
 } from '@/types/api-types';
 
 export class RollConfirmationService {
@@ -52,6 +54,17 @@ export class RollConfirmationService {
         throw new Error(error.response.data || 'FG Sticker has already been generated for this roll. Please scan next roll.');
       }
       
+      throw error;
+    }
+  }
+
+  // GET /api/rollconfirmation/weight-data - Get weight data from TCP client
+  static async getWeightData(params: WeightDataRequestDto): Promise<WeightDataResponseDto> {
+    try {
+      const response = await rollConfirmationApi.getWeightData(params);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching weight data:', error);
       throw error;
     }
   }

@@ -60,6 +60,8 @@ import type {
   UpdateStorageCaptureRequestDto,
   StorageCaptureSearchRequestDto,
   StorageCaptureRollDataResponseDto,
+  WeightDataRequestDto,
+  WeightDataResponseDto,
 } from '@/types/api-types';
 
 // API Configuration
@@ -554,6 +556,10 @@ export const rollConfirmationApi = {
   // PUT /api/RollConfirmation/{id} - Update roll confirmation with weight data
   updateRollConfirmation: (id: number, data: RollConfirmationUpdateDto): Promise<AxiosResponse<RollConfirmationResponseDto>> =>
     apiClient.put(`/RollConfirmation/${id}`, data),
+
+  // GET /api/RollConfirmation/weight-data - Get weight data from TCP client
+  getWeightData: (params: WeightDataRequestDto): Promise<AxiosResponse<WeightDataResponseDto>> =>
+    apiClient.get('/RollConfirmation/weight-data', { params }),
 };
 
 // ============================================
