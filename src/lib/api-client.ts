@@ -60,9 +60,6 @@ import type {
   UpdateStorageCaptureRequestDto,
   StorageCaptureSearchRequestDto,
   StorageCaptureRollDataResponseDto,
-  DispatchPlanningSummaryDto,
-  DispatchPlanningRecordDto,
-  DispatchPlanningSearchRequestDto,
 } from '@/types/api-types';
 
 // API Configuration
@@ -620,36 +617,21 @@ export const storageCaptureApi = {
   ): Promise<AxiosResponse<StorageCaptureResponseDto>> =>
     apiClient.post('/StorageCapture', data),
 
+  // PUT /api/StorageCapture/{id} - Update a storage capture
+  updateStorageCapture: (
+    id: number,
+    data: UpdateStorageCaptureRequestDto
+  ): Promise<AxiosResponse<StorageCaptureResponseDto>> =>
+    apiClient.put(`/StorageCapture/${id}`, data),
+
   // GET /api/StorageCapture/by-allot-id/{allotId} - Get roll confirmations by Allot ID
   getRollConfirmationsByAllotId: (
-    allotId: string
+    allotId: string,
+    fgroll: string
   ): Promise<AxiosResponse<StorageCaptureRollDataResponseDto>> =>
-    apiClient.get(`/StorageCapture/by-allot-id/${allotId}`),
+    apiClient.get(`/StorageCapture/by-allot-id/${allotId}?fgroll=${fgroll}`),
 };
 
-// Dispatch Planning API (/api/DispatchPlanning)
-export const dispatchPlanningApi = {
-  // GET /api/DispatchPlanning/summary - Get dispatch planning summary
-  getDispatchPlanningSummary: (): Promise<AxiosResponse<DispatchPlanningSummaryDto>> =>
-    apiClient.get('/DispatchPlanning/summary'),
-
-  // GET /api/DispatchPlanning - Get all dispatch planning records
-  getAllDispatchPlanningRecords: (): Promise<AxiosResponse<DispatchPlanningRecordDto[]>> =>
-    apiClient.get('/DispatchPlanning'),
-
-  // GET /api/DispatchPlanning/search - Search dispatch planning records
-  searchDispatchPlanningRecords: (
-    params: DispatchPlanningSearchRequestDto
-  ): Promise<AxiosResponse<DispatchPlanningRecordDto[]>> =>
-    apiClient.get('/DispatchPlanning/search', { params }),
-
-  // PUT /api/DispatchPlanning/{id}/dispatch - Update dispatch status
-  updateDispatchStatus: (
-    id: number,
-    isDispatched: boolean
-  ): Promise<AxiosResponse<boolean>> =>
-    apiClient.put(`/DispatchPlanning/${id}/dispatch`, isDispatched),
-};
 
 // Export all APIs grouped by functionality
 export const api = {
@@ -668,5 +650,4 @@ export const api = {
   inspection: inspectionApi,
   rollAssignment: rollAssignmentApi,
   storageCapture: storageCaptureApi,
-  dispatchPlanning: dispatchPlanningApi,
 };
