@@ -259,7 +259,7 @@ const RollInspection: React.FC = () => {
       if (isAxiosError(err) && err.response?.status === 409) {
         toast.error('Error', 'An inspection record already exists for this roll.');
       } else {
-        toast.error('Error', `Failed to ${actionType} roll. Please try again.`);
+        toast.error('Error', `First confirm Your Roll,then inspect it.`);
       }
     } finally {
       setIsLoading(false);

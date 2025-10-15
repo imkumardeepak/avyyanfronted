@@ -167,7 +167,7 @@ const ProductionConfirmation: React.FC = () => {
       setSelectedMachine(null);
     } catch (err) {
       console.error('Error saving roll confirmation:', err);
-      toast.error('Error', 'Failed to save confirmation data.');
+      toast.error('Error', 'This roll has already been captured. Please scanned next roll.');
     } finally {
       setIsLoading(false);
     }
