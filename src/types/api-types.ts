@@ -695,6 +695,8 @@ export interface CreateProductionAllotmentRequest {
     partyName: string;
     // Packaging Details
     tubeWeight: number;
+    shrinkRapWeight?: number;
+    totalWeight?: number;
     tapeColor: string;
     machineAllocations: MachineAllocationRequest[];
 }
@@ -727,6 +729,8 @@ export interface ProductionAllotmentResponseDto {
     partyName: string;
     // Packaging Details
     tubeWeight: number;
+    shrinkRapWeight?: number;
+    totalWeight?: number;
     tapeColor: string;
     serialNo: string;
     machineAllocations: MachineAllocationResponseDto[];
