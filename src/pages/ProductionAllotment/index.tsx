@@ -120,7 +120,7 @@ const ProductionAllotment: React.FC = () => {
       const response = await productionAllotmentApi.generateQRCodes(machine.id);
       toast.success(response.data.message || 'QR codes generated successfully');
     } catch (error) {
-      console.error('Error generating QR codes:', error);
+    
       toast.error('Error generating QR codes');
     } finally {
       setIsGeneratingQR(false);
@@ -138,7 +138,7 @@ const ProductionAllotment: React.FC = () => {
       const response = await rollAssignmentApi.getRollAssignmentsByMachineAllocationId(machine.id);
       setShiftAssignments(response.data);
     } catch (error) {
-      console.error('Error fetching roll assignments:', error);
+    
       // Fallback to existing local assignments
       const machineAssignments = shiftAssignments.filter(
         assignment => assignment.machineAllocationId === machine.id
@@ -271,7 +271,7 @@ const ProductionAllotment: React.FC = () => {
       
       toast.success('Shift assignment added successfully');
     } catch (error: unknown) {
-      console.error('Error creating roll assignment:', error);
+   
       const axiosError = error as AxiosError;
       const errorMessage = axiosError.response?.data || axiosError.message || 'Error creating roll assignment';
       toast.error(`Error: ${errorMessage}`);
@@ -331,7 +331,7 @@ const ProductionAllotment: React.FC = () => {
       
       toast.success(qrResponse.data.message || `Successfully generated ${barcodeCount} barcodes and QR codes`);
     } catch (error: unknown) {
-      console.error('Error generating barcodes:', error);
+
       const axiosError = error as AxiosError;
       
       // Handle different types of errors
@@ -394,7 +394,7 @@ const ProductionAllotment: React.FC = () => {
       await generateBarcodes(assignmentId, barcodeCount);
     } catch (error) {
       // Error handling is already done in generateBarcodes function
-      console.error('Sticker generation failed:', error);
+    
     }
   };
 
@@ -465,7 +465,7 @@ const ProductionAllotment: React.FC = () => {
         reason: ''
       });
     } catch (error: unknown) {
-      console.error('Error reprinting sticker:', error);
+    ;
       const axiosError = error as AxiosError;
       
       // Handle different types of errors for reprint
@@ -601,7 +601,7 @@ const ProductionAllotment: React.FC = () => {
                         variant="outline"
                         onClick={() => {
                           openShiftAssignment(allotment, allocation).catch(error => {
-                            console.error('Error opening shift assignment:', error);
+                           
                             toast.error('Error opening shift assignment');
                           });
                         }}
@@ -834,15 +834,7 @@ const ProductionAllotment: React.FC = () => {
                     />
                   </div>
                   
-                  <div>
-                    <Label htmlFor="timestamp">Timestamp *</Label>
-                    <Input
-                      id="timestamp"
-                      type="datetime-local"
-                      value={newAssignment.timestamp}
-                      onChange={(e) => handleAssignmentChange('timestamp', e.target.value)}
-                    />
-                  </div>
+                
                 </div>
                 
                 {/* Shift Timing Information */}
