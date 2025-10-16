@@ -348,7 +348,7 @@ const DispatchPlanning = () => {
           </div>
 
           {/* Summary Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
             <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
               <div className="text-xs text-blue-600 font-medium">Total Sales Orders</div>
               <div className="text-lg font-bold text-blue-800">{filteredItems.length}</div>
@@ -357,12 +357,6 @@ const DispatchPlanning = () => {
               <div className="text-xs text-green-600 font-medium">Total Allotments</div>
               <div className="text-lg font-bold text-green-800">
                 {filteredItems.reduce((sum, group) => sum + group.allotments.length, 0)}
-              </div>
-            </div>
-            <div className="bg-cyan-50 border border-cyan-200 rounded-md p-3">
-              <div className="text-xs text-cyan-600 font-medium">Total Actual Qty (kg)</div>
-              <div className="text-lg font-bold text-cyan-800">
-                {filteredItems.reduce((sum, group) => sum + group.totalActualQuantity, 0).toFixed(2)}
               </div>
             </div>
             <div className="bg-purple-50 border border-purple-200 rounded-md p-3">
@@ -399,8 +393,6 @@ const DispatchPlanning = () => {
                     <TableHead className="text-xs font-medium text-gray-700">Customer</TableHead>
                     <TableHead className="text-xs font-medium text-gray-700">Allotments</TableHead>
                     <TableHead className="text-xs font-medium text-gray-700">Total Rolls</TableHead>
-                    <TableHead className="text-xs font-medium text-gray-700">Actual Qty (kg)</TableHead>
-                    <TableHead className="text-xs font-medium text-gray-700">Net Weight (kg)</TableHead>
                     <TableHead className="text-xs font-medium text-gray-700">Status</TableHead>
                     <TableHead className="text-xs font-medium text-gray-700">Actions</TableHead>
                   </TableRow>
@@ -449,12 +441,6 @@ const DispatchPlanning = () => {
                           <TableCell className="py-3 font-medium">
                             {group.totalRolls}
                           </TableCell>
-                          <TableCell className="py-3 font-medium">
-                            {group.totalActualQuantity.toFixed(2)}
-                          </TableCell>
-                          <TableCell className="py-3 font-medium">
-                            {group.totalNetWeight.toFixed(2)}
-                          </TableCell>
                           <TableCell className="py-3">
                             <Badge 
                               variant={group.isFullyDispatched ? "default" : "secondary"}
@@ -493,12 +479,6 @@ const DispatchPlanning = () => {
                             <TableCell className="py-2"></TableCell>
                             <TableCell className="py-2">
                               {allotment.totalRolls}
-                            </TableCell>
-                            <TableCell className="py-2">
-                              {allotment.totalActualQuantity.toFixed(2)}
-                            </TableCell>
-                            <TableCell className="py-2">
-                              {allotment.totalNetWeight.toFixed(2)}
                             </TableCell>
                             <TableCell className="py-2">
                               <Badge 
@@ -551,10 +531,6 @@ const DispatchPlanning = () => {
                       <div className="text-xs text-green-600 font-medium">Customer</div>
                       <div className="text-sm font-medium">{selectedLot.customerName}</div>
                     </div>
-                    <div className="bg-cyan-50 border border-cyan-200 rounded-md p-2">
-                      <div className="text-xs text-cyan-600 font-medium">Actual Qty (kg)</div>
-                      <div className="text-sm font-medium">{selectedLot.totalActualQuantity.toFixed(2)}</div>
-                    </div>
                     <div className="bg-purple-50 border border-purple-200 rounded-md p-2">
                       <div className="text-xs text-purple-600 font-medium">Tape</div>
                       <div className="text-sm font-medium">{selectedLot.tape}</div>
@@ -591,7 +567,6 @@ const DispatchPlanning = () => {
                           <TableHead className="text-xs py-2 px-3">FG Roll No</TableHead>
                           <TableHead className="text-xs py-2 px-3">Machine</TableHead>
                           <TableHead className="text-xs py-2 px-3">Roll No</TableHead>
-                          <TableHead className="text-xs py-2 px-3">Net Weight (kg)</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -600,17 +575,11 @@ const DispatchPlanning = () => {
                             <TableCell className="py-2 px-3 text-sm">{roll.fgRollNo}</TableCell>
                             <TableCell className="py-2 px-3 text-sm">{roll.machineName}</TableCell>
                             <TableCell className="py-2 px-3 text-sm">{roll.rollNo}</TableCell>
-                            <TableCell className="py-2 px-3 text-sm font-medium">
-                              {roll.netWeight.toFixed(2)}
-                            </TableCell>
                           </TableRow>
                         ))}
                         <TableRow className="bg-gray-50 font-medium">
                           <TableCell className="py-2 px-3 text-sm" colSpan={3}>
                             Total for Lot {selectedLot.lotNo}
-                          </TableCell>
-                          <TableCell className="py-2 px-3 text-sm">
-                            {selectedLot.totalNetWeight.toFixed(2)} kg
                           </TableCell>
                         </TableRow>
                       </TableBody>

@@ -412,12 +412,6 @@ const DispatchDetails = () => {
                       {dispatchItems.reduce((sum, group) => sum + group.totalNetWeight, 0).toFixed(2)}
                     </div>
                   </div>
-                  <div className="bg-cyan-50 border border-cyan-200 rounded-md p-2">
-                    <div className="text-xs text-cyan-600 font-medium">Total Actual Qty (kg)</div>
-                    <div className="text-lg font-bold text-cyan-800">
-                      {dispatchItems.reduce((sum, group) => sum + group.totalActualQuantity, 0).toFixed(2)}
-                    </div>
-                  </div>
                 </div>
               </div>
 
@@ -433,8 +427,6 @@ const DispatchDetails = () => {
                       <TableHead className="text-xs font-medium text-gray-700">Allotments</TableHead>
                       <TableHead className="text-xs font-medium text-gray-700">Total Rolls</TableHead>
                       <TableHead className="text-xs font-medium text-gray-700">Dispatch Rolls</TableHead>
-                      <TableHead className="text-xs font-medium text-gray-700">Actual Qty (kg)</TableHead>
-                      <TableHead className="text-xs font-medium text-gray-700">Net Weight (kg)</TableHead>
                       <TableHead className="text-xs font-medium text-gray-700">Status</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -538,12 +530,6 @@ const DispatchDetails = () => {
                                 className="text-xs h-8 w-20"
                               />
                             </TableCell>
-                            <TableCell className="py-3 font-medium">
-                              {group.totalActualQuantity.toFixed(2)}
-                            </TableCell>
-                            <TableCell className="py-3 font-medium">
-                              {group.totalNetWeight.toFixed(2)}
-                            </TableCell>
                             <TableCell className="py-3">
                               <Badge 
                                 variant={group.isFullyDispatched ? "default" : "secondary"}
@@ -604,12 +590,6 @@ const DispatchDetails = () => {
                                   }}
                                   className="text-xs h-8 w-20"
                                 />
-                              </TableCell>
-                              <TableCell className="py-2">
-                                {allotment.totalActualQuantity.toFixed(2)}
-                              </TableCell>
-                              <TableCell className="py-2">
-                                {allotment.totalNetWeight.toFixed(2)}
                               </TableCell>
                               <TableCell className="py-2">
                                 <Badge 
@@ -780,7 +760,7 @@ const DispatchDetails = () => {
                 {/* Dispatch Summary */}
                 <div className="bg-white border border-gray-200 rounded-md p-3 mt-4">
                   <h4 className="text-xs font-semibold text-gray-700 mb-2">Dispatch Summary</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-3">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
                     <div className="bg-blue-50 border border-blue-200 rounded-md p-2">
                       <div className="text-xs text-blue-600 font-medium">Sales Orders</div>
                       <div className="text-lg font-bold text-blue-800">{dispatchItems.length}</div>
@@ -803,12 +783,6 @@ const DispatchDetails = () => {
                       <div className="text-xs text-purple-600 font-medium">Total Weight (kg)</div>
                       <div className="text-lg font-bold text-purple-800">
                         {dispatchItems.reduce((sum, group) => sum + group.totalNetWeight, 0).toFixed(2)}
-                      </div>
-                    </div>
-                    <div className="bg-cyan-50 border border-cyan-200 rounded-md p-2">
-                      <div className="text-xs text-cyan-600 font-medium">Total Actual Qty (kg)</div>
-                      <div className="text-lg font-bold text-cyan-800">
-                        {dispatchItems.reduce((sum, group) => sum + group.totalActualQuantity, 0).toFixed(2)}
                       </div>
                     </div>
                   </div>
