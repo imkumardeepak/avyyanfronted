@@ -114,9 +114,7 @@ const DispatchDetails = () => {
     {} as Record<number, SalesOrderGroup>
   );
 
-  const [dispatchItems, setDispatchItems] = useState<SalesOrderGroup[]>(
-    Object.values(groupedItems)
-  );
+ 
   // Initialize sequence numbers
   const groupedItemsArray: SalesOrderGroup[] = Object.values(groupedItems);
   groupedItemsArray.forEach((group: SalesOrderGroup, index) => {
