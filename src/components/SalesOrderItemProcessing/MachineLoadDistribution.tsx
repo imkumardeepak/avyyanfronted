@@ -85,11 +85,7 @@ export function MachineLoadDistribution({
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold">Machine Selection for Load Distribution</h3>
-              <Button
-                onClick={onToggleMachineDistribution}
-                variant="outline"
-                size="sm"
-              >
+              <Button onClick={onToggleMachineDistribution} variant="outline" size="sm">
                 {showMachineDistribution ? 'Hide' : 'Show'} Machine Selection
               </Button>
             </div>
@@ -108,62 +104,64 @@ export function MachineLoadDistribution({
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                       {/* Filter machines by diameter and gauge if provided */}
-                      {machines?.filter(machine => {
-                        // If diameter and gauge are not provided, show all machines
-                        if (!machineDiameter || !machineGauge) return true;
-                        // Otherwise, only show machines with matching diameter and gauge
-                        return machine.dia === machineDiameter && machine.gg === machineGauge;
-                      }).map((machine) => {
-                        const isSelected = selectedMachines.some(
-                          (m) => m.machineId === machine.id
-                        );
-                        return (
-                          <div
-                            key={machine.id}
-                            className={`p-3 border rounded cursor-pointer transition-all ${
-                              isSelected
-                                ? 'border-green-500 bg-green-50'
-                                : 'border-gray-300 bg-white hover:border-blue-400'
-                            }`}
-                            onClick={() => {
-                              if (isSelected) {
-                                onRemoveMachineFromDistribution(machine.id);
-                              } else {
-                                onAddMachineToDistribution(machine);
-                              }
-                            }}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="font-medium text-sm">{machine.machineName}</p>
-                                <p className="text-xs text-gray-600">
-                                  Dia: {machine.dia}" | GG: {machine.gg} | Eff:{' '}
-                                  {machine.efficiency}%
-                                </p>
-                              </div>
-                              <div
-                                className={`w-4 h-4 rounded-full ${
-                                  isSelected ? 'bg-green-500' : 'border-2 border-gray-300'
-                                }`}
-                              >
-                                {isSelected && (
-                                  <svg
-                                    className="w-4 h-4 text-white"
-                                    fill="currentColor"
-                                    viewBox="0 0 20 20"
-                                  >
-                                    <path
-                                      fillRule="evenodd"
-                                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                      clipRule="evenodd"
-                                    />
-                                  </svg>
-                                )}
+                      {machines
+                        ?.filter((machine) => {
+                          // If diameter and gauge are not provided, show all machines
+                          if (!machineDiameter || !machineGauge) return true;
+                          // Otherwise, only show machines with matching diameter and gauge
+                          return machine.dia === machineDiameter && machine.gg === machineGauge;
+                        })
+                        .map((machine) => {
+                          const isSelected = selectedMachines.some(
+                            (m) => m.machineId === machine.id
+                          );
+                          return (
+                            <div
+                              key={machine.id}
+                              className={`p-3 border rounded cursor-pointer transition-all ${
+                                isSelected
+                                  ? 'border-green-500 bg-green-50'
+                                  : 'border-gray-300 bg-white hover:border-blue-400'
+                              }`}
+                              onClick={() => {
+                                if (isSelected) {
+                                  onRemoveMachineFromDistribution(machine.id);
+                                } else {
+                                  onAddMachineToDistribution(machine);
+                                }
+                              }}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="font-medium text-sm">{machine.machineName}</p>
+                                  <p className="text-xs text-gray-600">
+                                    Dia: {machine.dia}" | GG: {machine.gg} | Eff:{' '}
+                                    {machine.efficiency}%
+                                  </p>
+                                </div>
+                                <div
+                                  className={`w-4 h-4 rounded-full ${
+                                    isSelected ? 'bg-green-500' : 'border-2 border-gray-300'
+                                  }`}
+                                >
+                                  {isSelected && (
+                                    <svg
+                                      className="w-4 h-4 text-white"
+                                      fill="currentColor"
+                                      viewBox="0 0 20 20"
+                                    >
+                                      <path
+                                        fillRule="evenodd"
+                                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                        clipRule="evenodd"
+                                      />
+                                    </svg>
+                                  )}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
                     </div>
                   )}
                 </div>
@@ -184,11 +182,7 @@ export function MachineLoadDistribution({
                         >
                           Auto Distribute
                         </Button>
-                        <Button
-                          onClick={onClearAllMachines}
-                          size="sm"
-                          variant="outline"
-                        >
+                        <Button onClick={onClearAllMachines} size="sm" variant="outline">
                           Clear All
                         </Button>
                       </div>
@@ -337,7 +331,7 @@ export function MachineLoadDistribution({
                                 <Label className="text-xs">Weight (kg)</Label>
                                 <Input
                                   type="number"
-                                  step="0.01"
+                                  step="0.5"
                                   value={machine.allocatedWeight}
                                   onChange={(e) => {
                                     const weight = Number(e.target.value);
@@ -384,8 +378,7 @@ export function MachineLoadDistribution({
                                   {machine.allocatedRolls > 0 && rollInput.rollPerKg > 0
                                     ? (() => {
                                         const wholeRolls = Math.floor(machine.allocatedRolls);
-                                        const fractionalPart =
-                                          machine.allocatedRolls - wholeRolls;
+                                        const fractionalPart = machine.allocatedRolls - wholeRolls;
 
                                         if (fractionalPart > 0) {
                                           // Has fractional part
@@ -437,24 +430,18 @@ export function MachineLoadDistribution({
                             </h5>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                               <div>
-                                <p
-                                  className={isOverAllocated ? 'text-red-600' : 'text-green-600'}
-                                >
+                                <p className={isOverAllocated ? 'text-red-600' : 'text-green-600'}>
                                   Total Allocated Weight:
                                 </p>
                                 <p
                                   className={`font-bold ${isOverAllocated ? 'text-red-800' : 'text-green-800'}`}
                                 >
                                   {totalAllocated.toFixed(2)} kg
-                                  {isOverAllocated && (
-                                    <span className="ml-2 text-red-600">⚠</span>
-                                  )}
+                                  {isOverAllocated && <span className="ml-2 text-red-600">⚠</span>}
                                 </p>
                               </div>
                               <div>
-                                <p
-                                  className={isOverAllocated ? 'text-red-600' : 'text-green-600'}
-                                >
+                                <p className={isOverAllocated ? 'text-red-600' : 'text-green-600'}>
                                   Remaining:
                                 </p>
                                 <p
@@ -467,9 +454,7 @@ export function MachineLoadDistribution({
                                 </p>
                               </div>
                               <div>
-                                <p
-                                  className={isOverAllocated ? 'text-red-600' : 'text-green-600'}
-                                >
+                                <p className={isOverAllocated ? 'text-red-600' : 'text-green-600'}>
                                   Total Machine Distribution Time:
                                 </p>
                                 <p
@@ -484,9 +469,9 @@ export function MachineLoadDistribution({
                             </div>
                             {isOverAllocated && (
                               <div className="mt-2 p-2 bg-red-200 rounded text-red-800 text-sm">
-                                ⚠ Warning: Total allocated weight ({totalAllocated.toFixed(2)}{' '}
-                                kg) exceeds actual quantity ({actualQuantity.toFixed(2)} kg).
-                                Please adjust machine allocations.
+                                ⚠ Warning: Total allocated weight ({totalAllocated.toFixed(2)} kg)
+                                exceeds actual quantity ({actualQuantity.toFixed(2)} kg). Please
+                                adjust machine allocations.
                               </div>
                             )}
                           </div>

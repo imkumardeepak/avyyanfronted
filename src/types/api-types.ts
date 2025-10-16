@@ -695,6 +695,8 @@ export interface CreateProductionAllotmentRequest {
     partyName: string;
     // Packaging Details
     tubeWeight: number;
+    shrinkRapWeight?: number;
+    totalWeight?: number;
     tapeColor: string;
     machineAllocations: MachineAllocationRequest[];
 }
@@ -727,6 +729,8 @@ export interface ProductionAllotmentResponseDto {
     partyName: string;
     // Packaging Details
     tubeWeight: number;
+    shrinkRapWeight?: number;
+    totalWeight?: number;
     tapeColor: string;
     serialNo: string;
     machineAllocations: MachineAllocationResponseDto[];
@@ -770,6 +774,21 @@ export interface RollItem {
 export interface RollBreakdown {
   wholeRolls: RollItem[];
   fractionalRoll: RollItem;
+}
+
+// ============================================
+// PRODUCTION CONFIRMATION DTOs (AvyyanBackend.DTOs.ProductionConfirmation)
+// ============================================
+
+export interface WeightDataRequestDto {
+    ipAddress: string;
+    port?: number; // Optional, default: 23
+}
+
+export interface WeightDataResponseDto {
+    grossWeight: string;
+    tareWeight: string;
+    netWeight: string;
 }
 
 // ============================================

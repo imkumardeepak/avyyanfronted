@@ -6,17 +6,6 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useTapeColors } from '@/hooks/queries/useTapeColorQueries';
 import { getTapeColorStyle } from '@/utils/tapeColorUtils';
 
-interface PackagingDetailsProps {
-  rollPerKg?: number;
-  onCoreTypeChange: (coreType: 'with' | 'without') => void;
-  onTubeWeightChange: (weight: number) => void;
-  onTapeColorChange: (tapeColorId: number) => void;
-  onShrinkRapWeightChange?: (weight: number) => void;
-  tubeWeight: number;
-  shrinkRapWeight?: number;
-  tapeColorId: number | null;
-}
-
 type ColorOption = {
   id: string;
   type: 'color';
@@ -33,6 +22,17 @@ type CombinationOption = {
 };
 
 type TapeColorOption = ColorOption | CombinationOption;
+
+interface PackagingDetailsProps {
+  rollPerKg?: number;
+  onCoreTypeChange: (coreType: 'with' | 'without') => void;
+  onTubeWeightChange: (weight: number) => void;
+  onTapeColorChange: (tapeColorId: number | { color1Id: number; color2Id: number }) => void;
+  onShrinkRapWeightChange?: (weight: number) => void;
+  tubeWeight: number;
+  shrinkRapWeight?: number;
+  tapeColorId: number | { color1Id: number; color2Id: number } | null;
+}
 
 export function PackagingDetails({
   rollPerKg = 0,
@@ -73,10 +73,22 @@ export function PackagingDetails({
 
   useEffect(() => {
     if (tapeColorId !== null) {
-      const colorOption = colorOptions.find(
-        (option) => option.type === 'color' && option.colorId === tapeColorId
-      );
-      setSelectedOptionId(colorOption?.id || null);
+      if (typeof tapeColorId === 'number') {
+        // Single color
+        const colorOption = colorOptions.find(
+          (option) => option.type === 'color' && option.colorId === tapeColorId
+        );
+        setSelectedOptionId(colorOption?.id || null);
+      } else {
+        // Combination color
+        const combinationOption = colorOptions.find(
+          (option) =>
+            option.type === 'combination' &&
+            option.color1Id === tapeColorId.color1Id &&
+            option.color2Id === tapeColorId.color2Id
+        );
+        setSelectedOptionId(combinationOption?.id || null);
+      }
     }
   }, [tapeColorId, colorOptions]);
 
@@ -89,14 +101,25 @@ export function PackagingDetails({
 
   const handleOptionSelect = (option: TapeColorOption) => {
     setSelectedOptionId(option.id);
-    onTapeColorChange(option.type === 'color' ? option.colorId : option.color1Id);
+    if (option.type === 'color') {
+      onTapeColorChange(option.colorId);
+    } else {
+      onTapeColorChange({
+        color1Id: option.color1Id,
+        color2Id: option.color2Id,
+      });
+    }
   };
 
   const selectedOption = colorOptions.find((option) => option.id === selectedOptionId);
   const getColorStyle = (colorName: string) => ({ backgroundColor: getTapeColorStyle(colorName) });
 
   // Calculate total weight
-  const totalWeight = coreType === 'with' ? tubeWeight + shrinkRapWeight : shrinkRapWeight;
+  const totalWeight = useMemo(() => {
+    const tubeWt = coreType === 'with' ? tubeWeight : 0;
+    const shrinkWt = shrinkRapWeight || 0;
+    return tubeWt + shrinkWt;
+  }, [coreType, tubeWeight, shrinkRapWeight]);
 
   return (
     <Card className="w-full">
@@ -136,9 +159,9 @@ export function PackagingDetails({
                 <Input
                   id="tube-weight"
                   type="number"
-                  step="1"
+                  step="0.1"
                   min="0"
-                  value={tubeWeight}
+                  value={tubeWeight || 0}
                   onChange={(e) => onTubeWeightChange(parseFloat(e.target.value) || 0)}
                   className="w-full"
                 />
@@ -157,12 +180,11 @@ export function PackagingDetails({
               <Input
                 id="shrink-rap-weight"
                 type="number"
-                step="1"
+                step="0.1"
                 min="0"
-                value={shrinkRapWeight}
+                value={shrinkRapWeight?.toString() || '0.06'}
                 onChange={(e) => onShrinkRapWeightChange?.(parseFloat(e.target.value) || 0)}
                 className="w-full"
-                readOnly
               />
               <span className="absolute right-7 top-1/2 transform -translate-y-1/2 text-sm text-muted-foreground">
                 kg
@@ -171,7 +193,7 @@ export function PackagingDetails({
           </div>
         </div>
 
-        {/* Add Total Weight Display */}
+        {/* Total Weight Display */}
         <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
           <Label className="text-sm font-medium">Total Weight</Label>
           <div className="text-lg font-bold text-primary">{totalWeight.toFixed(3)} kg</div>
