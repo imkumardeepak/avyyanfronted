@@ -440,12 +440,10 @@ const DispatchPlanning = () => {
                             {group.customerName}
                           </TableCell>
                           <TableCell className="py-3">
-                            <div className="flex flex-wrap gap-1">
-                              {group.allotments.map(allotment => (
-                                <span key={allotment.lotNo} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                  {allotment.lotNo}
-                                </span>
-                              ))}
+                            <div className="flex items-center">
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                {group.allotments.length} lot{group.allotments.length !== 1 ? 's' : ''}
+                              </span>
                             </div>
                           </TableCell>
                           <TableCell className="py-3 font-medium">
@@ -466,20 +464,7 @@ const DispatchPlanning = () => {
                             </Badge>
                           </TableCell>
                           <TableCell className="py-3">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 px-2 text-xs"
-                              onClick={() => {
-                                // For group view, we'll show details for the first allotment
-                                // or we could create a special group details view
-                                setSelectedLot(group.allotments[0]);
-                                setIsModalOpen(true);
-                              }}
-                            >
-                              <Eye className="h-3 w-3 mr-1" />
-                              View Details
-                            </Button>
+                            {/* View Details button removed as per requirements */}
                           </TableCell>
                         </TableRow>
                         {/* Expanded view for allotments in this group */}
