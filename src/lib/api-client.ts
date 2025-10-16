@@ -502,6 +502,10 @@ export const salesOrderApi = {
   // GET /api/SalesOrder - Get all sales orders
   getAllSalesOrders: (): Promise<AxiosResponse<SalesOrderDto[]>> =>
     apiClient.get('/SalesOrder'),
+
+  // GET /api/SalesOrder/{id} - Get sales order by ID
+  getSalesOrderById: (id: number): Promise<AxiosResponse<SalesOrderDto>> =>
+    apiClient.get(`/SalesOrder/${id}`),
 };
 
 // ============================================

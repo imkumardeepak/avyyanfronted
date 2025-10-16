@@ -70,6 +70,7 @@ const RollInspection = lazy(() => import('../pages/RollInspection'));
 const StorageCapture = lazy(() => import('../pages/StorageCapture'));
 const FGStickerConfirmation = lazy(() => import('../pages/FGStickerConfirmation'));
 const DispatchPlanning = lazy(() => import('../pages/DispatchPlanning'));
+const DispatchDetails = lazy(() => import('../pages/DispatchDetails'));
 
 // Chat and Notifications Pages
 const Chat = lazy(() => import('../pages/Chat'));
@@ -504,6 +505,16 @@ const Router = () => {
               element={
                 <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
                   <DispatchPlanning />
+                </LazyRoute>
+              }
+            />
+            
+            {/* Dispatch Details Route */}
+            <Route
+              path="dispatch-details"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <DispatchDetails />
                 </LazyRoute>
               }
             />

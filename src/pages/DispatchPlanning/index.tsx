@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -20,11 +21,12 @@ import {
 } from '@/components/ui/dialog';
 import { Search, Package, Truck, Eye } from 'lucide-react';
 import { toast } from '@/lib/toast';
-import { storageCaptureApi, rollConfirmationApi, productionAllotmentApi, apiUtils } from '@/lib/api-client';
+import { storageCaptureApi, rollConfirmationApi, productionAllotmentApi, salesOrderApi, apiUtils } from '@/lib/api-client';
 import type { 
   StorageCaptureResponseDto, 
   RollConfirmationResponseDto,
-  ProductionAllotmentResponseDto
+  ProductionAllotmentDto,
+  SalesOrderDto
 } from '@/types/api-types';
 
 // Define types for our dispatch planning data
@@ -37,6 +39,8 @@ interface DispatchPlanningItem {
   totalActualQuantity: number;
   isDispatched: boolean;
   rolls: RollDetail[];
+  salesOrder?: SalesOrderDto;
+  salesOrderItemName?: string;
 }
 
 interface RollDetail {
@@ -47,12 +51,14 @@ interface RollDetail {
 }
 
 const DispatchPlanning = () => {
+  const navigate = useNavigate();
   const [dispatchItems, setDispatchItems] = useState<DispatchPlanningItem[]>([]);
   const [filteredItems, setFilteredItems] = useState<DispatchPlanningItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLot, setSelectedLot] = useState<DispatchPlanningItem | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedLots, setSelectedLots] = useState<Record<string, boolean>>({});
 
   // Fetch dispatch planning data
   useEffect(() => {
@@ -67,7 +73,9 @@ const DispatchPlanning = () => {
       const filtered = dispatchItems.filter(item => 
         item.lotNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.tape.toLowerCase().includes(searchTerm.toLowerCase())
+        item.tape.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (item.salesOrder?.voucherNumber?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (item.salesOrderItemName?.toLowerCase().includes(searchTerm.toLowerCase()))
       );
       setFilteredItems(filtered);
     }
@@ -91,7 +99,7 @@ const DispatchPlanning = () => {
         lotGroups[capture.lotNo].push(capture);
       });
       
-      // Step 2: For each lot, fetch roll details
+      // Step 2: For each lot, fetch roll details and sales order information
       const dispatchItems: DispatchPlanningItem[] = [];
       
       for (const [lotNo, captures] of Object.entries(lotGroups)) {
@@ -130,12 +138,29 @@ const DispatchPlanning = () => {
         // Get customer and tape info from first capture
         const firstCapture = captures[0];
         
-        // Get total actual quantity from production allotment
+        // Get total actual quantity and sales order info from production allotment
         let totalActualQuantity = 0;
+        let salesOrder: SalesOrderDto | undefined;
+        let salesOrderItemName: string | undefined;
+        
         try {
           const allotmentResponse = await productionAllotmentApi.getProductionAllotmentByAllotId(lotNo);
           const allotmentData = apiUtils.extractData(allotmentResponse);
           totalActualQuantity = allotmentData?.actualQuantity || 0;
+          
+          // Fetch the sales order details using the salesOrderId from allotment
+          if (allotmentData?.salesOrderId) {
+            try {
+              const salesOrderResponse = await salesOrderApi.getSalesOrderById(allotmentData.salesOrderId);
+              salesOrder = apiUtils.extractData(salesOrderResponse);
+              
+              // Find the specific sales order item
+              const salesOrderItem = salesOrder.items.find(item => item.id === allotmentData.salesOrderItemId);
+              salesOrderItemName = salesOrderItem?.stockItemName;
+            } catch (error) {
+              console.error(`Error fetching sales order data for ${allotmentData.salesOrderId}:`, error);
+            }
+          }
         } catch (error) {
           console.error(`Error fetching production allotment data for ${lotNo}:`, error);
         }
@@ -148,7 +173,9 @@ const DispatchPlanning = () => {
           totalNetWeight,
           totalActualQuantity,
           isDispatched: captures.every(c => c.isDispatched),
-          rolls: rollDetails
+          rolls: rollDetails,
+          salesOrder,
+          salesOrderItemName
         });
       }
       
@@ -230,7 +257,7 @@ const DispatchPlanning = () => {
                   <Search className="absolute left-2 top-2 h-3 w-3 text-muted-foreground" />
                   <Input
                     id="search"
-                    placeholder="Search by lot number, customer, or tape..."
+                    placeholder="Search by lot number, customer, tape, SO number, or item..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-7 text-xs h-8"
@@ -245,6 +272,25 @@ const DispatchPlanning = () => {
                   className="h-8 px-3 text-xs"
                 >
                   Refresh
+                </Button>
+                <Button 
+                  onClick={() => {
+                    // Get selected lots
+                    const selectedLotItems = filteredItems.filter(item => selectedLots[item.lotNo]);
+                    if (selectedLotItems.length === 0) {
+                      toast.error('Error', 'Please select at least one lot for dispatch');
+                      return;
+                    }
+                    // Navigate to dispatch page with selected lots
+                    navigate('/dispatch-details', { state: { selectedLots: selectedLotItems } });
+                  }}
+                  variant="default" 
+                  size="sm"
+                  className="h-8 px-3 text-xs bg-green-600 hover:bg-green-700"
+                  disabled={!Object.values(selectedLots).some(selected => selected)}
+                >
+                  <Truck className="h-3 w-3 mr-1" />
+                  Dispatch Selected ({Object.values(selectedLots).filter(selected => selected).length})
                 </Button>
               </div>
             </div>
@@ -296,7 +342,23 @@ const DispatchPlanning = () => {
               <Table>
                 <TableHeader className="bg-gray-50">
                   <TableRow>
+                    <TableHead className="text-xs font-medium text-gray-700">
+                      <input
+                        type="checkbox"
+                        checked={filteredItems.length > 0 && filteredItems.every(item => selectedLots[item.lotNo])}
+                        onChange={(e) => {
+                          const newSelectedLots = {...selectedLots};
+                          filteredItems.forEach(item => {
+                            newSelectedLots[item.lotNo] = e.target.checked;
+                          });
+                          setSelectedLots(newSelectedLots);
+                        }}
+                        className="h-4 w-4 rounded border-gray-900 text-blue-600 focus:ring-blue-500"
+                      />
+                    </TableHead>
                     <TableHead className="text-xs font-medium text-gray-700">Lot No</TableHead>
+                    <TableHead className="text-xs font-medium text-gray-700">SO Number</TableHead>
+                    <TableHead className="text-xs font-medium text-gray-700">SO Item</TableHead>
                     <TableHead className="text-xs font-medium text-gray-700">Customer</TableHead>
                     <TableHead className="text-xs font-medium text-gray-700">Tape</TableHead>
                     <TableHead className="text-xs font-medium text-gray-700">Rolls</TableHead>
@@ -309,7 +371,7 @@ const DispatchPlanning = () => {
                 <TableBody>
                   {filteredItems.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={11} className="text-center py-8 text-gray-500">
                         No dispatch planning data found
                       </TableCell>
                     </TableRow>
@@ -317,7 +379,26 @@ const DispatchPlanning = () => {
                     filteredItems.map((item) => (
                       <TableRow key={item.lotNo} className="border-b border-gray-100">
                         <TableCell className="py-3">
+                          <input
+                            type="checkbox"
+                            checked={selectedLots[item.lotNo] || false}
+                            onChange={(e) => {
+                              setSelectedLots({
+                                ...selectedLots,
+                                [item.lotNo]: e.target.checked
+                              });
+                            }}
+                            className="h-4 w-4 rounded border-gray-900 text-blue-600 focus:ring-blue-500"
+                          />
+                        </TableCell>
+                        <TableCell className="py-3">
                           <div className="font-medium text-sm">{item.lotNo}</div>
+                        </TableCell>
+                        <TableCell className="py-3">
+                          <div className="text-sm">{item.salesOrder?.voucherNumber || 'N/A'}</div>
+                        </TableCell>
+                        <TableCell className="py-3">
+                          <div className="text-sm">{item.salesOrderItemName || 'N/A'}</div>
                         </TableCell>
                         <TableCell className="py-3">
                           <div className="text-sm">{item.customerName}</div>
@@ -342,7 +423,7 @@ const DispatchPlanning = () => {
                             {item.isDispatched ? "Dispatched" : "Pending"}
                           </Badge>
                         </TableCell>
-                        <TableCell className="py-3 flex space-x-2">
+                        <TableCell className="py-3">
                           <Button
                             size="sm"
                             variant="outline"
@@ -354,24 +435,6 @@ const DispatchPlanning = () => {
                           >
                             <Eye className="h-3 w-3 mr-1" />
                             View Details
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant={item.isDispatched ? "outline" : "default"}
-                            className="h-7 px-2 text-xs"
-                            onClick={() => toggleDispatchStatus(item.lotNo, item.isDispatched)}
-                          >
-                            {item.isDispatched ? (
-                              <>
-                                <Package className="h-3 w-3 mr-1" />
-                                Undispatch
-                              </>
-                            ) : (
-                              <>
-                                <Truck className="h-3 w-3 mr-1" />
-                                Dispatch
-                              </>
-                            )}
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -410,6 +473,29 @@ const DispatchPlanning = () => {
                       <div className="text-sm font-medium">{selectedLot.tape}</div>
                     </div>
                   </div>
+                  
+                  {selectedLot.salesOrder && (
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                      <div className="bg-blue-50 border border-blue-200 rounded-md p-2">
+                        <div className="text-xs text-blue-600 font-medium">SO Number</div>
+                        <div className="text-sm font-medium">{selectedLot.salesOrder.voucherNumber}</div>
+                      </div>
+                      <div className="bg-green-50 border border-green-200 rounded-md p-2">
+                        <div className="text-xs text-green-600 font-medium">SO Item</div>
+                        <div className="text-sm font-medium">{selectedLot.salesOrderItemName || 'N/A'}</div>
+                      </div>
+                      <div className="bg-cyan-50 border border-cyan-200 rounded-md p-2">
+                        <div className="text-xs text-cyan-600 font-medium">SO Date</div>
+                        <div className="text-sm font-medium">
+                          {new Date(selectedLot.salesOrder.salesDate).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <div className="bg-purple-50 border border-purple-200 rounded-md p-2">
+                        <div className="text-xs text-purple-600 font-medium">Party</div>
+                        <div className="text-sm font-medium">{selectedLot.salesOrder.partyName}</div>
+                      </div>
+                    </div>
+                  )}
                   
                   <div className="border border-gray-200 rounded-md overflow-hidden">
                     <Table>

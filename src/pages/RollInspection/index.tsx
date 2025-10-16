@@ -176,6 +176,9 @@ const RollInspection: React.FC = () => {
       requiredFields.push({ value: formData.grade, name: 'Grade' });
     }
     
+    // Add remarks as required field for all actions
+    requiredFields.push({ value: formData.remarks, name: 'Remarks' });
+    
     const emptyFields = requiredFields.filter(field => !field.value);
     if (emptyFields.length > 0) {
       const missingFields = emptyFields.map(field => field.name).join(', ');
@@ -493,7 +496,7 @@ const RollInspection: React.FC = () => {
                   </div>
                   
                   <div className="space-y-1 md:col-span-2">
-                    <Label htmlFor="remarks" className="text-xs font-medium">Remarks</Label>
+                    <Label htmlFor="remarks" className="text-xs font-medium">Remarks *</Label>
                     <Textarea
                       id="remarks"
                       name="remarks"
