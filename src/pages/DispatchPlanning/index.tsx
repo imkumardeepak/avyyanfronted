@@ -348,7 +348,7 @@ const DispatchPlanning = () => {
           </div>
 
           {/* Summary Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
             <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
               <div className="text-xs text-blue-600 font-medium">Total Sales Orders</div>
               <div className="text-lg font-bold text-blue-800">{filteredItems.length}</div>
@@ -357,12 +357,6 @@ const DispatchPlanning = () => {
               <div className="text-xs text-green-600 font-medium">Total Allotments</div>
               <div className="text-lg font-bold text-green-800">
                 {filteredItems.reduce((sum, group) => sum + group.allotments.length, 0)}
-              </div>
-            </div>
-            <div className="bg-purple-50 border border-purple-200 rounded-md p-3">
-              <div className="text-xs text-purple-600 font-medium">Total Weight (kg)</div>
-              <div className="text-lg font-bold text-purple-800">
-                {filteredItems.reduce((sum, group) => sum + group.totalNetWeight, 0).toFixed(2)}
               </div>
             </div>
             <div className="bg-orange-50 border border-orange-200 rounded-md p-3">

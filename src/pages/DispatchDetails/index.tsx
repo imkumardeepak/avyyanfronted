@@ -56,6 +56,7 @@ interface SalesOrderGroup {
   totalActualQuantity: number;
   isFullyDispatched: boolean;
   dispatchRolls?: number; // Number of rolls to dispatch for the entire group
+  sequenceNumber?: number; // Add sequenceNumber property
 }
 
 // Define types for our dispatch details data
@@ -74,8 +75,8 @@ const DispatchDetails = () => {
   const { selectedLots } = location.state || { selectedLots: [] };
 
   // Group items by sales order
-  const groupedItems: Record<number, SalesOrderGroup> = selectedLots.reduce(
-    (acc, item: DispatchPlanningItem) => {
+  const groupedItems = selectedLots.reduce(
+    (acc: Record<number, SalesOrderGroup>, item: DispatchPlanningItem) => {
       const salesOrderId = item.salesOrder?.id || 0;
 
       if (!acc[salesOrderId]) {
@@ -117,7 +118,7 @@ const DispatchDetails = () => {
  
   // Initialize sequence numbers
   const groupedItemsArray: SalesOrderGroup[] = Object.values(groupedItems);
-  groupedItemsArray.forEach((group: SalesOrderGroup, index) => {
+  groupedItemsArray.forEach((group, index) => {
     group.sequenceNumber = index + 1;
   });
 
@@ -430,35 +431,9 @@ const DispatchDetails = () => {
                   <div className="bg-yellow-50 border border-yellow-200 rounded-md p-2">
                     <div className="text-xs text-yellow-600 font-medium">Dispatch Rolls</div>
                     <div className="text-lg font-bold text-yellow-800">
-                      {dispatchItems.reduce(
-                        (sum, group) =>
-                          sum +
-                          group.allotments.reduce(
-                            (itemSum, item) =>
-                              itemSum +
-                              (item.dispatchRolls !== undefined
-                                ? item.dispatchRolls
-                                : item.totalRolls),
-                            0
-                          ),
-                        0
-                      )}
-                    </div>
-                  </div>
-                  <div className="bg-purple-50 border border-purple-200 rounded-md p-2">
-                    <div className="text-xs text-purple-600 font-medium">Total Weight (kg)</div>
-                    <div className="text-lg font-bold text-purple-800">
-                      {dispatchItems
-                        .reduce((sum, group) => sum + group.totalNetWeight, 0)
-                        .toFixed(2)}
-                    </div>
-                  </div>
-                  <div className="bg-cyan-50 border border-cyan-200 rounded-md p-2">
-                    <div className="text-xs text-cyan-600 font-medium">Total Actual Qty (kg)</div>
-                    <div className="text-lg font-bold text-cyan-800">
-                      {dispatchItems
-                        .reduce((sum, group) => sum + group.totalActualQuantity, 0)
-                        .toFixed(2)}
+                      {dispatchItems.reduce((sum, group) => 
+                        sum + group.allotments.reduce((itemSum, item) => 
+                          itemSum + (item.dispatchRolls !== undefined ? item.dispatchRolls : item.totalRolls), 0), 0)}
                     </div>
                   </div>
                 </div>
@@ -476,22 +451,8 @@ const DispatchDetails = () => {
                       <TableHead className="text-xs font-medium text-gray-700">Allotments</TableHead>
                       <TableHead className="text-xs font-medium text-gray-700">Total Rolls</TableHead>
                       <TableHead className="text-xs font-medium text-gray-700">Dispatch Rolls</TableHead>
-                      <TableHead className="text-xs font-medium text-gray-700">
-                        Allotments
-                      </TableHead>
-                      <TableHead className="text-xs font-medium text-gray-700">
-                        Total Rolls
-                      </TableHead>
-                      <TableHead className="text-xs font-medium text-gray-700">
-                        Dispatch Rolls
-                      </TableHead>
-                      <TableHead className="text-xs font-medium text-gray-700">
-                        Actual Qty (kg)
-                      </TableHead>
-                      <TableHead className="text-xs font-medium text-gray-700">
-                        Net Weight (kg)
-                      </TableHead>
-                      <TableHead className="text-xs font-medium text-gray-700">Status</TableHead>
+                      
+                    
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -603,18 +564,7 @@ const DispatchDetails = () => {
                                 className="text-xs h-8 w-20"
                               />
                             </TableCell>
-                            <TableCell className="py-3">
-                              <Badge
-                                variant={group.isFullyDispatched ? 'default' : 'secondary'}
-                                className={
-                                  group.isFullyDispatched
-                                    ? 'bg-green-100 text-green-800'
-                                    : 'bg-yellow-100 text-yellow-800'
-                                }
-                              >
-                                {group.isFullyDispatched ? 'Dispatched' : 'Pending'}
-                              </Badge>
-                            </TableCell>
+                          
                           </TableRow>
                           {/* Expanded view for allotments in this group */}
                           {group.allotments.map((allotment, allotmentIndex) => (
@@ -626,7 +576,7 @@ const DispatchDetails = () => {
                                 <div className="text-xs text-muted-foreground">Lot</div>
                               </TableCell>
                               <TableCell className="py-2 text-xs text-muted-foreground" colSpan={2}>
-                                Allotment:
+                             
                               </TableCell>
                               <TableCell className="py-2" colSpan={2}>
                                 <div className="font-medium text-sm">{allotment.lotNo}</div>
@@ -681,18 +631,7 @@ const DispatchDetails = () => {
                                   className="text-xs h-8 w-20"
                                 />
                               </TableCell>
-                              <TableCell className="py-2">
-                                <Badge
-                                  variant={allotment.isDispatched ? 'default' : 'secondary'}
-                                  className={
-                                    allotment.isDispatched
-                                      ? 'bg-green-100 text-green-800'
-                                      : 'bg-yellow-100 text-yellow-800'
-                                  }
-                                >
-                                  {allotment.isDispatched ? 'Dispatched' : 'Pending'}
-                                </Badge>
-                              </TableCell>
+                            
                             </TableRow>
                           ))}
                         </>
@@ -898,22 +837,6 @@ const DispatchDetails = () => {
                             ),
                           0
                         )}
-                      </div>
-                    </div>
-                    <div className="bg-purple-50 border border-purple-200 rounded-md p-2">
-                      <div className="text-xs text-purple-600 font-medium">Total Weight (kg)</div>
-                      <div className="text-lg font-bold text-purple-800">
-                        {dispatchItems
-                          .reduce((sum, group) => sum + group.totalNetWeight, 0)
-                          .toFixed(2)}
-                      </div>
-                    </div>
-                    <div className="bg-cyan-50 border border-cyan-200 rounded-md p-2">
-                      <div className="text-xs text-cyan-600 font-medium">Total Actual Qty (kg)</div>
-                      <div className="text-lg font-bold text-cyan-800">
-                        {dispatchItems
-                          .reduce((sum, group) => sum + group.totalActualQuantity, 0)
-                          .toFixed(2)}
                       </div>
                     </div>
                   </div>
