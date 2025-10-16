@@ -78,7 +78,7 @@ const DispatchDetails = () => {
   const { selectedLots } = location.state || { selectedLots: [] };
   
   // Group items by sales order
-  const groupedItems = selectedLots.reduce((acc: Record<number, SalesOrderGroup>, item: DispatchPlanningItem) => {
+  const groupedItems: Record<number, SalesOrderGroup> = selectedLots.reduce((acc, item: DispatchPlanningItem) => {
     const salesOrderId = item.salesOrder?.id || 0;
     
     if (!acc[salesOrderId]) {
@@ -113,11 +113,11 @@ const DispatchDetails = () => {
     }
     
     return acc;
-  }, {});
+  }, {} as Record<number, SalesOrderGroup>);
   
   // Initialize sequence numbers
-  const groupedItemsArray = Object.values(groupedItems);
-  groupedItemsArray.forEach((group, index) => {
+  const groupedItemsArray: SalesOrderGroup[] = Object.values(groupedItems);
+  groupedItemsArray.forEach((group: SalesOrderGroup, index) => {
     group.sequenceNumber = index + 1;
   });
   
