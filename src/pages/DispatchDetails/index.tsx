@@ -59,6 +59,7 @@ interface SalesOrderGroup {
   totalActualQuantity: number;
   isFullyDispatched: boolean;
   dispatchRolls?: number; // Number of rolls to dispatch for the entire group
+  sequenceNumber?: number; // Custom sequence number for ordering
 }
 
 // Define types for our dispatch details data
@@ -91,7 +92,8 @@ const DispatchDetails = () => {
         totalNetWeight: 0,
         totalActualQuantity: 0,
         isFullyDispatched: true,
-        dispatchRolls: 0
+        dispatchRolls: 0,
+        sequenceNumber: 0 // Will be set when state is initialized
       };
     }
     
@@ -113,7 +115,13 @@ const DispatchDetails = () => {
     return acc;
   }, {});
   
-  const [dispatchItems, setDispatchItems] = useState<SalesOrderGroup[]>(Object.values(groupedItems));
+  // Initialize sequence numbers
+  const groupedItemsArray = Object.values(groupedItems);
+  groupedItemsArray.forEach((group, index) => {
+    group.sequenceNumber = index + 1;
+  });
+  
+  const [dispatchItems, setDispatchItems] = useState<SalesOrderGroup[]>(groupedItemsArray);
   const [loading, setLoading] = useState(false);
   const [dispatchData, setDispatchData] = useState<DispatchData>({
     dispatchDate: new Date().toISOString().split('T')[0],
@@ -127,20 +135,22 @@ const DispatchDetails = () => {
   // Tab state
   const [activeTab, setActiveTab] = useState<'details' | 'confirm'>('details');
 
-  // Function to move sales order up in the sequence
-  const moveSalesOrderUp = (index: number) => {
-    if (index <= 0) return;
-    const newItems = [...dispatchItems];
-    [newItems[index - 1], newItems[index]] = [newItems[index], newItems[index - 1]];
-    setDispatchItems(newItems);
+  // Function to update sequence number for a sales order
+  const updateSequenceNumber = (salesOrderId: number, newSequence: number) => {
+    const updatedItems = dispatchItems.map(item => 
+      item.salesOrderId === salesOrderId 
+        ? { ...item, sequenceNumber: newSequence } 
+        : item
+    );
+    setDispatchItems(updatedItems);
   };
 
-  // Function to move sales order down in the sequence
-  const moveSalesOrderDown = (index: number) => {
-    if (index >= dispatchItems.length - 1) return;
-    const newItems = [...dispatchItems];
-    [newItems[index], newItems[index + 1]] = [newItems[index + 1], newItems[index]];
-    setDispatchItems(newItems);
+  // Function to sort by sequence number
+  const sortBySequence = () => {
+    const sortedItems = [...dispatchItems].sort((a, b) => 
+      (a.sequenceNumber || 0) - (b.sequenceNumber || 0)
+    );
+    setDispatchItems(sortedItems);
   };
 
   // Update dispatch status for all selected lots
@@ -155,7 +165,12 @@ const DispatchDetails = () => {
       // For each lot, update only the specified number of rolls
       const updatePromises = [];
       
-      for (const group of dispatchItems) {
+      // Process in sequence order
+      const sortedItems = [...dispatchItems].sort((a, b) => 
+        (a.sequenceNumber || 0) - (b.sequenceNumber || 0)
+      );
+      
+      for (const group of sortedItems) {
         for (const item of group.allotments) {
           // Get all captures for this lot
           const lotCaptures = allStorageCaptures.filter(capture => 
@@ -615,7 +630,7 @@ const DispatchDetails = () => {
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-md p-3 mb-4">
                 <h3 className="text-xs font-semibold text-blue-800 mb-2">Dispatch Confirmation</h3>
                 <p className="text-xs text-gray-600 mb-3">
-                  Please review the details below before confirming the dispatch. You can reorder the sales orders as needed.
+                  Please review the details below before confirming the dispatch. You can set custom sequence numbers for the sales orders.
                 </p>
                 
                 {/* Dispatch Information Review */}
@@ -649,11 +664,13 @@ const DispatchDetails = () => {
                   </div>
                 </div>
                 
-                {/* Sequence Reordering Instructions */}
+                {/* Sequence Numbering Instructions */}
                 <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-4">
-                  <h4 className="text-xs font-semibold text-yellow-800 mb-1">Reorder Sales Orders</h4>
+                  <h4 className="text-xs font-semibold text-yellow-800 mb-1">Custom Sequence Numbering</h4>
                   <p className="text-xs text-yellow-700">
-                    Use the arrow buttons to reorder the sales orders in the sequence you want them to be dispatched.
+                    {dispatchItems.length > 1 
+                      ? "Enter custom sequence numbers for each sales order. The orders will be dispatched in ascending order of these numbers."
+                      : "Only one sales order selected. No sequence numbering required."}
                   </p>
                 </div>
                 
@@ -662,82 +679,90 @@ const DispatchDetails = () => {
                   <Table>
                     <TableHeader className="bg-gray-50">
                       <TableRow>
-                        <TableHead className="text-xs font-medium text-gray-700 w-16">Order</TableHead>
+                        <TableHead className="text-xs font-medium text-gray-700 w-24">Sequence No.</TableHead>
                         <TableHead className="text-xs font-medium text-gray-700">SO Number</TableHead>
                         <TableHead className="text-xs font-medium text-gray-700">Party</TableHead>
                         <TableHead className="text-xs font-medium text-gray-700">Customer</TableHead>
                         <TableHead className="text-xs font-medium text-gray-700">Allotments</TableHead>
                         <TableHead className="text-xs font-medium text-gray-700">Total Rolls</TableHead>
                         <TableHead className="text-xs font-medium text-gray-700">Dispatch Rolls</TableHead>
-                        <TableHead className="text-xs font-medium text-gray-700">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {dispatchItems.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                          <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                             No sales orders found
                           </TableCell>
                         </TableRow>
                       ) : (
-                        dispatchItems.map((group, index) => (
-                          <TableRow key={group.salesOrderId} className="border-b border-gray-100">
-                            <TableCell className="py-3">
-                              <div className="font-medium text-sm">#{index + 1}</div>
-                            </TableCell>
-                            <TableCell className="py-3 font-medium">
-                              {group.voucherNumber}
-                            </TableCell>
-                            <TableCell className="py-3">
-                              {group.partyName}
-                            </TableCell>
-                            <TableCell className="py-3">
-                              {group.customerName}
-                            </TableCell>
-                            <TableCell className="py-3">
-                              <div className="flex flex-wrap gap-1">
-                                {group.allotments.map(allotment => (
-                                  <span key={allotment.lotNo} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                    {allotment.lotNo}
-                                  </span>
-                                ))}
-                              </div>
-                            </TableCell>
-                            <TableCell className="py-3">
-                              {group.totalRolls}
-                            </TableCell>
-                            <TableCell className="py-3">
-                              {group.allotments.reduce((sum, item) => 
-                                sum + (item.dispatchRolls !== undefined ? item.dispatchRolls : item.totalRolls), 0)}
-                            </TableCell>
-                            <TableCell className="py-3">
-                              <div className="flex space-x-1">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => moveSalesOrderUp(index)}
-                                  disabled={index === 0}
-                                  className="h-6 w-6 p-0"
-                                >
-                                  <ArrowUp className="h-3 w-3" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => moveSalesOrderDown(index)}
-                                  disabled={index === dispatchItems.length - 1}
-                                  className="h-6 w-6 p-0"
-                                >
-                                  <ArrowDown className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))
+                        // Sort by sequence number for display
+                        [...dispatchItems]
+                          .sort((a, b) => (a.sequenceNumber || 0) - (b.sequenceNumber || 0))
+                          .map((group) => (
+                            <TableRow key={group.salesOrderId} className="border-b border-gray-100">
+                              <TableCell className="py-3">
+                                {dispatchItems.length > 1 ? (
+                                  <Input
+                                    type="number"
+                                    min="1"
+                                    value={group.sequenceNumber || ""}
+                                    onChange={(e) => {
+                                      const newSequence = e.target.value ? parseInt(e.target.value) : 0;
+                                      updateSequenceNumber(group.salesOrderId, newSequence);
+                                    }}
+                                    className="text-xs h-8 w-16"
+                                    placeholder="Seq"
+                                  />
+                                ) : (
+                                  <div className="font-medium text-sm">#{group.sequenceNumber}</div>
+                                )}
+                              </TableCell>
+                              <TableCell className="py-3 font-medium">
+                                {group.voucherNumber}
+                              </TableCell>
+                              <TableCell className="py-3">
+                                {group.partyName}
+                              </TableCell>
+                              <TableCell className="py-3">
+                                {group.customerName}
+                              </TableCell>
+                              <TableCell className="py-3">
+                                <div className="flex flex-wrap gap-1">
+                                  {group.allotments.map(allotment => (
+                                    <span key={allotment.lotNo} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                      {allotment.lotNo}
+                                    </span>
+                                  ))}
+                                </div>
+                              </TableCell>
+                              <TableCell className="py-3">
+                                {group.totalRolls}
+                              </TableCell>
+                              <TableCell className="py-3">
+                                {group.allotments.reduce((sum, item) => 
+                                  sum + (item.dispatchRolls !== undefined ? item.dispatchRolls : item.totalRolls), 0)}
+                              </TableCell>
+                            </TableRow>
+                          ))
                       )}
                     </TableBody>
                   </Table>
                 </div>
+                
+                {/* Sort Button */}
+                {dispatchItems.length > 1 && (
+                  <div className="flex justify-end mt-3">
+                    <Button
+                      onClick={sortBySequence}
+                      variant="outline"
+                      size="sm"
+                      className="h-8 px-3 text-xs"
+                    >
+                      Apply Sequence Order
+                    </Button>
+                  </div>
+                )}
                 
                 {/* Dispatch Summary */}
                 <div className="bg-white border border-gray-200 rounded-md p-3 mt-4">
