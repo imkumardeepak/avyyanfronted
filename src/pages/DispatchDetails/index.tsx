@@ -5,21 +5,18 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/ui/table';
 import { ArrowLeft, Save, Truck, FileText, CheckCircle, ArrowUp, ArrowDown } from 'lucide-react';
 import { toast } from '@/lib/toast';
 import { storageCaptureApi, apiUtils } from '@/lib/api-client';
-import type { 
-  StorageCaptureResponseDto,
-  UpdateStorageCaptureRequestDto
-} from '@/types/api-types';
+import type { StorageCaptureResponseDto, UpdateStorageCaptureRequestDto } from '@/types/api-types';
 
 // Define types for our dispatch details data
 interface DispatchPlanningItem {
@@ -75,45 +72,56 @@ const DispatchDetails = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { selectedLots } = location.state || { selectedLots: [] };
-  
+
   // Group items by sales order
-  const groupedItems = selectedLots.reduce((acc: Record<number, SalesOrderGroup>, item: DispatchPlanningItem) => {
-    const salesOrderId = item.salesOrder?.id || 0;
-    
-    if (!acc[salesOrderId]) {
-      acc[salesOrderId] = {
-        salesOrderId,
-        voucherNumber: item.salesOrder?.voucherNumber || 'N/A',
-        partyName: item.salesOrder?.partyName || 'N/A',
-        customerName: item.customerName,
-        allotments: [],
-        totalRolls: 0,
-        totalNetWeight: 0,
-        totalActualQuantity: 0,
-        isFullyDispatched: true,
-        dispatchRolls: 0
-      };
-    }
-    
-    acc[salesOrderId].allotments.push({
-      ...item,
-      dispatchRolls: item.dispatchRolls || item.totalRolls
-    });
-    
-    acc[salesOrderId].totalRolls += item.totalRolls;
-    acc[salesOrderId].totalNetWeight += item.totalNetWeight;
-    acc[salesOrderId].totalActualQuantity += item.totalActualQuantity;
-    acc[salesOrderId].dispatchRolls = (acc[salesOrderId].dispatchRolls || 0) + (item.dispatchRolls || item.totalRolls);
-    
-    // If any allotment is not dispatched, the whole group is not fully dispatched
-    if (!item.isDispatched) {
-      acc[salesOrderId].isFullyDispatched = false;
-    }
-    
-    return acc;
-  }, {});
-  
-  const [dispatchItems, setDispatchItems] = useState<SalesOrderGroup[]>(Object.values(groupedItems));
+  const groupedItems: Record<number, SalesOrderGroup> = selectedLots.reduce(
+    (acc, item: DispatchPlanningItem) => {
+      const salesOrderId = item.salesOrder?.id || 0;
+
+      if (!acc[salesOrderId]) {
+        acc[salesOrderId] = {
+          salesOrderId,
+          voucherNumber: item.salesOrder?.voucherNumber || 'N/A',
+          partyName: item.salesOrder?.partyName || 'N/A',
+          customerName: item.customerName,
+          allotments: [],
+          totalRolls: 0,
+          totalNetWeight: 0,
+          totalActualQuantity: 0,
+          isFullyDispatched: true,
+          dispatchRolls: 0,
+        };
+      }
+
+      acc[salesOrderId].allotments.push({
+        ...item,
+        dispatchRolls: item.dispatchRolls || item.totalRolls,
+      });
+
+      acc[salesOrderId].totalRolls += item.totalRolls;
+      acc[salesOrderId].totalNetWeight += item.totalNetWeight;
+      acc[salesOrderId].totalActualQuantity += item.totalActualQuantity;
+      acc[salesOrderId].dispatchRolls =
+        (acc[salesOrderId].dispatchRolls || 0) + (item.dispatchRolls || item.totalRolls);
+
+      // If any allotment is not dispatched, the whole group is not fully dispatched
+      if (!item.isDispatched) {
+        acc[salesOrderId].isFullyDispatched = false;
+      }
+
+      return acc;
+    },
+    {} as Record<number, SalesOrderGroup>
+  );
+
+ 
+  // Initialize sequence numbers
+  const groupedItemsArray: SalesOrderGroup[] = Object.values(groupedItems);
+  groupedItemsArray.forEach((group: SalesOrderGroup, index) => {
+    group.sequenceNumber = index + 1;
+  });
+
+  const [dispatchItems, setDispatchItems] = useState<SalesOrderGroup[]>(groupedItemsArray);
   const [loading, setLoading] = useState(false);
   const [dispatchData, setDispatchData] = useState<DispatchData>({
     dispatchDate: new Date().toISOString().split('T')[0],
@@ -121,9 +129,9 @@ const DispatchDetails = () => {
     driverName: '',
     license: '',
     mobileNumber: '',
-    remarks: ''
+    remarks: '',
   });
-  
+
   // Tab state
   const [activeTab, setActiveTab] = useState<'details' | 'confirm'>('details');
 
@@ -144,18 +152,18 @@ const DispatchDetails = () => {
   // Function to handle drag end (drop)
   const handleDragEnd = () => {
     if (dragItem.current === null || dragOverItem.current === null) return;
-    
+
     const newItems = [...dispatchItems];
     const draggedItem = newItems[dragItem.current];
-    
+
     // Remove dragged item
     newItems.splice(dragItem.current, 1);
     // Insert dragged item at new position
     newItems.splice(dragOverItem.current, 0, draggedItem);
-    
+
     // Update state
     setDispatchItems(newItems);
-    
+
     // Reset positions
     dragItem.current = null;
     dragOverItem.current = null;
@@ -181,28 +189,29 @@ const DispatchDetails = () => {
   const handleDispatch = async () => {
     try {
       setLoading(true);
-      
+
       // Get all storage captures for the selected lots
       const storageResponse = await storageCaptureApi.getAllStorageCaptures();
       const allStorageCaptures = apiUtils.extractData(storageResponse);
-      
+
       // For each lot, update only the specified number of rolls
       const updatePromises = [];
-      
+
       for (const group of dispatchItems) {
         for (const item of group.allotments) {
           // Get all captures for this lot
-          const lotCaptures = allStorageCaptures.filter((capture: StorageCaptureResponseDto) => 
-            capture.lotNo === item.lotNo
+          const lotCaptures = allStorageCaptures.filter(
+            (capture: StorageCaptureResponseDto) => capture.lotNo === item.lotNo
           );
-          
+
           // Take only the specified number of rolls (or all if not specified)
-          const rollsToDispatch = item.dispatchRolls !== undefined ? 
-            Math.min(item.dispatchRolls, lotCaptures.length) : 
-            lotCaptures.length;
-          
+          const rollsToDispatch =
+            item.dispatchRolls !== undefined
+              ? Math.min(item.dispatchRolls, lotCaptures.length)
+              : lotCaptures.length;
+
           // Update the specified number of rolls
-          const lotPromises = lotCaptures.slice(0, rollsToDispatch).map(capture => {
+          const lotPromises = lotCaptures.slice(0, rollsToDispatch).map((capture) => {
             const updateDto: UpdateStorageCaptureRequestDto = {
               lotNo: capture.lotNo,
               fgRollNo: capture.fgRollNo,
@@ -210,27 +219,37 @@ const DispatchDetails = () => {
               tape: capture.tape,
               customerName: capture.customerName,
               isDispatched: true, // Set to dispatched
-              isActive: capture.isActive
+              isActive: capture.isActive,
             };
-            
+
             return storageCaptureApi.updateStorageCapture(capture.id, updateDto);
           });
-          
+
           updatePromises.push(...lotPromises);
         }
       }
-      
+
       // Wait for all updates to complete
       await Promise.all(updatePromises);
-      
+
       const totalGroups = dispatchItems.length;
       const totalLots = dispatchItems.reduce((sum, group) => sum + group.allotments.length, 0);
-      const totalRolls = dispatchItems.reduce((sum, group) => 
-        sum + group.allotments.reduce((itemSum, item) => 
-          itemSum + (item.dispatchRolls !== undefined ? item.dispatchRolls : item.totalRolls), 0), 0);
-      
-      toast.success('Success', `Successfully dispatched ${totalGroups} sales orders with ${totalLots} lots and ${totalRolls} rolls`);
-      
+      const totalRolls = dispatchItems.reduce(
+        (sum, group) =>
+          sum +
+          group.allotments.reduce(
+            (itemSum, item) =>
+              itemSum + (item.dispatchRolls !== undefined ? item.dispatchRolls : item.totalRolls),
+            0
+          ),
+        0
+      );
+
+      toast.success(
+        'Success',
+        `Successfully dispatched ${totalGroups} sales orders with ${totalLots} lots and ${totalRolls} rolls`
+      );
+
       // Navigate back to dispatch planning
       navigate('/dispatch-planning');
     } catch (error) {
@@ -247,9 +266,7 @@ const DispatchDetails = () => {
       <Card className="shadow-md border-0">
         <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-t-lg py-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-white text-base font-semibold">
-              Dispatch Details
-            </CardTitle>
+            <CardTitle className="text-white text-base font-semibold">Dispatch Details</CardTitle>
             <Button
               variant="ghost"
               size="sm"
@@ -299,7 +316,7 @@ const DispatchDetails = () => {
               {/* Dispatch Information Form */}
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-md p-3 mb-4">
                 <h3 className="text-xs font-semibold text-blue-800 mb-2">Dispatch Information</h3>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div className="space-y-1">
                     <Label htmlFor="dispatchDate" className="text-xs font-medium text-gray-700">
@@ -309,11 +326,13 @@ const DispatchDetails = () => {
                       id="dispatchDate"
                       type="date"
                       value={dispatchData.dispatchDate}
-                      onChange={(e) => setDispatchData({...dispatchData, dispatchDate: e.target.value})}
+                      onChange={(e) =>
+                        setDispatchData({ ...dispatchData, dispatchDate: e.target.value })
+                      }
                       className="text-xs h-8"
                     />
                   </div>
-                  
+
                   <div className="space-y-1">
                     <Label htmlFor="vehicleNo" className="text-xs font-medium text-gray-700">
                       Vehicle Number
@@ -322,11 +341,13 @@ const DispatchDetails = () => {
                       id="vehicleNo"
                       placeholder="Enter vehicle number"
                       value={dispatchData.vehicleNo}
-                      onChange={(e) => setDispatchData({...dispatchData, vehicleNo: e.target.value})}
+                      onChange={(e) =>
+                        setDispatchData({ ...dispatchData, vehicleNo: e.target.value })
+                      }
                       className="text-xs h-8"
                     />
                   </div>
-                  
+
                   <div className="space-y-1">
                     <Label htmlFor="driverName" className="text-xs font-medium text-gray-700">
                       Driver Name
@@ -335,11 +356,13 @@ const DispatchDetails = () => {
                       id="driverName"
                       placeholder="Enter driver name"
                       value={dispatchData.driverName}
-                      onChange={(e) => setDispatchData({...dispatchData, driverName: e.target.value})}
+                      onChange={(e) =>
+                        setDispatchData({ ...dispatchData, driverName: e.target.value })
+                      }
                       className="text-xs h-8"
                     />
                   </div>
-                  
+
                   <div className="space-y-1">
                     <Label htmlFor="license" className="text-xs font-medium text-gray-700">
                       License
@@ -348,11 +371,13 @@ const DispatchDetails = () => {
                       id="license"
                       placeholder="Enter license number"
                       value={dispatchData.license}
-                      onChange={(e) => setDispatchData({...dispatchData, license: e.target.value})}
+                      onChange={(e) =>
+                        setDispatchData({ ...dispatchData, license: e.target.value })
+                      }
                       className="text-xs h-8"
                     />
                   </div>
-                  
+
                   <div className="space-y-1">
                     <Label htmlFor="mobileNumber" className="text-xs font-medium text-gray-700">
                       Mobile Number
@@ -361,11 +386,13 @@ const DispatchDetails = () => {
                       id="mobileNumber"
                       placeholder="Enter mobile number"
                       value={dispatchData.mobileNumber}
-                      onChange={(e) => setDispatchData({...dispatchData, mobileNumber: e.target.value})}
+                      onChange={(e) =>
+                        setDispatchData({ ...dispatchData, mobileNumber: e.target.value })
+                      }
                       className="text-xs h-8"
                     />
                   </div>
-                  
+
                   <div className="md:col-span-3 space-y-1">
                     <Label htmlFor="remarks" className="text-xs font-medium text-gray-700">
                       Remarks
@@ -374,7 +401,9 @@ const DispatchDetails = () => {
                       id="remarks"
                       placeholder="Any additional remarks"
                       value={dispatchData.remarks}
-                      onChange={(e) => setDispatchData({...dispatchData, remarks: e.target.value})}
+                      onChange={(e) =>
+                        setDispatchData({ ...dispatchData, remarks: e.target.value })
+                      }
                       className="text-xs h-8"
                     />
                   </div>
@@ -386,7 +415,7 @@ const DispatchDetails = () => {
                 <h3 className="text-xs font-semibold text-green-800 mb-2">
                   Selected Sales Orders for Dispatch ({dispatchItems.length})
                 </h3>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-3">
                   <div className="bg-blue-50 border border-blue-200 rounded-md p-2">
                     <div className="text-xs text-blue-600 font-medium">Sales Orders</div>
@@ -401,15 +430,35 @@ const DispatchDetails = () => {
                   <div className="bg-yellow-50 border border-yellow-200 rounded-md p-2">
                     <div className="text-xs text-yellow-600 font-medium">Dispatch Rolls</div>
                     <div className="text-lg font-bold text-yellow-800">
-                      {dispatchItems.reduce((sum, group) => 
-                        sum + group.allotments.reduce((itemSum, item) => 
-                          itemSum + (item.dispatchRolls !== undefined ? item.dispatchRolls : item.totalRolls), 0), 0)}
+                      {dispatchItems.reduce(
+                        (sum, group) =>
+                          sum +
+                          group.allotments.reduce(
+                            (itemSum, item) =>
+                              itemSum +
+                              (item.dispatchRolls !== undefined
+                                ? item.dispatchRolls
+                                : item.totalRolls),
+                            0
+                          ),
+                        0
+                      )}
                     </div>
                   </div>
                   <div className="bg-purple-50 border border-purple-200 rounded-md p-2">
                     <div className="text-xs text-purple-600 font-medium">Total Weight (kg)</div>
                     <div className="text-lg font-bold text-purple-800">
-                      {dispatchItems.reduce((sum, group) => sum + group.totalNetWeight, 0).toFixed(2)}
+                      {dispatchItems
+                        .reduce((sum, group) => sum + group.totalNetWeight, 0)
+                        .toFixed(2)}
+                    </div>
+                  </div>
+                  <div className="bg-cyan-50 border border-cyan-200 rounded-md p-2">
+                    <div className="text-xs text-cyan-600 font-medium">Total Actual Qty (kg)</div>
+                    <div className="text-lg font-bold text-cyan-800">
+                      {dispatchItems
+                        .reduce((sum, group) => sum + group.totalActualQuantity, 0)
+                        .toFixed(2)}
                     </div>
                   </div>
                 </div>
@@ -427,6 +476,21 @@ const DispatchDetails = () => {
                       <TableHead className="text-xs font-medium text-gray-700">Allotments</TableHead>
                       <TableHead className="text-xs font-medium text-gray-700">Total Rolls</TableHead>
                       <TableHead className="text-xs font-medium text-gray-700">Dispatch Rolls</TableHead>
+                      <TableHead className="text-xs font-medium text-gray-700">
+                        Allotments
+                      </TableHead>
+                      <TableHead className="text-xs font-medium text-gray-700">
+                        Total Rolls
+                      </TableHead>
+                      <TableHead className="text-xs font-medium text-gray-700">
+                        Dispatch Rolls
+                      </TableHead>
+                      <TableHead className="text-xs font-medium text-gray-700">
+                        Actual Qty (kg)
+                      </TableHead>
+                      <TableHead className="text-xs font-medium text-gray-700">
+                        Net Weight (kg)
+                      </TableHead>
                       <TableHead className="text-xs font-medium text-gray-700">Status</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -440,29 +504,27 @@ const DispatchDetails = () => {
                     ) : (
                       dispatchItems.map((group) => (
                         <>
-                          <TableRow key={group.salesOrderId} className="border-b border-gray-100 bg-gray-50">
+                          <TableRow
+                            key={group.salesOrderId}
+                            className="border-b border-gray-100 bg-gray-50"
+                          >
                             <TableCell className="py-3">
                               <div className="font-medium text-sm">SO</div>
                             </TableCell>
                             <TableCell className="py-3 font-medium">
                               {group.voucherNumber}
                             </TableCell>
-                            <TableCell className="py-3">
-                              {group.partyName}
-                            </TableCell>
-                            <TableCell className="py-3">
-                              {group.customerName}
-                            </TableCell>
+                            <TableCell className="py-3">{group.partyName}</TableCell>
+                            <TableCell className="py-3">{group.customerName}</TableCell>
                             <TableCell className="py-3">
                               <div className="flex items-center">
                                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                  {group.allotments.length} lot{group.allotments.length !== 1 ? 's' : ''}
+                                  {group.allotments.length} lot
+                                  {group.allotments.length !== 1 ? 's' : ''}
                                 </span>
                               </div>
                             </TableCell>
-                            <TableCell className="py-3 font-medium">
-                              {group.totalRolls}
-                            </TableCell>
+                            <TableCell className="py-3 font-medium">{group.totalRolls}</TableCell>
                             <TableCell className="py-3">
                               <Input
                                 type="number"
@@ -472,37 +534,47 @@ const DispatchDetails = () => {
                                 onChange={(e) => {
                                   const newDispatchRolls = parseInt(e.target.value) || 0;
                                   const updatedItems = [...dispatchItems];
-                                  const groupIndex = updatedItems.findIndex(g => g.salesOrderId === group.salesOrderId);
-                                  
+                                  const groupIndex = updatedItems.findIndex(
+                                    (g) => g.salesOrderId === group.salesOrderId
+                                  );
+
                                   if (groupIndex !== -1) {
                                     updatedItems[groupIndex] = {
                                       ...group,
-                                      dispatchRolls: Math.min(newDispatchRolls, group.totalRolls)
+                                      dispatchRolls: Math.min(newDispatchRolls, group.totalRolls),
                                     };
-                                    
+
                                     // Distribute rolls proportionally among allotments
-                                    let remainingRolls = Math.min(newDispatchRolls, group.totalRolls);
-                                    const updatedAllotments = group.allotments.map(allotment => {
+                                    let remainingRolls = Math.min(
+                                      newDispatchRolls,
+                                      group.totalRolls
+                                    );
+                                    const updatedAllotments = group.allotments.map((allotment) => {
                                       if (remainingRolls <= 0) {
                                         return { ...allotment, dispatchRolls: 0 };
                                       }
-                                      
+
                                       // Calculate proportional allocation
-                                      const allotmentProportion = allotment.totalRolls / group.totalRolls;
+                                      const allotmentProportion =
+                                        allotment.totalRolls / group.totalRolls;
                                       const allotmentRolls = Math.min(
                                         Math.round(allotmentProportion * newDispatchRolls),
                                         allotment.totalRolls,
                                         remainingRolls
                                       );
-                                      
+
                                       remainingRolls -= allotmentRolls;
-                                      
+
                                       return { ...allotment, dispatchRolls: allotmentRolls };
                                     });
-                                    
+
                                     // Distribute any remaining rolls to the first allotments
                                     if (remainingRolls > 0) {
-                                      for (let i = 0; i < updatedAllotments.length && remainingRolls > 0; i++) {
+                                      for (
+                                        let i = 0;
+                                        i < updatedAllotments.length && remainingRolls > 0;
+                                        i++
+                                      ) {
                                         const allotment = updatedAllotments[i];
                                         if (allotment.dispatchRolls < allotment.totalRolls) {
                                           const additionalRolls = Math.min(
@@ -511,37 +583,45 @@ const DispatchDetails = () => {
                                           );
                                           updatedAllotments[i] = {
                                             ...allotment,
-                                            dispatchRolls: allotment.dispatchRolls + additionalRolls
+                                            dispatchRolls:
+                                              allotment.dispatchRolls + additionalRolls,
                                           };
                                           remainingRolls -= additionalRolls;
                                         }
                                       }
                                     }
-                                    
+
                                     updatedItems[groupIndex] = {
                                       ...updatedItems[groupIndex],
                                       allotments: updatedAllotments,
-                                      dispatchRolls: newDispatchRolls
+                                      dispatchRolls: newDispatchRolls,
                                     };
                                   }
-                                  
+
                                   setDispatchItems(updatedItems);
                                 }}
                                 className="text-xs h-8 w-20"
                               />
                             </TableCell>
                             <TableCell className="py-3">
-                              <Badge 
-                                variant={group.isFullyDispatched ? "default" : "secondary"}
-                                className={group.isFullyDispatched ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}
+                              <Badge
+                                variant={group.isFullyDispatched ? 'default' : 'secondary'}
+                                className={
+                                  group.isFullyDispatched
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-yellow-100 text-yellow-800'
+                                }
                               >
-                                {group.isFullyDispatched ? "Dispatched" : "Pending"}
+                                {group.isFullyDispatched ? 'Dispatched' : 'Pending'}
                               </Badge>
                             </TableCell>
                           </TableRow>
                           {/* Expanded view for allotments in this group */}
                           {group.allotments.map((allotment, allotmentIndex) => (
-                            <TableRow key={`${group.salesOrderId}-${allotment.lotNo}`} className="border-b border-gray-100">
+                            <TableRow
+                              key={`${group.salesOrderId}-${allotment.lotNo}`}
+                              className="border-b border-gray-100"
+                            >
                               <TableCell className="py-2 pl-8">
                                 <div className="text-xs text-muted-foreground">Lot</div>
                               </TableCell>
@@ -550,11 +630,11 @@ const DispatchDetails = () => {
                               </TableCell>
                               <TableCell className="py-2" colSpan={2}>
                                 <div className="font-medium text-sm">{allotment.lotNo}</div>
-                                <div className="text-xs text-muted-foreground">{allotment.tape}</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {allotment.tape}
+                                </div>
                               </TableCell>
-                              <TableCell className="py-2">
-                                {allotment.totalRolls}
-                              </TableCell>
+                              <TableCell className="py-2">{allotment.totalRolls}</TableCell>
                               <TableCell className="py-2">
                                 <Input
                                   type="number"
@@ -564,39 +644,53 @@ const DispatchDetails = () => {
                                   onChange={(e) => {
                                     const newDispatchRolls = parseInt(e.target.value) || 0;
                                     const updatedItems = [...dispatchItems];
-                                    const groupIndex = updatedItems.findIndex(g => g.salesOrderId === group.salesOrderId);
-                                    
+                                    const groupIndex = updatedItems.findIndex(
+                                      (g) => g.salesOrderId === group.salesOrderId
+                                    );
+
                                     if (groupIndex !== -1) {
-                                      const allotmentIndex = updatedItems[groupIndex].allotments.findIndex(a => a.lotNo === allotment.lotNo);
+                                      const allotmentIndex = updatedItems[
+                                        groupIndex
+                                      ].allotments.findIndex((a) => a.lotNo === allotment.lotNo);
                                       if (allotmentIndex !== -1) {
                                         updatedItems[groupIndex].allotments[allotmentIndex] = {
                                           ...allotment,
-                                          dispatchRolls: Math.min(newDispatchRolls, allotment.totalRolls)
+                                          dispatchRolls: Math.min(
+                                            newDispatchRolls,
+                                            allotment.totalRolls
+                                          ),
                                         };
-                                        
+
                                         // Update group dispatch rolls total
-                                        const groupDispatchRolls = updatedItems[groupIndex].allotments.reduce(
-                                          (sum, a) => sum + (a.dispatchRolls || 0), 0
+                                        const groupDispatchRolls = updatedItems[
+                                          groupIndex
+                                        ].allotments.reduce(
+                                          (sum, a) => sum + (a.dispatchRolls || 0),
+                                          0
                                         );
-                                        
+
                                         updatedItems[groupIndex] = {
                                           ...updatedItems[groupIndex],
-                                          dispatchRolls: groupDispatchRolls
+                                          dispatchRolls: groupDispatchRolls,
                                         };
                                       }
                                     }
-                                    
+
                                     setDispatchItems(updatedItems);
                                   }}
                                   className="text-xs h-8 w-20"
                                 />
                               </TableCell>
                               <TableCell className="py-2">
-                                <Badge 
-                                  variant={allotment.isDispatched ? "default" : "secondary"}
-                                  className={allotment.isDispatched ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}
+                                <Badge
+                                  variant={allotment.isDispatched ? 'default' : 'secondary'}
+                                  className={
+                                    allotment.isDispatched
+                                      ? 'bg-green-100 text-green-800'
+                                      : 'bg-yellow-100 text-yellow-800'
+                                  }
                                 >
-                                  {allotment.isDispatched ? "Dispatched" : "Pending"}
+                                  {allotment.isDispatched ? 'Dispatched' : 'Pending'}
                                 </Badge>
                               </TableCell>
                             </TableRow>
@@ -627,9 +721,10 @@ const DispatchDetails = () => {
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-md p-3 mb-4">
                 <h3 className="text-xs font-semibold text-blue-800 mb-2">Dispatch Confirmation</h3>
                 <p className="text-xs text-gray-600 mb-3">
-                  Please review the details below before confirming the dispatch. You can reorder the sales orders as needed.
+                  Please review the details below before confirming the dispatch. You can reorder
+                  the sales orders as needed.
                 </p>
-                
+
                 {/* Dispatch Information Review */}
                 <div className="bg-white border border-gray-200 rounded-md p-3 mb-4">
                   <h4 className="text-xs font-semibold text-gray-700 mb-2">Dispatch Information</h4>
@@ -660,27 +755,42 @@ const DispatchDetails = () => {
                     </div>
                   </div>
                 </div>
-                
+
                 {/* Sequence Reordering Instructions */}
                 <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-4">
-                  <h4 className="text-xs font-semibold text-yellow-800 mb-1">Reorder Sales Orders</h4>
+                  <h4 className="text-xs font-semibold text-yellow-800 mb-1">
+                    Reorder Sales Orders
+                  </h4>
                   <p className="text-xs text-yellow-700">
-                    Drag and drop the sales orders to reorder them in the sequence you want them to be dispatched.
+                    Drag and drop the sales orders to reorder them in the sequence you want them to
+                    be dispatched.
                   </p>
                 </div>
-                
+
                 {/* Dispatch Sequence Table */}
                 <div className="border border-gray-200 rounded-md overflow-hidden">
                   <Table>
                     <TableHeader className="bg-gray-50">
                       <TableRow>
-                        <TableHead className="text-xs font-medium text-gray-700 w-16">Order</TableHead>
-                        <TableHead className="text-xs font-medium text-gray-700">SO Number</TableHead>
+                        <TableHead className="text-xs font-medium text-gray-700 w-16">
+                          Order
+                        </TableHead>
+                        <TableHead className="text-xs font-medium text-gray-700">
+                          SO Number
+                        </TableHead>
                         <TableHead className="text-xs font-medium text-gray-700">Party</TableHead>
-                        <TableHead className="text-xs font-medium text-gray-700">Customer</TableHead>
-                        <TableHead className="text-xs font-medium text-gray-700">Allotments</TableHead>
-                        <TableHead className="text-xs font-medium text-gray-700">Total Rolls</TableHead>
-                        <TableHead className="text-xs font-medium text-gray-700">Dispatch Rolls</TableHead>
+                        <TableHead className="text-xs font-medium text-gray-700">
+                          Customer
+                        </TableHead>
+                        <TableHead className="text-xs font-medium text-gray-700">
+                          Allotments
+                        </TableHead>
+                        <TableHead className="text-xs font-medium text-gray-700">
+                          Total Rolls
+                        </TableHead>
+                        <TableHead className="text-xs font-medium text-gray-700">
+                          Dispatch Rolls
+                        </TableHead>
                         <TableHead className="text-xs font-medium text-gray-700">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -693,8 +803,8 @@ const DispatchDetails = () => {
                         </TableRow>
                       ) : (
                         dispatchItems.map((group, index) => (
-                          <TableRow 
-                            key={group.salesOrderId} 
+                          <TableRow
+                            key={group.salesOrderId}
                             className="border-b border-gray-100"
                             draggable
                             onDragStart={() => handleDragStart(index)}
@@ -708,25 +818,26 @@ const DispatchDetails = () => {
                             <TableCell className="py-3 font-medium">
                               {group.voucherNumber}
                             </TableCell>
-                            <TableCell className="py-3">
-                              {group.partyName}
-                            </TableCell>
-                            <TableCell className="py-3">
-                              {group.customerName}
-                            </TableCell>
+                            <TableCell className="py-3">{group.partyName}</TableCell>
+                            <TableCell className="py-3">{group.customerName}</TableCell>
                             <TableCell className="py-3">
                               <div className="flex items-center">
                                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                  {group.allotments.length} lot{group.allotments.length !== 1 ? 's' : ''}
+                                  {group.allotments.length} lot
+                                  {group.allotments.length !== 1 ? 's' : ''}
                                 </span>
                               </div>
                             </TableCell>
+                            <TableCell className="py-3">{group.totalRolls}</TableCell>
                             <TableCell className="py-3">
-                              {group.totalRolls}
-                            </TableCell>
-                            <TableCell className="py-3">
-                              {group.allotments.reduce((sum, item) => 
-                                sum + (item.dispatchRolls !== undefined ? item.dispatchRolls : item.totalRolls), 0)}
+                              {group.allotments.reduce(
+                                (sum, item) =>
+                                  sum +
+                                  (item.dispatchRolls !== undefined
+                                    ? item.dispatchRolls
+                                    : item.totalRolls),
+                                0
+                              )}
                             </TableCell>
                             <TableCell className="py-3">
                               <div className="flex space-x-1">
@@ -756,7 +867,7 @@ const DispatchDetails = () => {
                     </TableBody>
                   </Table>
                 </div>
-                
+
                 {/* Dispatch Summary */}
                 <div className="bg-white border border-gray-200 rounded-md p-3 mt-4">
                   <h4 className="text-xs font-semibold text-gray-700 mb-2">Dispatch Summary</h4>
@@ -774,15 +885,35 @@ const DispatchDetails = () => {
                     <div className="bg-yellow-50 border border-yellow-200 rounded-md p-2">
                       <div className="text-xs text-yellow-600 font-medium">Dispatch Rolls</div>
                       <div className="text-lg font-bold text-yellow-800">
-                        {dispatchItems.reduce((sum, group) => 
-                          sum + group.allotments.reduce((itemSum, item) => 
-                            itemSum + (item.dispatchRolls !== undefined ? item.dispatchRolls : item.totalRolls), 0), 0)}
+                        {dispatchItems.reduce(
+                          (sum, group) =>
+                            sum +
+                            group.allotments.reduce(
+                              (itemSum, item) =>
+                                itemSum +
+                                (item.dispatchRolls !== undefined
+                                  ? item.dispatchRolls
+                                  : item.totalRolls),
+                              0
+                            ),
+                          0
+                        )}
                       </div>
                     </div>
                     <div className="bg-purple-50 border border-purple-200 rounded-md p-2">
                       <div className="text-xs text-purple-600 font-medium">Total Weight (kg)</div>
                       <div className="text-lg font-bold text-purple-800">
-                        {dispatchItems.reduce((sum, group) => sum + group.totalNetWeight, 0).toFixed(2)}
+                        {dispatchItems
+                          .reduce((sum, group) => sum + group.totalNetWeight, 0)
+                          .toFixed(2)}
+                      </div>
+                    </div>
+                    <div className="bg-cyan-50 border border-cyan-200 rounded-md p-2">
+                      <div className="text-xs text-cyan-600 font-medium">Total Actual Qty (kg)</div>
+                      <div className="text-lg font-bold text-cyan-800">
+                        {dispatchItems
+                          .reduce((sum, group) => sum + group.totalActualQuantity, 0)
+                          .toFixed(2)}
                       </div>
                     </div>
                   </div>
@@ -793,8 +924,9 @@ const DispatchDetails = () => {
               <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-4">
                 <h3 className="text-xs font-semibold text-yellow-800 mb-1">Important Notice</h3>
                 <p className="text-xs text-yellow-700">
-                  Once you confirm the dispatch, the status of the selected items will be updated and this action cannot be undone. 
-                  Please ensure all details are correct before proceeding.
+                  Once you confirm the dispatch, the status of the selected items will be updated
+                  and this action cannot be undone. Please ensure all details are correct before
+                  proceeding.
                 </p>
               </div>
 
