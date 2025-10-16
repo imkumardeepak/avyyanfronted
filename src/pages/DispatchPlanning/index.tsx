@@ -43,6 +43,19 @@ interface DispatchPlanningItem {
   salesOrderItemName?: string;
 }
 
+// New interface for grouping by sales order
+interface SalesOrderGroup {
+  salesOrderId: number;
+  voucherNumber: string;
+  partyName: string;
+  customerName: string;
+  allotments: DispatchPlanningItem[];
+  totalRolls: number;
+  totalNetWeight: number;
+  totalActualQuantity: number;
+  isFullyDispatched: boolean;
+}
+
 interface RollDetail {
   fgRollNo: string;
   netWeight: number;
@@ -52,8 +65,8 @@ interface RollDetail {
 
 const DispatchPlanning = () => {
   const navigate = useNavigate();
-  const [dispatchItems, setDispatchItems] = useState<DispatchPlanningItem[]>([]);
-  const [filteredItems, setFilteredItems] = useState<DispatchPlanningItem[]>([]);
+  const [dispatchItems, setDispatchItems] = useState<SalesOrderGroup[]>([]);
+  const [filteredItems, setFilteredItems] = useState<SalesOrderGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLot, setSelectedLot] = useState<DispatchPlanningItem | null>(null);
@@ -70,12 +83,14 @@ const DispatchPlanning = () => {
     if (!searchTerm) {
       setFilteredItems(dispatchItems);
     } else {
-      const filtered = dispatchItems.filter(item => 
-        item.lotNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.tape.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (item.salesOrder?.voucherNumber?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (item.salesOrderItemName?.toLowerCase().includes(searchTerm.toLowerCase()))
+      const filtered = dispatchItems.filter(group => 
+        group.voucherNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        group.partyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        group.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        group.allotments.some(allotment => 
+          allotment.tape.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          allotment.lotNo.toLowerCase().includes(searchTerm.toLowerCase())
+        )
       );
       setFilteredItems(filtered);
     }
@@ -100,7 +115,7 @@ const DispatchPlanning = () => {
       });
       
       // Step 2: For each lot, fetch roll details and sales order information
-      const dispatchItems: DispatchPlanningItem[] = [];
+      const allotmentItems: DispatchPlanningItem[] = [];
       
       for (const [lotNo, captures] of Object.entries(lotGroups)) {
         // Get unique roll numbers for this lot
@@ -165,7 +180,7 @@ const DispatchPlanning = () => {
           console.error(`Error fetching production allotment data for ${lotNo}:`, error);
         }
         
-        dispatchItems.push({
+        allotmentItems.push({
           lotNo,
           customerName: firstCapture.customerName,
           tape: firstCapture.tape,
@@ -179,8 +194,42 @@ const DispatchPlanning = () => {
         });
       }
       
-      setDispatchItems(dispatchItems);
-      setFilteredItems(dispatchItems);
+      // Group allotments by sales order
+      const salesOrderGroups: Record<number, SalesOrderGroup> = {};
+      
+      allotmentItems.forEach(item => {
+        if (item.salesOrder) {
+          const salesOrderId = item.salesOrder.id;
+          
+          if (!salesOrderGroups[salesOrderId]) {
+            salesOrderGroups[salesOrderId] = {
+              salesOrderId,
+              voucherNumber: item.salesOrder.voucherNumber,
+              partyName: item.salesOrder.partyName,
+              customerName: item.customerName,
+              allotments: [],
+              totalRolls: 0,
+              totalNetWeight: 0,
+              totalActualQuantity: 0,
+              isFullyDispatched: true
+            };
+          }
+          
+          salesOrderGroups[salesOrderId].allotments.push(item);
+          salesOrderGroups[salesOrderId].totalRolls += item.totalRolls;
+          salesOrderGroups[salesOrderId].totalNetWeight += item.totalNetWeight;
+          salesOrderGroups[salesOrderId].totalActualQuantity += item.totalActualQuantity;
+          
+          // If any allotment is not dispatched, the whole group is not fully dispatched
+          if (!item.isDispatched) {
+            salesOrderGroups[salesOrderId].isFullyDispatched = false;
+          }
+        }
+      });
+      
+      const groupedItems = Object.values(salesOrderGroups);
+      setDispatchItems(groupedItems);
+      setFilteredItems(groupedItems);
     } catch (error) {
       console.error('Error fetching dispatch planning data:', error);
       const errorMessage = apiUtils.handleError(error);
@@ -251,13 +300,13 @@ const DispatchPlanning = () => {
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
               <div className="flex-1">
                 <Label htmlFor="search" className="text-xs font-medium text-gray-700 mb-1 block">
-                  Search Lots
+                  Search Sales Orders
                 </Label>
                 <div className="relative">
                   <Search className="absolute left-2 top-2 h-3 w-3 text-muted-foreground" />
                   <Input
                     id="search"
-                    placeholder="Search by lot number, customer, tape, SO number, or item..."
+                    placeholder="Search by SO number, party, customer, tape, or lot number..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-7 text-xs h-8"
@@ -276,7 +325,9 @@ const DispatchPlanning = () => {
                 <Button 
                   onClick={() => {
                     // Get selected lots
-                    const selectedLotItems = filteredItems.filter(item => selectedLots[item.lotNo]);
+                    const selectedLotItems = filteredItems.flatMap(group => 
+                      group.allotments.filter(allotment => selectedLots[allotment.lotNo])
+                    );
                     if (selectedLotItems.length === 0) {
                       toast.error('Error', 'Please select at least one lot for dispatch');
                       return;
@@ -299,31 +350,31 @@ const DispatchPlanning = () => {
           {/* Summary Stats */}
           <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-4">
             <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
-              <div className="text-xs text-blue-600 font-medium">Total Lots</div>
+              <div className="text-xs text-blue-600 font-medium">Total Sales Orders</div>
               <div className="text-lg font-bold text-blue-800">{filteredItems.length}</div>
             </div>
             <div className="bg-green-50 border border-green-200 rounded-md p-3">
-              <div className="text-xs text-green-600 font-medium">Total Rolls</div>
+              <div className="text-xs text-green-600 font-medium">Total Allotments</div>
               <div className="text-lg font-bold text-green-800">
-                {filteredItems.reduce((sum, item) => sum + item.totalRolls, 0)}
+                {filteredItems.reduce((sum, group) => sum + group.allotments.length, 0)}
               </div>
             </div>
             <div className="bg-cyan-50 border border-cyan-200 rounded-md p-3">
               <div className="text-xs text-cyan-600 font-medium">Total Actual Qty (kg)</div>
               <div className="text-lg font-bold text-cyan-800">
-                {filteredItems.reduce((sum, item) => sum + item.totalActualQuantity, 0).toFixed(2)}
+                {filteredItems.reduce((sum, group) => sum + group.totalActualQuantity, 0).toFixed(2)}
               </div>
             </div>
             <div className="bg-purple-50 border border-purple-200 rounded-md p-3">
               <div className="text-xs text-purple-600 font-medium">Total Weight (kg)</div>
               <div className="text-lg font-bold text-purple-800">
-                {filteredItems.reduce((sum, item) => sum + item.totalNetWeight, 0).toFixed(2)}
+                {filteredItems.reduce((sum, group) => sum + group.totalNetWeight, 0).toFixed(2)}
               </div>
             </div>
             <div className="bg-orange-50 border border-orange-200 rounded-md p-3">
               <div className="text-xs text-orange-600 font-medium">Pending Dispatch</div>
               <div className="text-lg font-bold text-orange-800">
-                {filteredItems.filter(item => !item.isDispatched).length}
+                {filteredItems.filter(group => !group.isFullyDispatched).length}
               </div>
             </div>
           </div>
@@ -342,26 +393,12 @@ const DispatchPlanning = () => {
               <Table>
                 <TableHeader className="bg-gray-50">
                   <TableRow>
-                    <TableHead className="text-xs font-medium text-gray-700">
-                      <input
-                        type="checkbox"
-                        checked={filteredItems.length > 0 && filteredItems.every(item => selectedLots[item.lotNo])}
-                        onChange={(e) => {
-                          const newSelectedLots = {...selectedLots};
-                          filteredItems.forEach(item => {
-                            newSelectedLots[item.lotNo] = e.target.checked;
-                          });
-                          setSelectedLots(newSelectedLots);
-                        }}
-                        className="h-4 w-4 rounded border-gray-900 text-blue-600 focus:ring-blue-500"
-                      />
-                    </TableHead>
-                    <TableHead className="text-xs font-medium text-gray-700">Lot No</TableHead>
+                    <TableHead className="text-xs font-medium text-gray-700 w-12"></TableHead>
                     <TableHead className="text-xs font-medium text-gray-700">SO Number</TableHead>
-                    <TableHead className="text-xs font-medium text-gray-700">SO Item</TableHead>
+                    <TableHead className="text-xs font-medium text-gray-700">Party</TableHead>
                     <TableHead className="text-xs font-medium text-gray-700">Customer</TableHead>
-                    <TableHead className="text-xs font-medium text-gray-700">Tape</TableHead>
-                    <TableHead className="text-xs font-medium text-gray-700">Rolls</TableHead>
+                    <TableHead className="text-xs font-medium text-gray-700">Allotments</TableHead>
+                    <TableHead className="text-xs font-medium text-gray-700">Total Rolls</TableHead>
                     <TableHead className="text-xs font-medium text-gray-700">Actual Qty (kg)</TableHead>
                     <TableHead className="text-xs font-medium text-gray-700">Net Weight (kg)</TableHead>
                     <TableHead className="text-xs font-medium text-gray-700">Status</TableHead>
@@ -371,73 +408,138 @@ const DispatchPlanning = () => {
                 <TableBody>
                   {filteredItems.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={11} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={10} className="text-center py-8 text-gray-500">
                         No dispatch planning data found
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredItems.map((item) => (
-                      <TableRow key={item.lotNo} className="border-b border-gray-100">
-                        <TableCell className="py-3">
-                          <input
-                            type="checkbox"
-                            checked={selectedLots[item.lotNo] || false}
-                            onChange={(e) => {
-                              setSelectedLots({
-                                ...selectedLots,
-                                [item.lotNo]: e.target.checked
-                              });
-                            }}
-                            className="h-4 w-4 rounded border-gray-900 text-blue-600 focus:ring-blue-500"
-                          />
-                        </TableCell>
-                        <TableCell className="py-3">
-                          <div className="font-medium text-sm">{item.lotNo}</div>
-                        </TableCell>
-                        <TableCell className="py-3">
-                          <div className="text-sm">{item.salesOrder?.voucherNumber || 'N/A'}</div>
-                        </TableCell>
-                        <TableCell className="py-3">
-                          <div className="text-sm">{item.salesOrderItemName || 'N/A'}</div>
-                        </TableCell>
-                        <TableCell className="py-3">
-                          <div className="text-sm">{item.customerName}</div>
-                        </TableCell>
-                        <TableCell className="py-3">
-                          <div className="text-sm">{item.tape}</div>
-                        </TableCell>
-                        <TableCell className="py-3">
-                          <div className="text-sm font-medium">{item.totalRolls}</div>
-                        </TableCell>
-                        <TableCell className="py-3">
-                          <div className="text-sm font-medium">{item.totalActualQuantity.toFixed(2)}</div>
-                        </TableCell>
-                        <TableCell className="py-3">
-                          <div className="text-sm font-medium">{item.totalNetWeight.toFixed(2)}</div>
-                        </TableCell>
-                        <TableCell className="py-3">
-                          <Badge 
-                            variant={item.isDispatched ? "default" : "secondary"}
-                            className={item.isDispatched ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}
-                          >
-                            {item.isDispatched ? "Dispatched" : "Pending"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="py-3">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 px-2 text-xs"
-                            onClick={() => {
-                              setSelectedLot(item);
-                              setIsModalOpen(true);
-                            }}
-                          >
-                            <Eye className="h-3 w-3 mr-1" />
-                            View Details
-                          </Button>
-                        </TableCell>
-                      </TableRow>
+                    filteredItems.map((group) => (
+                      <>
+                        <TableRow key={group.salesOrderId} className="border-b border-gray-100 bg-gray-50">
+                          <TableCell className="py-3">
+                            <input
+                              type="checkbox"
+                              checked={group.allotments.every(allotment => selectedLots[allotment.lotNo])}
+                              onChange={(e) => {
+                                const newSelectedLots = {...selectedLots};
+                                group.allotments.forEach(allotment => {
+                                  newSelectedLots[allotment.lotNo] = e.target.checked;
+                                });
+                                setSelectedLots(newSelectedLots);
+                              }}
+                              className="h-4 w-4 rounded border-gray-900 text-blue-600 focus:ring-blue-500"
+                            />
+                          </TableCell>
+                          <TableCell className="py-3 font-medium">
+                            {group.voucherNumber}
+                          </TableCell>
+                          <TableCell className="py-3">
+                            {group.partyName}
+                          </TableCell>
+                          <TableCell className="py-3">
+                            {group.customerName}
+                          </TableCell>
+                          <TableCell className="py-3">
+                            <div className="flex flex-wrap gap-1">
+                              {group.allotments.map(allotment => (
+                                <span key={allotment.lotNo} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                  {allotment.lotNo}
+                                </span>
+                              ))}
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-3 font-medium">
+                            {group.totalRolls}
+                          </TableCell>
+                          <TableCell className="py-3 font-medium">
+                            {group.totalActualQuantity.toFixed(2)}
+                          </TableCell>
+                          <TableCell className="py-3 font-medium">
+                            {group.totalNetWeight.toFixed(2)}
+                          </TableCell>
+                          <TableCell className="py-3">
+                            <Badge 
+                              variant={group.isFullyDispatched ? "default" : "secondary"}
+                              className={group.isFullyDispatched ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}
+                            >
+                              {group.isFullyDispatched ? "Dispatched" : "Pending"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="py-3">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 px-2 text-xs"
+                              onClick={() => {
+                                // For group view, we'll show details for the first allotment
+                                // or we could create a special group details view
+                                setSelectedLot(group.allotments[0]);
+                                setIsModalOpen(true);
+                              }}
+                            >
+                              <Eye className="h-3 w-3 mr-1" />
+                              View Details
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                        {/* Expanded view for allotments in this group */}
+                        {group.allotments.map((allotment) => (
+                          <TableRow key={`${group.salesOrderId}-${allotment.lotNo}`} className="border-b border-gray-100">
+                            <TableCell className="py-2 pl-8">
+                              <input
+                                type="checkbox"
+                                checked={selectedLots[allotment.lotNo] || false}
+                                onChange={(e) => {
+                                  setSelectedLots({
+                                    ...selectedLots,
+                                    [allotment.lotNo]: e.target.checked
+                                  });
+                                }}
+                                className="h-4 w-4 rounded border-gray-900 text-blue-600 focus:ring-blue-500"
+                              />
+                            </TableCell>
+                            <TableCell className="py-2 text-xs text-muted-foreground">
+                              Allotment:
+                            </TableCell>
+                            <TableCell className="py-2" colSpan={2}>
+                              <div className="font-medium text-sm">{allotment.lotNo}</div>
+                              <div className="text-xs text-muted-foreground">{allotment.tape}</div>
+                            </TableCell>
+                            <TableCell className="py-2"></TableCell>
+                            <TableCell className="py-2">
+                              {allotment.totalRolls}
+                            </TableCell>
+                            <TableCell className="py-2">
+                              {allotment.totalActualQuantity.toFixed(2)}
+                            </TableCell>
+                            <TableCell className="py-2">
+                              {allotment.totalNetWeight.toFixed(2)}
+                            </TableCell>
+                            <TableCell className="py-2">
+                              <Badge 
+                                variant={allotment.isDispatched ? "default" : "secondary"}
+                                className={allotment.isDispatched ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}
+                              >
+                                {allotment.isDispatched ? "Dispatched" : "Pending"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="py-2">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 px-2 text-xs"
+                                onClick={() => {
+                                  setSelectedLot(allotment);
+                                  setIsModalOpen(true);
+                                }}
+                              >
+                                <Eye className="h-3 w-3 mr-1" />
+                                Details
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </>
                     ))
                   )}
                 </TableBody>
