@@ -37,10 +37,13 @@ interface DispatchPlanningItem {
   totalRolls: number;
   totalNetWeight: number;
   totalActualQuantity: number;
+  totalRequiredRolls: number;
+  dispatchedRolls: number; // Add this new field
   isDispatched: boolean;
   rolls: RollDetail[];
   salesOrder?: SalesOrderDto;
   salesOrderItemName?: string;
+  loadingNo?: string; // Add LoadingNo field
 }
 
 // New interface for grouping by sales order
@@ -53,6 +56,8 @@ interface SalesOrderGroup {
   totalRolls: number;
   totalNetWeight: number;
   totalActualQuantity: number;
+  totalRequiredRolls: number;
+  totalDispatchedRolls: number; // Add this new field
   isFullyDispatched: boolean;
 }
 
@@ -153,8 +158,12 @@ const DispatchPlanning = () => {
         // Get customer and tape info from first capture
         const firstCapture = captures[0];
         
-        // Get total actual quantity and sales order info from production allotment
+        // Calculate dispatched rolls count
+        const dispatchedRolls = captures.filter(c => c.isDispatched).length;
+        
+        // Get total actual quantity, total required rolls and sales order info from production allotment
         let totalActualQuantity = 0;
+        let totalRequiredRolls = 0;
         let salesOrder: SalesOrderDto | undefined;
         let salesOrderItemName: string | undefined;
         
@@ -162,6 +171,11 @@ const DispatchPlanning = () => {
           const allotmentResponse = await productionAllotmentApi.getProductionAllotmentByAllotId(lotNo);
           const allotmentData = apiUtils.extractData(allotmentResponse);
           totalActualQuantity = allotmentData?.actualQuantity || 0;
+          
+          // Calculate total required rolls from machine allocations
+          if (allotmentData?.machineAllocations) {
+            totalRequiredRolls = allotmentData.machineAllocations.reduce((sum, ma) => sum + (ma.totalRolls || 0), 0);
+          }
           
           // Fetch the sales order details using the salesOrderId from allotment
           if (allotmentData?.salesOrderId) {
@@ -187,6 +201,8 @@ const DispatchPlanning = () => {
           totalRolls: uniqueRolls.length,
           totalNetWeight,
           totalActualQuantity,
+          totalRequiredRolls,
+          dispatchedRolls, // Add the new field
           isDispatched: captures.every(c => c.isDispatched),
           rolls: rollDetails,
           salesOrder,
@@ -211,6 +227,8 @@ const DispatchPlanning = () => {
               totalRolls: 0,
               totalNetWeight: 0,
               totalActualQuantity: 0,
+              totalRequiredRolls: 0,
+              totalDispatchedRolls: 0, // Add the new field
               isFullyDispatched: true
             };
           }
@@ -219,6 +237,8 @@ const DispatchPlanning = () => {
           salesOrderGroups[salesOrderId].totalRolls += item.totalRolls;
           salesOrderGroups[salesOrderId].totalNetWeight += item.totalNetWeight;
           salesOrderGroups[salesOrderId].totalActualQuantity += item.totalActualQuantity;
+          salesOrderGroups[salesOrderId].totalRequiredRolls += item.totalRequiredRolls;
+          salesOrderGroups[salesOrderId].totalDispatchedRolls += item.dispatchedRolls; // Add the new field
           
           // If any allotment is not dispatched, the whole group is not fully dispatched
           if (!item.isDispatched) {
@@ -386,7 +406,10 @@ const DispatchPlanning = () => {
                     <TableHead className="text-xs font-medium text-gray-700">Party</TableHead>
                     <TableHead className="text-xs font-medium text-gray-700">Customer</TableHead>
                     <TableHead className="text-xs font-medium text-gray-700">Allotments</TableHead>
-                    <TableHead className="text-xs font-medium text-gray-700">Total Rolls</TableHead>
+                    <TableHead className="text-xs font-medium text-gray-700">Ready Rolls</TableHead>
+                    <TableHead className="text-xs font-medium text-gray-700">Required Rolls</TableHead>
+                    <TableHead className="text-xs font-medium text-gray-700">Dispatched Rolls</TableHead>
+                    <TableHead className="text-xs font-medium text-gray-700">Loading No</TableHead>
                     <TableHead className="text-xs font-medium text-gray-700">Status</TableHead>
                     <TableHead className="text-xs font-medium text-gray-700">Actions</TableHead>
                   </TableRow>
@@ -435,6 +458,16 @@ const DispatchPlanning = () => {
                           <TableCell className="py-3 font-medium">
                             {group.totalRolls}
                           </TableCell>
+                          <TableCell className="py-3 font-medium">
+                            {group.totalRequiredRolls}
+                          </TableCell>
+                          <TableCell className="py-3 font-medium">
+                            {group.totalDispatchedRolls}
+                          </TableCell>
+                          <TableCell className="py-3 font-medium">
+                            {/* We'll display the LoadingNo here once we have the data */}
+                            N/A
+                          </TableCell>
                           <TableCell className="py-3">
                             <Badge 
                               variant={group.isFullyDispatched ? "default" : "secondary"}
@@ -473,6 +506,15 @@ const DispatchPlanning = () => {
                             <TableCell className="py-2"></TableCell>
                             <TableCell className="py-2">
                               {allotment.totalRolls}
+                            </TableCell>
+                            <TableCell className="py-2">
+                              {allotment.totalRequiredRolls}
+                            </TableCell>
+                            <TableCell className="py-2">
+                              {allotment.dispatchedRolls}
+                            </TableCell>
+                            <TableCell className="py-2">
+                              {allotment.loadingNo || 'N/A'}
                             </TableCell>
                             <TableCell className="py-2">
                               <Badge 

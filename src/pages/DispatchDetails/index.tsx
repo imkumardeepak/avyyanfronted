@@ -26,6 +26,7 @@ interface DispatchPlanningItem {
   totalRolls: number;
   totalNetWeight: number;
   totalActualQuantity: number;
+  dispatchedRolls: number; // Add this new field
   isDispatched: boolean;
   rolls: RollDetail[];
   dispatchRolls?: number; // Number of rolls to dispatch (optional)
@@ -35,6 +36,7 @@ interface DispatchPlanningItem {
     partyName: string;
   };
   salesOrderItemName?: string;
+  loadingNo?: string; // Add LoadingNo field
 }
 
 interface RollDetail {
@@ -54,6 +56,7 @@ interface SalesOrderGroup {
   totalRolls: number;
   totalNetWeight: number;
   totalActualQuantity: number;
+  totalDispatchedRolls: number; // Add this new field
   isFullyDispatched: boolean;
   dispatchRolls?: number; // Number of rolls to dispatch for the entire group
   sequenceNumber?: number; // Add sequenceNumber property
@@ -89,6 +92,7 @@ const DispatchDetails = () => {
           totalRolls: 0,
           totalNetWeight: 0,
           totalActualQuantity: 0,
+          totalDispatchedRolls: 0, // Add this new field
           isFullyDispatched: true,
           dispatchRolls: 0,
         };
@@ -102,6 +106,7 @@ const DispatchDetails = () => {
       acc[salesOrderId].totalRolls += item.totalRolls;
       acc[salesOrderId].totalNetWeight += item.totalNetWeight;
       acc[salesOrderId].totalActualQuantity += item.totalActualQuantity;
+      acc[salesOrderId].totalDispatchedRolls += item.dispatchedRolls; // Add this line
       acc[salesOrderId].dispatchRolls =
         (acc[salesOrderId].dispatchRolls || 0) + (item.dispatchRolls || item.totalRolls);
 
@@ -417,7 +422,7 @@ const DispatchDetails = () => {
                   Selected Sales Orders for Dispatch ({dispatchItems.length})
                 </h3>
 
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-3">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
                   <div className="bg-blue-50 border border-blue-200 rounded-md p-2">
                     <div className="text-xs text-blue-600 font-medium">Sales Orders</div>
                     <div className="text-lg font-bold text-blue-800">{dispatchItems.length}</div>
@@ -436,6 +441,12 @@ const DispatchDetails = () => {
                           itemSum + (item.dispatchRolls !== undefined ? item.dispatchRolls : item.totalRolls), 0), 0)}
                     </div>
                   </div>
+                  <div className="bg-purple-50 border border-purple-200 rounded-md p-2">
+                    <div className="text-xs text-purple-600 font-medium">Dispatched Rolls</div>
+                    <div className="text-lg font-bold text-purple-800">
+                      {dispatchItems.reduce((sum, group) => sum + group.totalDispatchedRolls, 0)}
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -449,10 +460,10 @@ const DispatchDetails = () => {
                       <TableHead className="text-xs font-medium text-gray-700">Party</TableHead>
                       <TableHead className="text-xs font-medium text-gray-700">Customer</TableHead>
                       <TableHead className="text-xs font-medium text-gray-700">Allotments</TableHead>
-                      <TableHead className="text-xs font-medium text-gray-700">Total Rolls</TableHead>
+                      <TableHead className="text-xs font-medium text-gray-700">Ready Rolls</TableHead>
                       <TableHead className="text-xs font-medium text-gray-700">Dispatch Rolls</TableHead>
-                      
-                    
+                      <TableHead className="text-xs font-medium text-gray-700">Dispatched Rolls</TableHead>
+                      <TableHead className="text-xs font-medium text-gray-700">Loading No</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -564,7 +575,13 @@ const DispatchDetails = () => {
                                 className="text-xs h-8 w-20"
                               />
                             </TableCell>
-                          
+                            <TableCell className="py-3 font-medium">
+                              {group.totalDispatchedRolls}
+                            </TableCell>
+                            <TableCell className="py-3 font-medium">
+                              {/* We'll display the LoadingNo here once we have the data */}
+                              N/A
+                            </TableCell>
                           </TableRow>
                           {/* Expanded view for allotments in this group */}
                           {group.allotments.map((allotment, allotmentIndex) => (
@@ -631,7 +648,12 @@ const DispatchDetails = () => {
                                   className="text-xs h-8 w-20"
                                 />
                               </TableCell>
-                            
+                              <TableCell className="py-2">
+                                {allotment.dispatchedRolls}
+                              </TableCell>
+                              <TableCell className="py-2">
+                                {allotment.loadingNo || 'N/A'}
+                              </TableCell>
                             </TableRow>
                           ))}
                         </>
@@ -839,54 +861,60 @@ const DispatchDetails = () => {
                         )}
                       </div>
                     </div>
+                    <div className="bg-purple-50 border border-purple-200 rounded-md p-2">
+                      <div className="text-xs text-purple-600 font-medium">Dispatched Rolls</div>
+                      <div className="text-lg font-bold text-purple-800">
+                        {dispatchItems.reduce((sum, group) => sum + group.totalDispatchedRolls, 0)}
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Confirmation Warning */}
-              <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-4">
-                <h3 className="text-xs font-semibold text-yellow-800 mb-1">Important Notice</h3>
-                <p className="text-xs text-yellow-700">
-                  Once you confirm the dispatch, the status of the selected items will be updated
-                  and this action cannot be undone. Please ensure all details are correct before
-                  proceeding.
-                </p>
-              </div>
+                {/* Confirmation Warning */}
+                <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-4">
+                  <h3 className="text-xs font-semibold text-yellow-800 mb-1">Important Notice</h3>
+                  <p className="text-xs text-yellow-700">
+                    Once you confirm the dispatch, the status of the selected items will be updated
+                    and this action cannot be undone. Please ensure all details are correct before
+                    proceeding.
+                  </p>
+                </div>
 
-              {/* Action Buttons */}
-              <div className="flex justify-between">
-                <Button
-                  variant="outline"
-                  onClick={() => setActiveTab('details')}
-                  className="h-8 px-3 text-xs"
-                >
-                  Back to Details
-                </Button>
-                <div className="space-x-2">
+                {/* Action Buttons */}
+                <div className="flex justify-between">
                   <Button
                     variant="outline"
-                    onClick={() => navigate('/dispatch-planning')}
+                    onClick={() => setActiveTab('details')}
                     className="h-8 px-3 text-xs"
                   >
-                    Cancel
+                    Back to Details
                   </Button>
-                  <Button
-                    onClick={handleDispatch}
-                    disabled={loading}
-                    className="bg-green-600 hover:bg-green-700 text-white h-8 px-4 text-xs"
-                  >
-                    {loading ? (
-                      <>
-                        <div className="mr-1.5 h-2.5 w-2.5 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
-                        Dispatching...
-                      </>
-                    ) : (
-                      <>
-                        <Truck className="h-3 w-3 mr-1" />
-                        Confirm Dispatch
-                      </>
-                    )}
-                  </Button>
+                  <div className="space-x-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => navigate('/dispatch-planning')}
+                      className="h-8 px-3 text-xs"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleDispatch}
+                      disabled={loading}
+                      className="bg-green-600 hover:bg-green-700 text-white h-8 px-4 text-xs"
+                    >
+                      {loading ? (
+                        <>
+                          <div className="mr-1.5 h-2.5 w-2.5 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+                          Dispatching...
+                        </>
+                      ) : (
+                        <>
+                          <Truck className="h-3 w-3 mr-1" />
+                          Confirm Dispatch
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
