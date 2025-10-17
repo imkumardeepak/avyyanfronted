@@ -3,8 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { useTapeColors } from '@/hooks/queries/useTapeColorQueries';
+import { useTapeColors, useIsTapeColorAssignedToLotment } from '@/hooks/queries/useTapeColorQueries';
 import { getTapeColorStyle } from '@/utils/tapeColorUtils';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Info, AlertCircle } from 'lucide-react';
 
 type ColorOption = {
   id: string;
@@ -32,6 +34,7 @@ interface PackagingDetailsProps {
   tubeWeight: number;
   shrinkRapWeight?: number;
   tapeColorId: number | { color1Id: number; color2Id: number } | null;
+  lotmentId?: string; // Add lotmentId prop
 }
 
 export function PackagingDetails({
@@ -43,6 +46,7 @@ export function PackagingDetails({
   tubeWeight,
   shrinkRapWeight = 0.06,
   tapeColorId,
+  lotmentId, // Add lotmentId prop
 }: PackagingDetailsProps) {
   const { data: tapeColors = [] } = useTapeColors();
   const [coreType, setCoreType] = useState<'with' | 'without'>('without');
@@ -92,6 +96,33 @@ export function PackagingDetails({
     }
   }, [tapeColorId, colorOptions]);
 
+  // Get the name of the selected tape color
+  const selectedTapeColorName = useMemo(() => {
+    if (!tapeColors.length || selectedOptionId === null) return null;
+    
+    const selectedOption = colorOptions.find(option => option.id === selectedOptionId);
+    if (!selectedOption) return null;
+    
+    if (selectedOption.type === 'color') {
+      const color = tapeColors.find(c => c.id === selectedOption.colorId);
+      return color?.tapeColor || null;
+    } else {
+      const color1 = tapeColors.find(c => c.id === selectedOption.color1Id);
+      const color2 = tapeColors.find(c => c.id === selectedOption.color2Id);
+      if (color1 && color2) {
+        return `${color1.tapeColor} + ${color2.tapeColor}`;
+      }
+      return null;
+    }
+  }, [tapeColors, selectedOptionId, colorOptions]);
+
+  // Check if the selected tape color is already assigned to another lotment
+  const { data: isTapeColorAssigned, isLoading: isCheckingAssignment, isError, error } = useIsTapeColorAssignedToLotment(
+    lotmentId || '',
+    selectedTapeColorName || '',
+    !!lotmentId && !!selectedTapeColorName
+  );
+
   const handleCoreTypeChange = (value: 'with' | 'without') => {
     setCoreType(value);
     onCoreTypeChange(value);
@@ -120,6 +151,19 @@ export function PackagingDetails({
     const shrinkWt = shrinkRapWeight || 0;
     return tubeWt + shrinkWt;
   }, [coreType, tubeWeight, shrinkRapWeight]);
+
+  // Debug logging to help troubleshoot
+  useEffect(() => {
+    console.log('PackagingDetails debug info:', {
+      lotmentId,
+      selectedTapeColorName,
+      isCheckingAssignment,
+      isTapeColorAssigned,
+      isError,
+      error: isError ? error : null,
+      shouldEnableQuery: !!lotmentId && !!selectedTapeColorName
+    });
+  }, [lotmentId, selectedTapeColorName, isCheckingAssignment, isTapeColorAssigned, isError, error]);
 
   return (
     <Card className="w-full">
@@ -198,6 +242,46 @@ export function PackagingDetails({
           <Label className="text-sm font-medium">Total Weight</Label>
           <div className="text-lg font-bold text-primary">{totalWeight.toFixed(3)} kg</div>
         </div>
+
+        {/* Tape Color Assignment Validation */}
+        {(selectedTapeColorName && lotmentId) ? (
+          <div className="space-y-2">
+            {isCheckingAssignment ? (
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertTitle>Checking tape color assignment...</AlertTitle>
+                <AlertDescription>
+                  Verifying if "{selectedTapeColorName}" is already assigned to another lotment.
+                </AlertDescription>
+              </Alert>
+            ) : isError ? (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Error checking tape color</AlertTitle>
+                <AlertDescription>
+                  There was an error checking the tape color assignment. Please try again.
+                </AlertDescription>
+              </Alert>
+            ) : isTapeColorAssigned !== undefined ? isTapeColorAssigned ? (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Warning: Tape Color Already Assigned</AlertTitle>
+                <AlertDescription>
+                  The tape color "{selectedTapeColorName}" is already assigned to another lotment. 
+                  Please select a different tape color or confirm that you want to reuse this color.
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <Alert className="border-green-500 text-green-700">
+                <Info className="h-4 w-4" />
+                <AlertTitle>Available Tape Color</AlertTitle>
+                <AlertDescription>
+                  The tape color "{selectedTapeColorName}" is available for use with lotment "{lotmentId}".
+                </AlertDescription>
+              </Alert>
+            ) : null}
+          </div>
+        ) : null}
 
         <div className="space-y-3">
           <Label className="text-sm font-medium">Tape Colors & Combinations</Label>

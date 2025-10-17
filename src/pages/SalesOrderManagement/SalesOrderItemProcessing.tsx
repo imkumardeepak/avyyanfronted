@@ -1268,6 +1268,7 @@ const SalesOrderItemProcessingRefactored = () => {
           tubeWeight={packagingDetails.tubeWeight}
           shrinkRapWeight={packagingDetails.shrinkRapWeight}
           tapeColorId={packagingDetails.tapeColorId}
+          lotmentId={lotmentId || undefined} // Pass lotmentId
         />
       )}
 

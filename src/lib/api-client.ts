@@ -438,10 +438,7 @@ export const tapeColorApi = {
 
   // GET /api/TapeColor/is-assigned/{lotmentId} - Check if tape color is assigned to lotment
   isTapeColorAssignedToLotment: (lotmentId: string, tapeColor: string): Promise<AxiosResponse<boolean>> =>
-    apiClient.get(`/TapeColor/is-assigned/${lotmentId}`, { params: { tapeColor } }).catch(error => {
-      console.error('Error checking tape color assignment:', error);
-      throw error;
-    }),
+    apiClient.get(`/TapeColor/is-assigned/${lotmentId}`, { params: { tapeColor } }),
 
   // POST /api/TapeColor - Create new tape color
   createTapeColor: (data: CreateTapeColorRequestDto): Promise<AxiosResponse<TapeColorResponseDto>> =>
