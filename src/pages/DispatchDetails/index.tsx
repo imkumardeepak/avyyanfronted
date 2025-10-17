@@ -36,6 +36,7 @@ interface DispatchPlanningItem {
     partyName: string;
   };
   salesOrderItemName?: string;
+  loadingNo?: string; // Add LoadingNo field
 }
 
 interface RollDetail {
@@ -462,6 +463,7 @@ const DispatchDetails = () => {
                       <TableHead className="text-xs font-medium text-gray-700">Ready Rolls</TableHead>
                       <TableHead className="text-xs font-medium text-gray-700">Dispatch Rolls</TableHead>
                       <TableHead className="text-xs font-medium text-gray-700">Dispatched Rolls</TableHead>
+                      <TableHead className="text-xs font-medium text-gray-700">Loading No</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -576,6 +578,10 @@ const DispatchDetails = () => {
                             <TableCell className="py-3 font-medium">
                               {group.totalDispatchedRolls}
                             </TableCell>
+                            <TableCell className="py-3 font-medium">
+                              {/* We'll display the LoadingNo here once we have the data */}
+                              N/A
+                            </TableCell>
                           </TableRow>
                           {/* Expanded view for allotments in this group */}
                           {group.allotments.map((allotment, allotmentIndex) => (
@@ -644,6 +650,9 @@ const DispatchDetails = () => {
                               </TableCell>
                               <TableCell className="py-2">
                                 {allotment.dispatchedRolls}
+                              </TableCell>
+                              <TableCell className="py-2">
+                                {allotment.loadingNo || 'N/A'}
                               </TableCell>
                             </TableRow>
                           ))}

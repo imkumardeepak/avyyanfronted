@@ -1,14 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/lib/toast';
 import { RollConfirmationService } from '@/services/rollConfirmationService';
-import type { RollConfirmationResponseDto, RollConfirmationUpdateDto } from '@/types/api-types';
+import { ProductionAllotmentService } from '@/services/productionAllotmentService';
+import type { RollConfirmationResponseDto, RollConfirmationUpdateDto, ProductionAllotmentResponseDto } from '@/types/api-types';
 
 const QualityChecking: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const [isFetchingData, setIsFetchingData] = useState(false);
   const [formData, setFormData] = useState({
     allotId: '',
     machineName: '',
@@ -20,14 +22,130 @@ const QualityChecking: React.FC = () => {
     spandex: '0',
     blendPercent: '0',
   });
+  const [allotmentData, setAllotmentData] = useState<ProductionAllotmentResponseDto | null>(null);
+  const [rollDescription, setRollDescription] = useState<string>('');
+
+  const scanBuffer = useRef<string>('');
+  const isScanning = useRef<boolean>(false);
+  const lastKeyTime = useRef<number>(Date.now());
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const fetchAllotmentData = async (allotId: string) => {
+    if (!allotId) return;
+    setIsFetchingData(true);
+    try {
+      const allotmentData = await ProductionAllotmentService.getProductionAllotmentByAllotId(allotId);
+      setAllotmentData(allotmentData);
+      
+      // Set plan values
+      setFormData(prev => ({
+        ...prev,
+        greyGsm: allotmentData.reqGreyGsm?.toString() || prev.greyGsm,
+        greyWidth: allotmentData.reqGreyWidth?.toString() || prev.greyWidth,
+      }));
+      
+      // Set roll description
+      setRollDescription(allotmentData.itemName || '');
+      
+      toast.success('Success', 'Production planning data loaded successfully.');
+    } catch (err) {
+      console.error('Error fetching lotment data:', err);
+      setAllotmentData(null);
+      setRollDescription('');
+      toast.error('Error', err instanceof Error ? err.message : 'Failed to fetch lotment data.');
+    } finally {
+      setIsFetchingData(false);
+    }
+  };
+
+  const handleBarcodeScan = (barcodeData: string) => {
+    try {
+      // Expected format: allotId#machineName#rollNo
+      const parts = barcodeData.split('#');
+      if (parts.length >= 3) {
+        const allotId = parts[0] || '';
+        const machineName = parts[1] || '';
+        const rollNo = parts[2] || '';
+        
+        setFormData(prev => ({
+          ...prev,
+          allotId,
+          machineName,
+          rollNo,
+        }));
+        
+        // Fetch allotment data when we have allotId
+        if (allotId) {
+          fetchAllotmentData(allotId);
+        }
+        
+        toast.success('Success', 'Barcode data loaded successfully');
+      } else {
+        toast.error('Error', 'Invalid barcode format. Expected: allotId#machineName#rollNo');
+      }
+    } catch (err) {
+      console.error('Error processing barcode:', err);
+      toast.error('Error', 'Failed to process barcode data');
+    }
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Skip if typing in an input field
+      if (e.target instanceof HTMLInputElement) {
+        scanBuffer.current = '';
+        isScanning.current = false;
+        return;
+      }
+
+      const currentTime = Date.now();
+      const timeSinceLastKey = currentTime - lastKeyTime.current;
+      
+      // Reset buffer if more than 100ms has passed since last key (not a scan)
+      if (timeSinceLastKey > 100) {
+        scanBuffer.current = '';
+        isScanning.current = true;
+      }
+      
+      lastKeyTime.current = currentTime;
+      
+      // Process scan when Enter is pressed and we have data
+      if (e.key === 'Enter' && scanBuffer.current.length > 0 && isScanning.current) {
+        handleBarcodeScan(scanBuffer.current);
+        scanBuffer.current = '';
+        isScanning.current = false;
+        e.preventDefault();
+      } else if (e.key.length === 1 && isScanning.current) {
+        // Add character to buffer
+        scanBuffer.current += e.key;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate required fields
+    const requiredFields = [
+      { value: formData.allotId, name: 'Lot ID' },
+      { value: formData.machineName, name: 'Machine Name' },
+      { value: formData.rollNo, name: 'Roll No' },
+      { value: formData.greyGsm, name: 'Act GSM' },
+      { value: formData.greyWidth, name: 'Act Width' },
+    ];
+    
+    const emptyFields = requiredFields.filter(field => !field.value);
+    if (emptyFields.length > 0) {
+      toast.error('Error', `Please fill in: ${emptyFields.map(field => field.name).join(', ')}`);
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -77,6 +195,8 @@ const QualityChecking: React.FC = () => {
         spandex: '0',
         blendPercent: '0',
       });
+      setAllotmentData(null);
+      setRollDescription('');
     } catch (err) {
       console.error('Error saving quality checking data:', err);
       toast.error('Error', 'Failed to save quality checking data.');
@@ -95,13 +215,18 @@ const QualityChecking: React.FC = () => {
         </CardHeader>
 
         <CardContent className="p-3">
+          {/* Hidden input to capture focus for barcode scanning */}
+          <div className="absolute -left-full top-0 opacity-0 w-0 h-0 overflow-hidden">
+            <input type="text" />
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Main Input Fields */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-2 bg-gray-50 rounded-md">
               {[
-                { id: 'allotId', label: 'Lot ID *', value: formData.allotId },
-                { id: 'machineName', label: 'Machine Name *', value: formData.machineName },
-                { id: 'rollNo', label: 'Roll No. *', value: formData.rollNo },
+                { id: 'allotId', label: 'Lot ID *', value: formData.allotId, disabled: !!allotmentData },
+                { id: 'machineName', label: 'Machine Name *', value: formData.machineName, disabled: !!allotmentData },
+                { id: 'rollNo', label: 'Roll No. *', value: formData.rollNo, disabled: !!allotmentData },
               ].map((field) => (
                 <div key={field.id} className="space-y-1">
                   <Label htmlFor={field.id} className="text-xs font-medium text-gray-700">
@@ -114,11 +239,27 @@ const QualityChecking: React.FC = () => {
                     onChange={handleChange}
                     placeholder={`Enter ${field.label.replace(' *', '')}`}
                     required
+                    disabled={field.disabled}
                     className="text-xs h-8 bg-white"
                   />
                 </div>
               ))}
             </div>
+
+            {/* Roll Description */}
+            {rollDescription && (
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-md p-2">
+                <div className="flex items-center justify-between mb-1">
+                  <h3 className="text-xs font-semibold text-green-800 flex items-center">
+                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1"></span>Roll Details
+                  </h3>
+                </div>
+                
+                <div className="text-[10px] text-green-700">
+                  <span className="font-medium">Description:</span> {rollDescription}
+                </div>
+              </div>
+            )}
 
             {/* Quality Checking Section - Moved from ProductionConfirmation */}
             <div className="border border-gray-200 rounded-md p-3 bg-white">
@@ -130,8 +271,8 @@ const QualityChecking: React.FC = () => {
               {/* Reduced size for Grey GSM and Grey Width */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3 p-2 bg-blue-50 rounded-md">
                 {[
-                  { label: 'Plan GSM', value: 'N/A' },
-                  { label: 'Plan Width', value: 'N/A' },
+                  { label: 'Plan GSM', value: allotmentData?.reqGreyGsm?.toString() || 'N/A' },
+                  { label: 'Plan Width', value: allotmentData?.reqGreyWidth?.toString() || 'N/A' },
                   { label: 'Act GSM *', value: '' },
                   { label: 'Act Width *', value: '' },
                 ].map((item, index) => (
@@ -150,6 +291,7 @@ const QualityChecking: React.FC = () => {
                         type="number"
                         step="1"
                         className="h-7 text-xs p-1"
+                        required
                       />
                     )}
                   </div>
@@ -185,13 +327,13 @@ const QualityChecking: React.FC = () => {
             <div className="flex justify-center pt-1">
               <Button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || isFetchingData}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-1.5 h-8 min-w-28"
               >
-                {isLoading ? (
+                {isLoading || isFetchingData ? (
                   <div className="flex items-center">
                     <div className="mr-1.5 h-2.5 w-2.5 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
-                    <span className="text-xs">Saving...</span>
+                    <span className="text-xs">{isLoading ? 'Saving...' : 'Loading...'}</span>
                   </div>
                 ) : (
                   <span className="text-xs">Save Quality Check</span>

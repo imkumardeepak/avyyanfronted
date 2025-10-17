@@ -62,6 +62,11 @@ import type {
   StorageCaptureRollDataResponseDto,
   WeightDataRequestDto,
   WeightDataResponseDto,
+  DispatchPlanningDto,
+  CreateDispatchPlanningRequestDto,
+  UpdateDispatchPlanningRequestDto,
+  DispatchedRollDto,
+  CreateDispatchedRollRequestDto,
 } from '@/types/api-types';
 
 // API Configuration
@@ -431,6 +436,13 @@ export const tapeColorApi = {
   getTapeColor: (id: number): Promise<AxiosResponse<TapeColorResponseDto>> =>
     apiClient.get(`/TapeColor/${id}`),
 
+  // GET /api/TapeColor/is-assigned/{lotmentId} - Check if tape color is assigned to lotment
+  isTapeColorAssignedToLotment: (lotmentId: string, tapeColor: string): Promise<AxiosResponse<boolean>> =>
+    apiClient.get(`/TapeColor/is-assigned/${lotmentId}`, { params: { tapeColor } }).catch(error => {
+      console.error('Error checking tape color assignment:', error);
+      throw error;
+    }),
+
   // POST /api/TapeColor - Create new tape color
   createTapeColor: (data: CreateTapeColorRequestDto): Promise<AxiosResponse<TapeColorResponseDto>> =>
     apiClient.post('/TapeColor', data),
@@ -642,6 +654,40 @@ export const storageCaptureApi = {
     apiClient.get(`/StorageCapture/by-allot-id/${allotId}?fgroll=${fgroll}`),
 };
 
+// ============================================
+// DISPATCH PLANNING API (/api/DispatchPlanning)
+// ============================================
+
+export const dispatchPlanningApi = {
+  // GET /api/DispatchPlanning - Get all dispatch plannings
+  getAllDispatchPlannings: (): Promise<AxiosResponse<DispatchPlanningDto[]>> =>
+    apiClient.get('/DispatchPlanning'),
+
+  // GET /api/DispatchPlanning/{id} - Get dispatch planning by ID
+  getDispatchPlanningById: (id: number): Promise<AxiosResponse<DispatchPlanningDto>> =>
+    apiClient.get(`/DispatchPlanning/${id}`),
+
+  // POST /api/DispatchPlanning - Create a new dispatch planning
+  createDispatchPlanning: (data: CreateDispatchPlanningRequestDto): Promise<AxiosResponse<DispatchPlanningDto>> =>
+    apiClient.post('/DispatchPlanning', data),
+
+  // PUT /api/DispatchPlanning/{id} - Update a dispatch planning
+  updateDispatchPlanning: (id: number, data: UpdateDispatchPlanningRequestDto): Promise<AxiosResponse<DispatchPlanningDto>> =>
+    apiClient.put(`/DispatchPlanning/${id}`, data),
+
+  // DELETE /api/DispatchPlanning/{id} - Delete a dispatch planning
+  deleteDispatchPlanning: (id: number): Promise<AxiosResponse<void>> =>
+    apiClient.delete(`/DispatchPlanning/${id}`),
+
+  // GET /api/DispatchPlanning/{id}/dispatched-rolls - Get dispatched rolls by planning ID
+  getDispatchedRollsByPlanningId: (id: number): Promise<AxiosResponse<DispatchedRollDto[]>> =>
+    apiClient.get(`/DispatchPlanning/${id}/dispatched-rolls`),
+
+  // POST /api/DispatchPlanning/dispatched-rolls - Create a new dispatched roll
+  createDispatchedRoll: (data: CreateDispatchedRollRequestDto): Promise<AxiosResponse<DispatchedRollDto>> =>
+    apiClient.post('/DispatchPlanning/dispatched-rolls', data),
+};
+
 
 // Export all APIs grouped by functionality
 export const api = {
@@ -660,4 +706,5 @@ export const api = {
   inspection: inspectionApi,
   rollAssignment: rollAssignmentApi,
   storageCapture: storageCaptureApi,
+  dispatchPlanning: dispatchPlanningApi,
 };

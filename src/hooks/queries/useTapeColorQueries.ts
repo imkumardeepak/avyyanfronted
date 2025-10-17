@@ -16,6 +16,7 @@ export const tapeColorKeys = {
   details: () => [...tapeColorKeys.all, 'detail'] as const,
   detail: (id: number) => [...tapeColorKeys.details(), id] as const,
   search: (params: TapeColorSearchRequestDto) => [...tapeColorKeys.lists(), 'search', params] as const,
+  assigned: (lotmentId: string, tapeColor: string) => [...tapeColorKeys.all, 'assigned', lotmentId, tapeColor] as const,
 };
 
 // TapeColor Queries
@@ -48,6 +49,18 @@ export const useSearchTapeColors = (params: TapeColorSearchRequestDto, enabled =
       return apiUtils.extractData(response) as TapeColorResponseDto[];
     },
     enabled,
+  });
+};
+
+// New hook to check if tape color is assigned to lotment
+export const useIsTapeColorAssignedToLotment = (lotmentId: string, tapeColor: string, enabled = true) => {
+  return useQuery({
+    queryKey: tapeColorKeys.assigned(lotmentId, tapeColor),
+    queryFn: async () => {
+      const response = await tapeColorApi.isTapeColorAssignedToLotment(lotmentId, tapeColor);
+      return apiUtils.extractData(response) as boolean;
+    },
+    enabled: enabled && !!lotmentId && !!tapeColor,
   });
 };
 
@@ -112,7 +125,7 @@ export const useDeleteTapeColor = () => {
       // Remove tape color from cache
       queryClient.removeQueries({ queryKey: tapeColorKeys.detail(deletedId) });
 
-      // Invalidate tape colors list
+      // Invalidate tape colors list to reflect changes
       queryClient.invalidateQueries({ queryKey: tapeColorKeys.lists() });
 
       toast.success('Success', 'Tape color deleted successfully');

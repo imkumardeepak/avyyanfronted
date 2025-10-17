@@ -43,6 +43,7 @@ interface DispatchPlanningItem {
   rolls: RollDetail[];
   salesOrder?: SalesOrderDto;
   salesOrderItemName?: string;
+  loadingNo?: string; // Add LoadingNo field
 }
 
 // New interface for grouping by sales order
@@ -408,6 +409,7 @@ const DispatchPlanning = () => {
                     <TableHead className="text-xs font-medium text-gray-700">Ready Rolls</TableHead>
                     <TableHead className="text-xs font-medium text-gray-700">Required Rolls</TableHead>
                     <TableHead className="text-xs font-medium text-gray-700">Dispatched Rolls</TableHead>
+                    <TableHead className="text-xs font-medium text-gray-700">Loading No</TableHead>
                     <TableHead className="text-xs font-medium text-gray-700">Status</TableHead>
                     <TableHead className="text-xs font-medium text-gray-700">Actions</TableHead>
                   </TableRow>
@@ -462,6 +464,10 @@ const DispatchPlanning = () => {
                           <TableCell className="py-3 font-medium">
                             {group.totalDispatchedRolls}
                           </TableCell>
+                          <TableCell className="py-3 font-medium">
+                            {/* We'll display the LoadingNo here once we have the data */}
+                            N/A
+                          </TableCell>
                           <TableCell className="py-3">
                             <Badge 
                               variant={group.isFullyDispatched ? "default" : "secondary"}
@@ -506,6 +512,9 @@ const DispatchPlanning = () => {
                             </TableCell>
                             <TableCell className="py-2">
                               {allotment.dispatchedRolls}
+                            </TableCell>
+                            <TableCell className="py-2">
+                              {allotment.loadingNo || 'N/A'}
                             </TableCell>
                             <TableCell className="py-2">
                               <Badge 

@@ -142,7 +142,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = async (): Promise<void> => {
     setIsLoading(true);
     try {
-      await authApi.logout();
+      // Note: There is no logout endpoint in the backend API
+      // We just clear the local storage and state
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
