@@ -484,13 +484,25 @@ const DispatchPlanning = () => {
                               type="checkbox"
                               checked={group.allotments.every(allotment => selectedLots[allotment.lotNo])}
                               onChange={(e) => {
+                                // Check if any allotment in the group has ready rolls
+                                const hasReadyRolls = group.allotments.some(allotment => allotment.totalRolls > 0);
+                                
+                                if (!hasReadyRolls) {
+                                  toast.error('Error', 'Cannot select this group as none of the allotments have ready rolls available for dispatch');
+                                  return;
+                                }
+                                
                                 const newSelectedLots = {...selectedLots};
                                 group.allotments.forEach(allotment => {
-                                  newSelectedLots[allotment.lotNo] = e.target.checked;
+                                  // Only allow selection if allotment has ready rolls
+                                  if (allotment.totalRolls > 0) {
+                                    newSelectedLots[allotment.lotNo] = e.target.checked;
+                                  }
                                 });
                                 setSelectedLots(newSelectedLots);
                               }}
                               className="h-4 w-4 rounded border-gray-900 text-blue-600 focus:ring-blue-500"
+                              disabled={group.allotments.every(allotment => allotment.totalRolls === 0)}
                             />
                           </TableCell>
                           <TableCell className="py-3 font-medium">
@@ -566,12 +578,22 @@ const DispatchPlanning = () => {
                                 type="checkbox"
                                 checked={selectedLots[allotment.lotNo] || false}
                                 onChange={(e) => {
-                                  setSelectedLots({
-                                    ...selectedLots,
-                                    [allotment.lotNo]: e.target.checked
-                                  });
+                                  // Check if allotment has ready rolls
+                                  if (allotment.totalRolls === 0) {
+                                    toast.error('Error', 'Cannot select this allotment as it has no ready rolls available for dispatch');
+                                    return;
+                                  }
+                                  
+                                  // Only allow selection if allotment has ready rolls
+                                  if (allotment.totalRolls > 0) {
+                                    setSelectedLots({
+                                      ...selectedLots,
+                                      [allotment.lotNo]: e.target.checked
+                                    });
+                                  }
                                 }}
                                 className="h-4 w-4 rounded border-gray-900 text-blue-600 focus:ring-blue-500"
+                                disabled={allotment.totalRolls === 0}
                               />
                             </TableCell>
                             <TableCell className="py-2 text-xs text-muted-foreground">

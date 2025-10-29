@@ -215,6 +215,13 @@ const CourierForm = () => {
                   id="phone"
                   {...form.register('phone')}
                   placeholder="Enter phone number"
+                  maxLength={10}
+                  onKeyPress={(e) => {
+                    // Only allow digits
+                    if (!/^\d$/.test(e.key) && e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') {
+                      e.preventDefault();
+                    }
+                  }}
                 />
                 {form.formState.errors.phone && (
                   <p className="text-sm text-destructive">

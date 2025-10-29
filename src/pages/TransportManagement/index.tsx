@@ -63,6 +63,22 @@ const TransportManagement = () => {
       },
     },
     {
+      accessorKey: 'driverNumber',
+      header: 'Driver Number',
+      cell: ({ row }: TransportCellProps) => {
+        const transport = row.original;
+        return <div>{transport.driverNumber || '-'}</div>;
+      },
+    },
+    {
+      accessorKey: 'licenseNumber',
+      header: 'License Number',
+      cell: ({ row }: TransportCellProps) => {
+        const transport = row.original;
+        return <div>{transport.licenseNumber || '-'}</div>;
+      },
+    },
+    {
       accessorKey: 'maximumCapacityKgs',
       header: 'Max Capacity (Kgs)',
       cell: ({ row }: TransportCellProps) => {

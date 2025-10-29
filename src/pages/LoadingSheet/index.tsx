@@ -136,11 +136,31 @@ const LoadingSheet = () => {
   // New function to generate dispatch order PDF
   const handleGenerateDispatchOrderPDF = async (dispatchOrderId: string, sheets: LoadingSheetDto[]) => {
     try {
+      // Validate inputs
+      if (!dispatchOrderId || !sheets || sheets.length === 0) {
+        toast.error('Error', 'Invalid dispatch order data');
+        return;
+      }
+      
+      // Validate that all sheets have required data
+      const validSheets = sheets.filter(sheet => sheet !== null && sheet !== undefined);
+      if (validSheets.length === 0) {
+        toast.error('Error', 'No valid loading sheets found');
+        return;
+      }
+      
       // Generate QR code for the dispatch order ID
       const qrCodeDataUrl = await generateQRCode(dispatchOrderId);
       
-      // Create PDF document
-      const doc = <DispatchOrderPDF dispatchOrderId={dispatchOrderId} sheets={sheets} qrCodeDataUrl={qrCodeDataUrl} />;
+      // Create PDF document with validation
+      const doc = <DispatchOrderPDF dispatchOrderId={dispatchOrderId} sheets={validSheets} qrCodeDataUrl={qrCodeDataUrl || ''} />;
+      
+      // Check if doc is valid before proceeding
+      if (!doc) {
+        toast.error('Error', 'Failed to create PDF document');
+        return;
+      }
+      
       const asPdf = pdf(doc);
       const blob = await asPdf.toBlob();
       
@@ -156,7 +176,7 @@ const LoadingSheet = () => {
       toast.success('Success', `PDF downloaded for Dispatch Order: ${dispatchOrderId}`);
     } catch (error) {
       console.error('Error generating dispatch order PDF:', error);
-      toast.error('Error', 'Failed to generate dispatch order PDF');
+      toast.error('Error', 'Failed to generate dispatch order PDF: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
   };
 
@@ -273,7 +293,14 @@ const LoadingSheet = () => {
                             size="sm"
                             variant="outline"
                             className="h-6 px-2 text-xs"
-                            onClick={() => handleGenerateDispatchOrderPDF(dispatchOrderId, sheets)}
+                            onClick={() => {
+                              // Validate data before calling the function
+                              if (dispatchOrderId && sheets && Array.isArray(sheets) && sheets.length > 0) {
+                                handleGenerateDispatchOrderPDF(dispatchOrderId, sheets);
+                              } else {
+                                toast.error('Error', 'Invalid dispatch order data');
+                              }
+                            }}
                           >
                             <FileText className="h-3 w-3 mr-1" />
                             Dispatch Order PDF

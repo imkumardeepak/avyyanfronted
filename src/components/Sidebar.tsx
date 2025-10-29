@@ -83,6 +83,18 @@ const navConfig: NavItem[] = [
         icon: ArrowRight,
         description: 'Manage shifts for production',
       },
+      {
+        title: PAGE_NAMES.TRANSPORT_MASTER,
+        href: '/transports',
+        icon: ArrowRight,
+        description: 'Manage transport companies and vehicles',
+      },
+      {
+        title: PAGE_NAMES.COURIER_MASTER,
+        href: '/couriers',
+        icon: ArrowRight,
+        description: 'Manage courier companies and services',
+      },
     ],
   },
   {
@@ -276,9 +288,27 @@ export const Sidebar: React.FC = () => {
   };
 
   const toggleExpanded = (href: string) => {
-    setExpandedItems((prev) =>
-      prev.includes(href) ? prev.filter((item) => item !== href) : [...prev, href]
-    );
+    setExpandedItems((prev) => {
+      // If the item is already expanded, collapse it
+      if (prev.includes(href)) {
+        return prev.filter((item) => item !== href);
+      } 
+      // If the item is not expanded, expand it and collapse all others
+      else {
+        // Find the parent category of the clicked item
+        const parentCategory = navConfig.find(category => 
+          category.href === href || category.children?.some(child => child.href === href)
+        );
+        
+        // If we found a parent category, only keep that one expanded
+        if (parentCategory) {
+          return [parentCategory.href];
+        }
+        
+        // Fallback: just expand the clicked item
+        return [...prev, href];
+      }
+    });
   };
 
   const isActive = (href: string) => {

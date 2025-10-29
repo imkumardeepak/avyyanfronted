@@ -1251,6 +1251,8 @@ export interface TransportResponseDto {
   address?: string;
   vehicleNumber?: string;
   driverName?: string;
+  driverNumber?: string;
+  licenseNumber?: string;
   maximumCapacityKgs?: number;
   createdAt: string;
   updatedAt?: string;
@@ -1263,6 +1265,8 @@ export interface CreateTransportRequestDto {
   address?: string;
   vehicleNumber?: string;
   driverName?: string;
+  driverNumber?: string;
+  licenseNumber?: string;
   maximumCapacityKgs?: number;
 }
 
@@ -1272,6 +1276,8 @@ export interface UpdateTransportRequestDto {
   address?: string;
   vehicleNumber?: string;
   driverName?: string;
+  driverNumber?: string;
+  licenseNumber?: string;
   maximumCapacityKgs?: number;
   isActive: boolean;
 }
@@ -1281,6 +1287,8 @@ export interface TransportSearchRequestDto {
   contactPerson?: string;
   vehicleNumber?: string;
   driverName?: string;
+  driverNumber?: string;
+  licenseNumber?: string;
   isActive?: boolean;
 }
 

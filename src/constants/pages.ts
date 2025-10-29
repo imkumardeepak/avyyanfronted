@@ -26,6 +26,8 @@ export const PAGE_NAMES = {
     PICK_ROLL_CAPTURE: 'Pick Roll Capture',
     LOAD_CAPTURE: 'Load Capture',
     PICKING_AND_LOADING: 'Picking and Loading',
+    TRANSPORT_MASTER: 'Transport Master',
+    COURIER_MASTER: 'Courier Master'
 } as const;
 
 // Array of all page names for role management

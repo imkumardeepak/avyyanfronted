@@ -28,6 +28,8 @@ const transportSchema = z.object({
   address: z.string().max(500, 'Address must be less than 500 characters').optional().nullable(),
   vehicleNumber: z.string().max(50, 'Vehicle number must be less than 50 characters').optional().nullable(),
   driverName: z.string().max(100, 'Driver name must be less than 100 characters').optional().nullable(),
+  driverNumber: z.string().max(20, 'Driver number must be less than 20 characters').optional().nullable(),
+  licenseNumber: z.string().max(50, 'License number must be less than 50 characters').optional().nullable(),
   maximumCapacityKgs: z
     .number()
     .min(0.01, 'Maximum capacity must be greater than 0')
@@ -108,6 +110,8 @@ const TransportForm = () => {
       address: undefined,
       vehicleNumber: undefined,
       driverName: undefined,
+      driverNumber: undefined,
+      licenseNumber: undefined,
       maximumCapacityKgs: undefined,
       isActive: true,
     },
@@ -120,6 +124,8 @@ const TransportForm = () => {
       form.setValue('address', transport.address || undefined);
       form.setValue('vehicleNumber', transport.vehicleNumber || undefined);
       form.setValue('driverName', transport.driverName || undefined);
+      form.setValue('driverNumber', transport.driverNumber || undefined);
+      form.setValue('licenseNumber', transport.licenseNumber || undefined);
       form.setValue('maximumCapacityKgs', transport.maximumCapacityKgs || undefined);
       form.setValue('isActive', transport.isActive);
     }
@@ -135,6 +141,8 @@ const TransportForm = () => {
           address: data.address || undefined,
           vehicleNumber: data.vehicleNumber || undefined,
           driverName: data.driverName || undefined,
+          driverNumber: data.driverNumber || undefined,
+          licenseNumber: data.licenseNumber || undefined,
           maximumCapacityKgs: data.maximumCapacityKgs || undefined,
           isActive: data.isActive ?? true,
         },
@@ -146,6 +154,8 @@ const TransportForm = () => {
         address: data.address || undefined,
         vehicleNumber: data.vehicleNumber || undefined,
         driverName: data.driverName || undefined,
+        driverNumber: data.driverNumber || undefined,
+        licenseNumber: data.licenseNumber || undefined,
         maximumCapacityKgs: data.maximumCapacityKgs || undefined,
       });
     }
@@ -247,6 +257,43 @@ const TransportForm = () => {
                 {form.formState.errors.driverName && (
                   <p className="text-sm text-destructive">
                     {form.formState.errors.driverName.message}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="driverNumber">Driver Number</Label>
+                <Input
+                  id="driverNumber"
+                  {...form.register('driverNumber')}
+                  placeholder="Enter driver number"
+                  maxLength={10}
+                  onKeyPress={(e) => {
+                    // Only allow digits
+                    if (!/^\d$/.test(e.key) && e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') {
+                      e.preventDefault();
+                    }
+                  }}
+                />
+                {form.formState.errors.driverNumber && (
+                  <p className="text-sm text-destructive">
+                    {form.formState.errors.driverNumber.message}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="licenseNumber">License Number</Label>
+                <Input
+                  id="licenseNumber"
+                  {...form.register('licenseNumber')}
+                  placeholder="Enter license number"
+                />
+                {form.formState.errors.licenseNumber && (
+                  <p className="text-sm text-destructive">
+                    {form.formState.errors.licenseNumber.message}
                   </p>
                 )}
               </div>
