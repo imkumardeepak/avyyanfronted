@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,14 +19,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Search, Package, Truck, Eye } from 'lucide-react';
+import { Search, Package, Truck, Eye, FileText } from 'lucide-react';
 import { toast } from '@/lib/toast';
-import { storageCaptureApi, rollConfirmationApi, productionAllotmentApi, salesOrderApi, apiUtils } from '@/lib/api-client';
+import { storageCaptureApi, rollConfirmationApi, productionAllotmentApi, salesOrderApi, dispatchPlanningApi, apiUtils } from '@/lib/api-client';
 import type { 
   StorageCaptureResponseDto, 
   RollConfirmationResponseDto,
   ProductionAllotmentDto,
-  SalesOrderDto
+  SalesOrderDto,
+  DispatchPlanningDto
 } from '@/types/api-types';
 
 // Define types for our dispatch planning data
@@ -43,7 +44,8 @@ interface DispatchPlanningItem {
   rolls: RollDetail[];
   salesOrder?: SalesOrderDto;
   salesOrderItemName?: string;
-  loadingNo?: string; // Add LoadingNo field
+  // Add loading sheet information
+  loadingSheet?: DispatchPlanningDto;
 }
 
 // New interface for grouping by sales order
@@ -59,6 +61,8 @@ interface SalesOrderGroup {
   totalRequiredRolls: number;
   totalDispatchedRolls: number; // Add this new field
   isFullyDispatched: boolean;
+  // Add loading sheet information
+  loadingSheets?: DispatchPlanningDto[];
 }
 
 interface RollDetail {
@@ -125,6 +129,9 @@ const DispatchPlanning = () => {
       for (const [lotNo, captures] of Object.entries(lotGroups)) {
         // Get unique roll numbers for this lot
         const uniqueRolls = Array.from(new Set(captures.map(c => c.fgRollNo)));
+        
+        // Count only non-dispatched rolls as ready rolls
+        const readyRolls = captures.filter(c => !c.isDispatched).length;
         
         // Fetch roll confirmation details for each roll
         const rollDetails: RollDetail[] = [];
@@ -198,7 +205,7 @@ const DispatchPlanning = () => {
           lotNo,
           customerName: firstCapture.customerName,
           tape: firstCapture.tape,
-          totalRolls: uniqueRolls.length,
+          totalRolls: readyRolls, // Use ready rolls instead of total unique rolls
           totalNetWeight,
           totalActualQuantity,
           totalRequiredRolls,
@@ -240,12 +247,50 @@ const DispatchPlanning = () => {
           salesOrderGroups[salesOrderId].totalRequiredRolls += item.totalRequiredRolls;
           salesOrderGroups[salesOrderId].totalDispatchedRolls += item.dispatchedRolls; // Add the new field
           
-          // If any allotment is not dispatched, the whole group is not fully dispatched
-          if (!item.isDispatched) {
+          // Check if all allotments are fully dispatched based on required rolls
+          const allFullyDispatched = item.totalRequiredRolls <= item.dispatchedRolls;
+          if (!allFullyDispatched) {
             salesOrderGroups[salesOrderId].isFullyDispatched = false;
           }
         }
       });
+      
+      // Fetch dispatch planning records to get loading sheet information
+      try {
+        const dispatchPlanningResponse = await dispatchPlanningApi.getAllDispatchPlannings();
+        const dispatchPlannings: DispatchPlanningDto[] = apiUtils.extractData(dispatchPlanningResponse);
+        
+        // Map loading sheets to lot numbers
+        const lotToLoadingSheetsMap: Record<string, DispatchPlanningDto[]> = {};
+        dispatchPlannings.forEach((dp: DispatchPlanningDto) => {
+          if (dp.lotNo) {
+            if (!lotToLoadingSheetsMap[dp.lotNo]) {
+              lotToLoadingSheetsMap[dp.lotNo] = [];
+            }
+            lotToLoadingSheetsMap[dp.lotNo].push(dp);
+          }
+        });
+        
+        // Update allotments with loading sheet information
+        Object.values(salesOrderGroups).forEach(group => {
+          group.allotments.forEach(allotment => {
+            if (lotToLoadingSheetsMap[allotment.lotNo]) {
+              allotment.loadingSheet = lotToLoadingSheetsMap[allotment.lotNo][0]; // Take the first one for now
+            }
+          });
+          
+          // Set group loading sheets
+          const groupLoadingSheets: DispatchPlanningDto[] = [];
+          group.allotments.forEach(allotment => {
+            if (allotment.loadingSheet) {
+              groupLoadingSheets.push(allotment.loadingSheet);
+            }
+          });
+          group.loadingSheets = groupLoadingSheets;
+        });
+      } catch (error) {
+        console.error('Error fetching dispatch planning data:', error);
+      }
       
       const groupedItems = Object.values(salesOrderGroups);
       setDispatchItems(groupedItems);
@@ -363,6 +408,15 @@ const DispatchPlanning = () => {
                   <Truck className="h-3 w-3 mr-1" />
                   Dispatch Selected ({Object.values(selectedLots).filter(selected => selected).length})
                 </Button>
+                <Button 
+                  onClick={() => navigate('/loading-sheets')}
+                  variant="outline" 
+                  size="sm"
+                  className="h-8 px-3 text-xs"
+                >
+                  <FileText className="h-3 w-3 mr-1" />
+                  View Loading Sheets
+                </Button>
               </div>
             </div>
           </div>
@@ -405,11 +459,11 @@ const DispatchPlanning = () => {
                     <TableHead className="text-xs font-medium text-gray-700">SO Number</TableHead>
                     <TableHead className="text-xs font-medium text-gray-700">Party</TableHead>
                     <TableHead className="text-xs font-medium text-gray-700">Customer</TableHead>
-                    <TableHead className="text-xs font-medium text-gray-700">Allotments</TableHead>
+                    <TableHead className="text-xs font-medium text-gray-700">Lotment</TableHead>
                     <TableHead className="text-xs font-medium text-gray-700">Ready Rolls</TableHead>
                     <TableHead className="text-xs font-medium text-gray-700">Required Rolls</TableHead>
                     <TableHead className="text-xs font-medium text-gray-700">Dispatched Rolls</TableHead>
-                    <TableHead className="text-xs font-medium text-gray-700">Loading No</TableHead>
+                    <TableHead className="text-xs font-medium text-gray-700">Loading Sheets</TableHead>
                     <TableHead className="text-xs font-medium text-gray-700">Status</TableHead>
                     <TableHead className="text-xs font-medium text-gray-700">Actions</TableHead>
                   </TableRow>
@@ -417,14 +471,14 @@ const DispatchPlanning = () => {
                 <TableBody>
                   {filteredItems.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={10} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={11} className="text-center py-8 text-gray-500">
                         No dispatch planning data found
                       </TableCell>
                     </TableRow>
                   ) : (
                     filteredItems.map((group) => (
-                      <>
-                        <TableRow key={group.salesOrderId} className="border-b border-gray-100 bg-gray-50">
+                      <Fragment key={group.salesOrderId}>
+                        <TableRow className="border-b border-gray-100 bg-gray-50">
                           <TableCell className="py-3">
                             <input
                               type="checkbox"
@@ -465,8 +519,24 @@ const DispatchPlanning = () => {
                             {group.totalDispatchedRolls}
                           </TableCell>
                           <TableCell className="py-3 font-medium">
-                            {/* We'll display the LoadingNo here once we have the data */}
-                            N/A
+                            {group.loadingSheets && group.loadingSheets.length > 0 ? (
+                              <div className="flex flex-wrap gap-1">
+                                {group.loadingSheets.map((sheet, index) => (
+                                  <span 
+                                    key={sheet.id} 
+                                    className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800"
+                                    title={`Loading No: ${sheet.loadingNo}`}
+                                  >
+                                    #{index + 1}
+                                  </span>
+                                ))}
+                                <span className="text-xs text-gray-500">
+                                  ({group.loadingSheets.length} sheet{group.loadingSheets.length !== 1 ? 's' : ''})
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-gray-500">None</span>
+                            )}
                           </TableCell>
                           <TableCell className="py-3">
                             <Badge 
@@ -477,7 +547,15 @@ const DispatchPlanning = () => {
                             </Badge>
                           </TableCell>
                           <TableCell className="py-3">
-                            {/* View Details button removed as per requirements */}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 px-2 text-xs"
+                              onClick={() => navigate('/loading-sheets')}
+                            >
+                              <FileText className="h-3 w-3 mr-1" />
+                              View
+                            </Button>
                           </TableCell>
                         </TableRow>
                         {/* Expanded view for allotments in this group */}
@@ -497,7 +575,7 @@ const DispatchPlanning = () => {
                               />
                             </TableCell>
                             <TableCell className="py-2 text-xs text-muted-foreground">
-                              Allotment:
+                              Lot No.:
                             </TableCell>
                             <TableCell className="py-2" colSpan={2}>
                               <div className="font-medium text-sm">{allotment.lotNo}</div>
@@ -514,14 +592,23 @@ const DispatchPlanning = () => {
                               {allotment.dispatchedRolls}
                             </TableCell>
                             <TableCell className="py-2">
-                              {allotment.loadingNo || 'N/A'}
+                              {allotment.loadingSheet ? (
+                                <span 
+                                  className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800"
+                                  title={`Loading No: ${allotment.loadingSheet.loadingNo}`}
+                                >
+                                  Sheet
+                                </span>
+                              ) : (
+                                <span className="text-xs text-gray-500">None</span>
+                              )}
                             </TableCell>
                             <TableCell className="py-2">
                               <Badge 
-                                variant={allotment.isDispatched ? "default" : "secondary"}
-                                className={allotment.isDispatched ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}
+                                variant={allotment.totalRequiredRolls <= allotment.dispatchedRolls ? "default" : "secondary"}
+                                className={allotment.totalRequiredRolls <= allotment.dispatchedRolls ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}
                               >
-                                {allotment.isDispatched ? "Dispatched" : "Pending"}
+                                {allotment.totalRequiredRolls <= allotment.dispatchedRolls ? "Dispatched" : "Pending"}
                               </Badge>
                             </TableCell>
                             <TableCell className="py-2">
@@ -540,7 +627,7 @@ const DispatchPlanning = () => {
                             </TableCell>
                           </TableRow>
                         ))}
-                      </>
+                      </Fragment>
                     ))
                   )}
                 </TableBody>
@@ -570,6 +657,38 @@ const DispatchPlanning = () => {
                     <div className="bg-purple-50 border border-purple-200 rounded-md p-2">
                       <div className="text-xs text-purple-600 font-medium">Tape</div>
                       <div className="text-sm font-medium">{selectedLot.tape}</div>
+                    </div>
+                    <div className="bg-orange-50 border border-orange-200 rounded-md p-2">
+                      <div className="text-xs text-orange-600 font-medium">Loading Sheet</div>
+                      <div className="text-sm font-medium">
+                        {selectedLot.loadingSheet ? selectedLot.loadingSheet.loadingNo : 'None'}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <div className="bg-blue-50 border border-blue-200 rounded-md p-2">
+                      <div className="text-xs text-blue-600 font-medium">Ready Rolls</div>
+                      <div className="text-sm font-medium">{selectedLot.totalRolls}</div>
+                    </div>
+                    <div className="bg-green-50 border border-green-200 rounded-md p-2">
+                      <div className="text-xs text-green-600 font-medium">Required Rolls</div>
+                      <div className="text-sm font-medium">{selectedLot.totalRequiredRolls}</div>
+                    </div>
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-md p-2">
+                      <div className="text-xs text-yellow-600 font-medium">Dispatched Rolls</div>
+                      <div className="text-sm font-medium">{selectedLot.dispatchedRolls}</div>
+                    </div>
+                    <div className="bg-purple-50 border border-purple-200 rounded-md p-2">
+                      <div className="text-xs text-purple-600 font-medium">Status</div>
+                      <div className="text-sm font-medium">
+                        <Badge 
+                          variant={selectedLot.totalRequiredRolls <= selectedLot.dispatchedRolls ? "default" : "secondary"}
+                          className={selectedLot.totalRequiredRolls <= selectedLot.dispatchedRolls ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}
+                        >
+                          {selectedLot.totalRequiredRolls <= selectedLot.dispatchedRolls ? "Dispatched" : "Pending"}
+                        </Badge>
+                      </div>
                     </div>
                   </div>
                   
@@ -621,6 +740,36 @@ const DispatchPlanning = () => {
                       </TableBody>
                     </Table>
                   </div>
+                  
+                  {/* Loading Sheet Information */}
+                  {selectedLot.loadingSheet && (
+                    <div className="bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-200 rounded-md p-3">
+                      <h4 className="text-xs font-semibold text-gray-800 mb-2 flex items-center">
+                        <FileText className="h-3 w-3 mr-1" />
+                        Loading Sheet Information
+                      </h4>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <span className="font-medium">Loading No:</span> {selectedLot.loadingSheet.loadingNo}
+                        </div>
+                        <div>
+                          <span className="font-medium">Dispatch Order ID:</span> {selectedLot.loadingSheet.dispatchOrderId}
+                        </div>
+                        <div>
+                          <span className="font-medium">Vehicle:</span> {selectedLot.loadingSheet.vehicleNo}
+                        </div>
+                        <div>
+                          <span className="font-medium">Driver:</span> {selectedLot.loadingSheet.driverName}
+                        </div>
+                        <div>
+                          <span className="font-medium">Dispatched Rolls:</span> {selectedLot.loadingSheet.totalDispatchedRolls}
+                        </div>
+                        <div className="col-span-2">
+                          <span className="font-medium">Remarks:</span> {selectedLot.loadingSheet.remarks || 'N/A'}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </DialogContent>

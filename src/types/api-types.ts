@@ -1133,3 +1133,198 @@ export interface ProductionAllotmentDto {
 // ============================================
 // PRODUCTION ALLOTMENT API (/api/ProductionAllotment)
 // ============================================
+
+// ============================================
+// DISPATCH PLANNING DTOs (AvyyanBackend.DTOs.DispatchPlanning)
+// ============================================
+
+export interface DispatchPlanningDto {
+  id: number;
+  lotNo: string;
+  salesOrderId: number;
+  salesOrderItemId: number;
+  customerName: string;
+  tape: string;
+  totalRequiredRolls: number;
+  totalReadyRolls: number;
+  totalDispatchedRolls: number;
+  isFullyDispatched: boolean;
+  dispatchStartDate?: string; // ISO 8601 datetime
+  dispatchEndDate?: string; // ISO 8601 datetime
+  vehicleNo: string;
+  driverName: string;
+  license: string;
+  mobileNumber: string;
+  remarks: string;
+  loadingNo: string;
+  dispatchOrderId: string;
+  createdAt: string; // ISO 8601 datetime
+  updatedAt?: string; // ISO 8601 datetime
+  isActive: boolean;
+}
+
+export interface CreateDispatchPlanningRequestDto {
+  lotNo: string;
+  salesOrderId: number;
+  salesOrderItemId: number;
+  customerName: string;
+  tape: string;
+  totalRequiredRolls: number;
+  totalReadyRolls: number;
+  totalDispatchedRolls: number;
+  isFullyDispatched: boolean;
+  dispatchStartDate?: string; // ISO 8601 datetime
+  dispatchEndDate?: string; // ISO 8601 datetime
+  vehicleNo: string;
+  driverName: string;
+  license: string;
+  mobileNumber: string;
+  remarks: string;
+  // LoadingNo will be auto-generated
+  // DispatchOrderId will be auto-generated
+}
+
+export interface UpdateDispatchPlanningRequestDto {
+  lotNo: string;
+  salesOrderId: number;
+  salesOrderItemId: number;
+  customerName: string;
+  tape: string;
+  totalRequiredRolls: number;
+  totalReadyRolls: number;
+  totalDispatchedRolls: number;
+  isFullyDispatched: boolean;
+  dispatchStartDate?: string; // ISO 8601 datetime
+  dispatchEndDate?: string; // ISO 8601 datetime
+  vehicleNo: string;
+  driverName: string;
+  license: string;
+  mobileNumber: string;
+  remarks: string;
+  loadingNo: string;
+  dispatchOrderId: string;
+}
+
+export interface DispatchedRollDto {
+  id: number;
+  dispatchPlanningId: number;
+  lotNo: string;
+  fgRollNo: string;
+  locationCode: string;
+  netWeight: number;
+  machineName: string;
+  rollNo: string;
+  isLoaded: boolean;
+  loadedAt?: string; // ISO 8601 datetime
+  loadedBy: string;
+  createdAt: string; // ISO 8601 datetime
+  updatedAt?: string; // ISO 8601 datetime
+  isActive: boolean;
+}
+
+export interface CreateDispatchedRollRequestDto {
+  dispatchPlanningId: number;
+  lotNo: string;
+  fgRollNo: string;
+  locationCode: string;
+  netWeight: number;
+  machineName: string;
+  rollNo: string;
+  isLoaded: boolean;
+  loadedAt?: string; // ISO 8601 datetime
+  loadedBy: string;
+}
+
+// Loading Sheet DTO (extension of DispatchPlanningDto with sequence number)
+export interface LoadingSheetDto extends DispatchPlanningDto {
+  sequenceNumber: number;
+}
+
+// ============================================
+// TRANSPORT DTOs (AvyyanBackend.DTOs.Transport)
+// ============================================
+
+export interface TransportResponseDto {
+  id: number;
+  transportName: string;
+  contactPerson?: string;
+  address?: string;
+  vehicleNumber?: string;
+  driverName?: string;
+  maximumCapacityKgs?: number;
+  createdAt: string;
+  updatedAt?: string;
+  isActive: boolean;
+}
+
+export interface CreateTransportRequestDto {
+  transportName: string;
+  contactPerson?: string;
+  address?: string;
+  vehicleNumber?: string;
+  driverName?: string;
+  maximumCapacityKgs?: number;
+}
+
+export interface UpdateTransportRequestDto {
+  transportName: string;
+  contactPerson?: string;
+  address?: string;
+  vehicleNumber?: string;
+  driverName?: string;
+  maximumCapacityKgs?: number;
+  isActive: boolean;
+}
+
+export interface TransportSearchRequestDto {
+  transportName?: string;
+  contactPerson?: string;
+  vehicleNumber?: string;
+  driverName?: string;
+  isActive?: boolean;
+}
+
+// ============================================
+// COURIER DTOs (AvyyanBackend.DTOs.Courier)
+// ============================================
+
+export interface CourierResponseDto {
+  id: number;
+  courierName: string;
+  contactPerson?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  gstNo?: string;
+  trackingUrl?: string;
+  createdAt: string;
+  updatedAt?: string;
+  isActive: boolean;
+}
+
+export interface CreateCourierRequestDto {
+  courierName: string;
+  contactPerson?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  gstNo?: string;
+  trackingUrl?: string;
+}
+
+export interface UpdateCourierRequestDto {
+  courierName: string;
+  contactPerson?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  gstNo?: string;
+  trackingUrl?: string;
+  isActive: boolean;
+}
+
+export interface CourierSearchRequestDto {
+  courierName?: string;
+  contactPerson?: string;
+  isActive?: boolean;
+}

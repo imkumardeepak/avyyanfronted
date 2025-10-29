@@ -106,7 +106,7 @@ const MachineForm = () => {
       needle: 0,
       feeder: 0,
       rpm: 0,
-      constat: undefined,
+      constat: 0.00085,
       // Removed efficiency field as requested
       description: '',
       isActive: true,
@@ -120,7 +120,7 @@ const MachineForm = () => {
   // Calculate needles automatically when dia or gg changes
   useEffect(() => {
     if (diaValue > 0 && ggValue > 0) {
-      const calculatedNeedles = Math.round(diaValue * ggValue * 3.14);
+      const calculatedNeedles = Math.round(diaValue * ggValue * 3.142);
       form.setValue('needle', calculatedNeedles);
     }
   }, [diaValue, ggValue, form]);
@@ -197,7 +197,7 @@ const MachineForm = () => {
               <Input
                 id="machineName"
                 {...form.register('machineName')}
-                placeholder="Enter machine name (e.g., K120, K150)"
+                placeholder="Enter machine name (e.g.,01,02,03...)"
               />
               {form.formState.errors.machineName && (
                 <p className="text-sm text-destructive">
@@ -250,7 +250,7 @@ const MachineForm = () => {
                   <p className="text-sm text-destructive">{form.formState.errors.needle.message}</p>
                 )}
                 <p className="text-xs text-muted-foreground">
-                  Calculated as: Dia × GG × 3.14 = {diaValue} × {ggValue} × 3.14 ≈ {diaValue > 0 && ggValue > 0 ? Math.round(diaValue * ggValue * 3.14) : '0'}
+                  Calculated as: Dia × GG × 3.142 = {diaValue} × {ggValue} × 3.142 ≈ {diaValue > 0 && ggValue > 0 ? Math.round(diaValue * ggValue * 3.142) : '0'}
                 </p>
               </div>
 
@@ -290,6 +290,7 @@ const MachineForm = () => {
                   step="0.00001"
                   {...form.register('constat', { valueAsNumber: true })}
                   placeholder="Enter constant value"
+                  disabled
                 />
                 {form.formState.errors.constat && (
                   <p className="text-sm text-destructive">

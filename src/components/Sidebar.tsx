@@ -17,6 +17,7 @@ import {
   type LucideIcon,
   BaggageClaim,
   ArrowRight,
+  FileText,
 } from 'lucide-react';
 import { PAGE_NAMES } from '@/constants/pages';
 
@@ -127,6 +128,24 @@ const navConfig: NavItem[] = [
         icon: ArrowRight,
         description: 'Capture and manage FG rolls',
       },
+      {
+        title: PAGE_NAMES.PICK_ROLL_CAPTURE,
+        href: '/pick-roll-capture',
+        icon: ArrowRight,
+        description: 'Capture and manage pick rolls',
+      },
+      {
+        title: PAGE_NAMES.LOAD_CAPTURE,
+        href: '/load-capture',
+        icon: ArrowRight,
+        description: 'Capture and manage load operations',
+      },
+      {
+        title: PAGE_NAMES.PICKING_AND_LOADING,
+        href: '/picking-loading',
+        icon: ArrowRight,
+        description: 'Manage both picking and loading operations',
+      },
     ],
   },
   {
@@ -156,6 +175,12 @@ const navConfig: NavItem[] = [
         href: '/dispatch-planning',
         icon: ArrowRight,
         description: 'Plan and manage dispatch of finished goods',
+      },
+      {
+        title: 'Loading Sheets',
+        href: '/loading-sheets',
+        icon: FileText,
+        description: 'View and manage loading sheets',
       },
     ],
   },

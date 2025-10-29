@@ -23,6 +23,9 @@ export const PAGE_NAMES = {
     QUALITY_CHECKING: 'Quality Checking',
     ROLL_INSPECTION: 'Roll Inspection',
     FG_ROLL_CAPTURE: 'FG Roll Capture',
+    PICK_ROLL_CAPTURE: 'Pick Roll Capture',
+    LOAD_CAPTURE: 'Load Capture',
+    PICKING_AND_LOADING: 'Picking and Loading',
 } as const;
 
 // Array of all page names for role management

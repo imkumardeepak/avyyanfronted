@@ -258,12 +258,13 @@ export function MachineLoadDistribution({
                                     <Label className="text-xs">Needles</Label>
                                     <Input
                                       type="number"
-                                      value={params.needle}
-                                      onChange={(e) =>
+                                      value={params.needle || ''}
+                                      onChange={(e) => {
+                                        const value = e.target.value === '' ? NaN : Number(e.target.value);
                                         onUpdateMachineParameters(machine.machineId, {
-                                          needle: Number(e.target.value),
-                                        })
-                                      }
+                                          needle: isNaN(value) ? 0 : value,
+                                        });
+                                      }}
                                       className="text-center text-xs h-7"
                                     />
                                   </div>
@@ -271,12 +272,13 @@ export function MachineLoadDistribution({
                                     <Label className="text-xs">Feeders</Label>
                                     <Input
                                       type="number"
-                                      value={params.feeder}
-                                      onChange={(e) =>
+                                      value={params.feeder || ''}
+                                      onChange={(e) => {
+                                        const value = e.target.value === '' ? NaN : Number(e.target.value);
                                         onUpdateMachineParameters(machine.machineId, {
-                                          feeder: Number(e.target.value),
-                                        })
-                                      }
+                                          feeder: isNaN(value) ? 0 : value,
+                                        });
+                                      }}
                                       className="text-center text-xs h-7"
                                     />
                                   </div>
@@ -284,12 +286,13 @@ export function MachineLoadDistribution({
                                     <Label className="text-xs">RPM</Label>
                                     <Input
                                       type="number"
-                                      value={params.rpm}
-                                      onChange={(e) =>
+                                      value={params.rpm || ''}
+                                      onChange={(e) => {
+                                        const value = e.target.value === '' ? NaN : Number(e.target.value);
                                         onUpdateMachineParameters(machine.machineId, {
-                                          rpm: Number(e.target.value),
-                                        })
-                                      }
+                                          rpm: isNaN(value) ? 0 : value,
+                                        });
+                                      }}
                                       className="text-center text-xs h-7"
                                     />
                                   </div>
@@ -298,12 +301,13 @@ export function MachineLoadDistribution({
                                     <Input
                                       type="number"
                                       step="0.1"
-                                      value={params.efficiency}
-                                      onChange={(e) =>
+                                      value={params.efficiency || ''}
+                                      onChange={(e) => {
+                                        const value = e.target.value === '' ? NaN : Number(e.target.value);
                                         onUpdateMachineParameters(machine.machineId, {
-                                          efficiency: Number(e.target.value),
-                                        })
-                                      }
+                                          efficiency: isNaN(value) ? 0 : value,
+                                        });
+                                      }}
                                       className="text-center text-xs h-7"
                                     />
                                   </div>
@@ -312,12 +316,13 @@ export function MachineLoadDistribution({
                                     <Input
                                       type="number"
                                       step="0.00001"
-                                      value={params.constant}
-                                      onChange={(e) =>
+                                      value={params.constant || ''}
+                                      onChange={(e) => {
+                                        const value = e.target.value === '' ? NaN : Number(e.target.value);
                                         onUpdateMachineParameters(machine.machineId, {
-                                          constant: Number(e.target.value),
-                                        })
-                                      }
+                                          constant: isNaN(value) ? 0 : value,
+                                        });
+                                      }}
                                       className="text-center text-xs h-7"
                                     />
                                   </div>
@@ -332,10 +337,10 @@ export function MachineLoadDistribution({
                                 <Input
                                   type="number"
                                   step="0.5"
-                                  value={machine.allocatedWeight}
+                                  value={machine.allocatedWeight || ''}
                                   onChange={(e) => {
-                                    const weight = Number(e.target.value);
-                                    onUpdateMachineAllocation(machine.machineId, weight);
+                                    const weight = e.target.value === '' ? NaN : Number(e.target.value);
+                                    onUpdateMachineAllocation(machine.machineId, isNaN(weight) ? 0 : weight);
                                   }}
                                   className={`text-center text-xs h-8 ${(() => {
                                     // Check if this allocation would cause over-allocation

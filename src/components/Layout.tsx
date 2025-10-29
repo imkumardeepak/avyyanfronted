@@ -17,8 +17,11 @@ const LayoutContent = () => {
     useSidebar();
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="flex h-screen overflow-hidden">
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Top Header */}
+      <TopHeader />
+      
+      <div className="flex flex-1 overflow-hidden">
         {/* Desktop Sidebar */}
         <aside className="hidden md:flex">
           <Sidebar />
@@ -38,21 +41,18 @@ const LayoutContent = () => {
         )}
 
         {/* Main Content Area */}
-        <div className="flex flex-1 flex-col overflow-hidden">
-          {/* Top Header */}
-          <TopHeader />
-
+        <div className="flex flex-1 flex-col">
           {/* Main Content */}
           <main className="flex-1 overflow-auto">
             <div className="container mx-auto p-6">
               <Outlet />
             </div>
           </main>
-
-          {/* Footer */}
-          <Footer />
         </div>
       </div>
+      
+      {/* Sticky Footer */}
+      <Footer />
     </div>
   );
 };

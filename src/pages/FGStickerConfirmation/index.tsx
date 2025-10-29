@@ -56,9 +56,9 @@ const FGStickerConfirmation: React.FC = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
 
     if (name === 'tareWeight') {
-      const tareWeight = parseFloat(value) || 0;
+      const tareWeight = value === '' ? NaN : parseFloat(value);
       const grossWeight = parseFloat(weightData.grossWeight) || 0;
-      const netWeight = (grossWeight - tareWeight).toFixed(2);
+      const netWeight = isNaN(tareWeight) ? grossWeight.toFixed(2) : (grossWeight - tareWeight).toFixed(2);
 
       setWeightData((prev) => ({
         ...prev,
@@ -692,7 +692,7 @@ const FGStickerConfirmation: React.FC = () => {
                   <Input
                     id="tareWeight"
                     name="tareWeight"
-                    value={weightData.tareWeight}
+                    value={weightData.tareWeight || ''}
                     onChange={handleChange}
                     type="number"
                     step="0.01"

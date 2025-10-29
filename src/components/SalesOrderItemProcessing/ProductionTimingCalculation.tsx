@@ -172,8 +172,11 @@ export function ProductionTimingCalculation({
                 <Input
                   id="needle"
                   type="number"
-                  value={productionCalc.needle}
-                  onChange={(e) => onProductionValueChange('needle', Number(e.target.value))}
+                  value={productionCalc.needle || ''}
+                  onChange={(e) => {
+                    const value = e.target.value === '' ? NaN : Number(e.target.value);
+                    onProductionValueChange('needle', isNaN(value) ? 0 : value);
+                  }}
                   className="text-center font-mono"
                 />
               </div>
@@ -182,8 +185,11 @@ export function ProductionTimingCalculation({
                 <Input
                   id="feeder"
                   type="number"
-                  value={productionCalc.feeder}
-                  onChange={(e) => onProductionValueChange('feeder', Number(e.target.value))}
+                  value={productionCalc.feeder || ''}
+                  onChange={(e) => {
+                    const value = e.target.value === '' ? NaN : Number(e.target.value);
+                    onProductionValueChange('feeder', isNaN(value) ? 0 : value);
+                  }}
                   className="text-center font-mono"
                 />
               </div>
@@ -192,8 +198,11 @@ export function ProductionTimingCalculation({
                 <Input
                   id="rpm"
                   type="number"
-                  value={productionCalc.rpm}
-                  onChange={(e) => onProductionValueChange('rpm', Number(e.target.value))}
+                  value={productionCalc.rpm || ''}
+                  onChange={(e) => {
+                    const value = e.target.value === '' ? NaN : Number(e.target.value);
+                    onProductionValueChange('rpm', isNaN(value) ? 0 : value);
+                  }}
                   className="text-center font-mono"
                 />
               </div>
@@ -203,10 +212,11 @@ export function ProductionTimingCalculation({
                   id="efficiency"
                   type="number"
                   step="0.1"
-                  value={productionCalc.efficiency}
-                  onChange={(e) =>
-                    onProductionValueChange('efficiency', Number(e.target.value))
-                  }
+                  value={productionCalc.efficiency || ''}
+                  onChange={(e) => {
+                    const value = e.target.value === '' ? NaN : Number(e.target.value);
+                    onProductionValueChange('efficiency', isNaN(value) ? 0 : value);
+                  }}
                   className="text-center font-mono"
                 />
               </div>
@@ -306,10 +316,11 @@ export function ProductionTimingCalculation({
                   id="stitch-length"
                   type="number"
                   step="0.01"
-                  value={productionCalc.stichLength}
-                  onChange={(e) =>
-                    onProductionValueChange('stichLength', Number(e.target.value))
-                  }
+                  value={productionCalc.stichLength || ''}
+                  onChange={(e) => {
+                    const value = e.target.value === '' ? NaN : Number(e.target.value);
+                    onProductionValueChange('stichLength', isNaN(value) ? 0 : value);
+                  }}
                   className="text-center font-mono"
                   placeholder="Enter S.L. value"
                 />
@@ -331,8 +342,11 @@ export function ProductionTimingCalculation({
                   id="count"
                   type="number"
                   step="0.1"
-                  value={productionCalc.count}
-                  onChange={(e) => onProductionValueChange('count', Number(e.target.value))}
+                  value={productionCalc.count || ''}
+                  onChange={(e) => {
+                    const value = e.target.value === '' ? NaN : Number(e.target.value);
+                    onProductionValueChange('count', isNaN(value) ? 0 : value);
+                  }}
                   className="text-center font-mono"
                   placeholder="Enter count value"
                 />
