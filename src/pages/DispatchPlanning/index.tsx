@@ -19,7 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Search, Package, Truck, Eye, FileText } from 'lucide-react';
+import { Search, Package, Truck, Eye, FileText, ChevronDown, ChevronRight } from 'lucide-react';
 import { toast } from '@/lib/toast';
 import { storageCaptureApi, rollConfirmationApi, productionAllotmentApi, salesOrderApi, dispatchPlanningApi, apiUtils } from '@/lib/api-client';
 import type { 
@@ -81,6 +81,7 @@ const DispatchPlanning = () => {
   const [selectedLot, setSelectedLot] = useState<DispatchPlanningItem | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedLots, setSelectedLots] = useState<Record<string, boolean>>({});
+  const [expandedGroups, setExpandedGroups] = useState<Record<number, boolean>>({}); // Track expanded groups
 
   // Fetch dispatch planning data
   useEffect(() => {
@@ -478,32 +479,43 @@ const DispatchPlanning = () => {
                   ) : (
                     filteredItems.map((group) => (
                       <Fragment key={group.salesOrderId}>
-                        <TableRow className="border-b border-gray-100 bg-gray-50">
+                        <TableRow className="border-b border-gray-100 bg-gray-50 hover:bg-gray-100 cursor-pointer"
+                          onClick={() => setExpandedGroups(prev => ({
+                            ...prev,
+                            [group.salesOrderId]: !prev[group.salesOrderId]
+                          }))}>
                           <TableCell className="py-3">
-                            <input
-                              type="checkbox"
-                              checked={group.allotments.every(allotment => selectedLots[allotment.lotNo])}
-                              onChange={(e) => {
-                                // Check if any allotment has ready rolls
-                                const hasReadyRolls = group.allotments.some(allotment => allotment.totalRolls > 0);
-                                
-                                if (!hasReadyRolls) {
-                                  toast.warning('Warning', 'Cannot select this group as none of the lotments have ready rolls available for dispatch');
-                                  return;
-                                }
-                                
-                                const newSelectedLots = {...selectedLots};
-                                group.allotments.forEach(allotment => {
-                                  // Only allow selection if allotment has ready rolls
-                                  if (allotment.totalRolls > 0) {
-                                    newSelectedLots[allotment.lotNo] = e.target.checked;
+                            <div className="flex items-center">
+                              {expandedGroups[group.salesOrderId] ? 
+                                <ChevronDown className="h-4 w-4 text-gray-500" /> : 
+                                <ChevronRight className="h-4 w-4 text-gray-500" />
+                              }
+                              <input
+                                type="checkbox"
+                                checked={group.allotments.every(allotment => selectedLots[allotment.lotNo])}
+                                onChange={(e) => {
+                                  e.stopPropagation(); // Prevent row expansion when clicking checkbox
+                                  // Check if any allotment has ready rolls
+                                  const hasReadyRolls = group.allotments.some(allotment => allotment.totalRolls > 0);
+                                  
+                                  if (!hasReadyRolls) {
+                                    toast.warning('Warning', 'Cannot select this group as none of the lotments have ready rolls available for dispatch');
+                                    return;
                                   }
-                                });
-                                setSelectedLots(newSelectedLots);
-                              }}
-                              className="h-4 w-4 rounded border-gray-900 text-blue-600 focus:ring-blue-500"
-                              // disabled={group.allotments.every(allotment => allotment.totalRolls === 0)}
-                            />
+                                  
+                                  const newSelectedLots = {...selectedLots};
+                                  group.allotments.forEach(allotment => {
+                                    // Only allow selection if allotment has ready rolls
+                                    if (allotment.totalRolls > 0) {
+                                      newSelectedLots[allotment.lotNo] = e.target.checked;
+                                    }
+                                  });
+                                  setSelectedLots(newSelectedLots);
+                                }}
+                                className="h-4 w-4 rounded border-gray-900 text-blue-600 focus:ring-blue-500 ml-2"
+                                // disabled={group.allotments.every(allotment => allotment.totalRolls === 0)}
+                              />
+                            </div>
                           </TableCell>
                           <TableCell className="py-3 font-medium">
                             {group.voucherNumber}
@@ -563,21 +575,25 @@ const DispatchPlanning = () => {
                               size="sm"
                               variant="outline"
                               className="h-7 px-2 text-xs"
-                              onClick={() => navigate('/loading-sheets')}
+                              onClick={(e) => {
+                                e.stopPropagation(); // Prevent row expansion when clicking button
+                                navigate('/loading-sheets')
+                              }}
                             >
                               <FileText className="h-3 w-3 mr-1" />
                               View
                             </Button>
                           </TableCell>
                         </TableRow>
-                        {/* Expanded view for allotments in this group */}
-                        {group.allotments.map((allotment) => (
+                        {/* Expanded view for allotments in this group - only shown when expanded */}
+                        {expandedGroups[group.salesOrderId] && group.allotments.map((allotment) => (
                           <TableRow key={`${group.salesOrderId}-${allotment.lotNo}`} className="border-b border-gray-100">
-                            <TableCell className="py-2 pl-8">
+                            <TableCell className="py-2 pl-12">
                               <input
                                 type="checkbox"
                                 checked={selectedLots[allotment.lotNo] || false}
                                 onChange={(e) => {
+                                  e.stopPropagation(); // Prevent row expansion when clicking checkbox
                                   // Check if allotment has ready rolls before allowing selection
                                   if (allotment.totalRolls === 0) {
                                     toast.warning('Warning', `Cannot select lot ${allotment.lotNo} as it has no ready rolls available for dispatch`);
@@ -590,7 +606,7 @@ const DispatchPlanning = () => {
                                   });
                                 }}
                                 className="h-4 w-4 rounded border-gray-900 text-blue-600 focus:ring-blue-500"
-                                // disabled={allotment.totalRolls === 0}
+                               // disabled={allotment.totalRolls === 0}
                               />
                             </TableCell>
                             <TableCell className="py-2 text-xs text-muted-foreground">
@@ -635,7 +651,8 @@ const DispatchPlanning = () => {
                                 size="sm"
                                 variant="ghost"
                                 className="h-7 px-2 text-xs"
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.stopPropagation(); // Prevent row expansion when clicking button
                                   setSelectedLot(allotment);
                                   setIsModalOpen(true);
                                 }}
