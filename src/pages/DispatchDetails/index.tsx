@@ -416,8 +416,8 @@ const DispatchDetails = () => {
               lotNo: capture.lotNo,
               fgRollNo: capture.fgRollNo,
               isLoaded: false, // Set isLoaded to true when creating dispatch
-              loadedAt: new Date().toISOString(),
-              loadedBy: 'System', // This should be the current user
+              loadedAt: undefined, // Pass undefined value as requested
+              loadedBy: '', // Pass empty string as requested
             };
 
             // Add promise to create dispatched roll
@@ -495,7 +495,7 @@ const DispatchDetails = () => {
               onClick={() => setActiveTab('details')}
             >
               <FileText className="h-4 w-4 mr-2" />
-              Dispatch Information
+              Dispatch Planning
             </button>
             <button
               className={`py-2 px-4 text-sm font-medium flex items-center ${
@@ -514,7 +514,428 @@ const DispatchDetails = () => {
           {/* Tab Content */}
           {activeTab === 'details' && (
             <div>
-              {/* Dispatch Information Form */}
+          
+              {/* Selected Lots Summary */}
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-md p-3 mb-4">
+                <h3 className="text-xs font-semibold text-green-800 mb-2">
+                  Selected Sales Orders for Dispatch ({dispatchItems.length})
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
+                  <div className="bg-blue-50 border border-blue-200 rounded-md p-2">
+                    <div className="text-xs text-blue-600 font-medium">Sales Orders</div>
+                    <div className="text-lg font-bold text-blue-800">{dispatchItems.length}</div>
+                  </div>
+                  <div className="bg-green-50 border border-green-200 rounded-md p-2">
+                    <div className="text-xs text-green-600 font-medium">Total Lots</div>
+                    <div className="text-lg font-bold text-green-800">
+                      {dispatchItems.reduce((sum, group) => sum + group.allotments.length, 0)}
+                    </div>
+                  </div>
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-md p-2">
+                    <div className="text-xs text-yellow-600 font-medium">Dispatch Rolls</div>
+                    <div className="text-lg font-bold text-yellow-800">
+                      {dispatchItems.reduce((sum, group) => 
+                        sum + group.allotments.reduce((itemSum, item) => 
+                          itemSum + (item.dispatchRolls !== undefined ? item.dispatchRolls : item.totalRolls), 0), 0)}
+                    </div>
+                  </div>
+                  <div className="bg-purple-50 border border-purple-200 rounded-md p-2">
+                    <div className="text-xs text-purple-600 font-medium">Dispatched Rolls</div>
+                    <div className="text-lg font-bold text-purple-800">
+                      {dispatchItems.reduce((sum, group) => sum + group.totalDispatchedRolls, 0)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Selected Lots Details */}
+              <div className="border border-gray-200 rounded-md overflow-hidden mb-4">
+                <Table>
+                  <TableHeader className="bg-gray-50">
+                    <TableRow>
+                      <TableHead className="text-xs font-medium text-gray-700 w-12"></TableHead>
+                      <TableHead className="text-xs font-medium text-gray-700">SO Number</TableHead>
+                      <TableHead className="text-xs font-medium text-gray-700">Party</TableHead>
+                      <TableHead className="text-xs font-medium text-gray-700">Customer</TableHead>
+                      <TableHead className="text-xs font-medium text-gray-700">Lots</TableHead>
+                      <TableHead className="text-xs font-medium text-gray-700">Ready Rolls</TableHead>
+                      <TableHead className="text-xs font-medium text-gray-700">Required Rolls</TableHead>
+                      <TableHead className="text-xs font-medium text-gray-700">Dispatch Rolls</TableHead>
+                      <TableHead className="text-xs font-medium text-gray-700">Dispatched Rolls</TableHead>
+                      <TableHead className="text-xs font-medium text-gray-700">Loading Sheets</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {dispatchItems.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={10} className="text-center py-8 text-gray-500">
+                          No dispatch details found
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      dispatchItems.map((group) => (
+                        <>
+                          <TableRow
+                            key={group.salesOrderId}
+                            className="border-b border-gray-100 bg-gray-50"
+                          >
+                            <TableCell className="py-3">
+                              <div className="font-medium text-sm">SO</div>
+                            </TableCell>
+                            <TableCell className="py-3 font-medium">
+                              {group.voucherNumber}
+                            </TableCell>
+                            <TableCell className="py-3">{group.partyName}</TableCell>
+                            <TableCell className="py-3">{group.customerName}</TableCell>
+                            <TableCell className="py-3">
+                              <div className="flex items-center">
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                  {group.allotments.length} lot
+                                  {group.allotments.length !== 1 ? 's' : ''}
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="py-3 font-medium">{group.totalRolls}</TableCell>
+                            <TableCell className="py-3 font-medium">{group.totalRequiredRolls}</TableCell>
+                            <TableCell className="py-3">
+                              <Input
+                                type="number"
+                                min="0"
+                                max={group.totalRolls}
+                                value={group.dispatchRolls || ''}
+                                onChange={(e) => {
+                                  const value = e.target.value === '' ? NaN : parseInt(e.target.value);
+                                  const newDispatchRolls = isNaN(value) ? 0 : value;
+                                  const updatedItems = [...dispatchItems];
+                                  const groupIndex = updatedItems.findIndex(
+                                    (g) => g.salesOrderId === group.salesOrderId
+                                  );
+
+                                  if (groupIndex !== -1) {
+                                    updatedItems[groupIndex] = {
+                                      ...group,
+                                      dispatchRolls: Math.min(newDispatchRolls, group.totalRolls),
+                                    };
+
+                                    // Distribute rolls proportionally among allotments
+                                    let remainingRolls = Math.min(
+                                      newDispatchRolls,
+                                      group.totalRolls
+                                    );
+                                    const updatedAllotments = group.allotments.map((allotment) => {
+                                      if (remainingRolls <= 0) {
+                                        return { ...allotment, dispatchRolls: 0 };
+                                      }
+
+                                      // Calculate proportional allocation
+                                      const allotmentProportion =
+                                        allotment.totalRolls / group.totalRolls;
+                                      const allotmentRolls = Math.min(
+                                        Math.round(allotmentProportion * newDispatchRolls),
+                                        allotment.totalRolls,
+                                        remainingRolls
+                                      );
+
+                                      remainingRolls -= allotmentRolls;
+
+                                      return { ...allotment, dispatchRolls: allotmentRolls };
+                                    });
+
+                                    // Distribute any remaining rolls to the first allotments
+                                    if (remainingRolls > 0) {
+                                      for (
+                                        let i = 0;
+                                        i < updatedAllotments.length && remainingRolls > 0;
+                                        i++
+                                      ) {
+                                        const allotment = updatedAllotments[i];
+                                        if (allotment.dispatchRolls < allotment.totalRolls) {
+                                          const additionalRolls = Math.min(
+                                            remainingRolls,
+                                            allotment.totalRolls - allotment.dispatchRolls
+                                          );
+                                          updatedAllotments[i] = {
+                                            ...allotment,
+                                            dispatchRolls:
+                                              allotment.dispatchRolls + additionalRolls,
+                                          };
+                                          remainingRolls -= additionalRolls;
+                                        }
+                                      }
+                                    }
+
+                                    updatedItems[groupIndex] = {
+                                      ...updatedItems[groupIndex],
+                                      allotments: updatedAllotments,
+                                      dispatchRolls: newDispatchRolls,
+                                    };
+                                  }
+
+                                  setDispatchItems(updatedItems);
+                                }}
+                                className="text-xs h-8 w-20"
+                              />
+                            </TableCell>
+                            <TableCell className="py-3 font-medium">
+                              {group.totalDispatchedRolls}
+                            </TableCell>
+                            <TableCell className="py-3 font-medium">
+                              {group.loadingSheets && group.loadingSheets.length > 0 ? (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                  {group.loadingSheets.length} sheet{group.loadingSheets.length !== 1 ? 's' : ''}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-gray-500">Will be created</span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                          {/* Expanded view for allotments in this group */}
+                          {group.allotments.map((allotment, allotmentIndex) => (
+                            <TableRow
+                              key={`${group.salesOrderId}-${allotment.lotNo}`}
+                              className="border-b border-gray-100"
+                            >
+                              <TableCell className="py-2 pl-8">
+                                <div className="text-xs text-muted-foreground">Lot</div>
+                              </TableCell>
+                              <TableCell className="py-2 text-xs text-muted-foreground" colSpan={2}>
+                             
+                              </TableCell>
+                              <TableCell className="py-2" colSpan={2}>
+                                <div className="font-medium text-sm">{allotment.lotNo}</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {allotment.tape}
+                                </div>
+                              </TableCell>
+                              <TableCell className="py-2">{allotment.totalRolls}</TableCell>
+                              <TableCell className="py-2">{allotment.totalRequiredRolls}</TableCell>
+                              <TableCell className="py-2">
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  max={allotment.totalRolls}
+                                  value={allotment.dispatchRolls || ''}
+                                  onChange={(e) => {
+                                    const value = e.target.value === '' ? NaN : parseInt(e.target.value);
+                                    const newDispatchRolls = isNaN(value) ? 0 : value;
+                                    const updatedItems = [...dispatchItems];
+                                    const groupIndex = updatedItems.findIndex(
+                                      (g) => g.salesOrderId === group.salesOrderId
+                                    );
+
+                                    if (groupIndex !== -1) {
+                                      const allotmentIndex = updatedItems[
+                                        groupIndex
+                                      ].allotments.findIndex((a) => a.lotNo === allotment.lotNo);
+                                      if (allotmentIndex !== -1) {
+                                        updatedItems[groupIndex].allotments[allotmentIndex] = {
+                                          ...allotment,
+                                          dispatchRolls: Math.min(
+                                            newDispatchRolls,
+                                            allotment.totalRolls
+                                          ),
+                                        };
+
+                                        // Update group dispatch rolls total
+                                        const groupDispatchRolls = updatedItems[
+                                          groupIndex
+                                        ].allotments.reduce(
+                                          (sum, a) => sum + (a.dispatchRolls || 0),
+                                          0
+                                        );
+
+                                        updatedItems[groupIndex] = {
+                                          ...updatedItems[groupIndex],
+                                          dispatchRolls: groupDispatchRolls,
+                                        };
+                                      }
+                                    }
+
+                                    setDispatchItems(updatedItems);
+                                  }}
+                                  className="text-xs h-8 w-20"
+                                />
+                              </TableCell>
+                              <TableCell className="py-2">
+                                {allotment.dispatchedRolls}
+                              </TableCell>
+                              <TableCell className="py-2">
+                                {allotment.loadingSheet ? (
+                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                    {allotment.loadingSheet.loadingNo}
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-gray-500">Will be created</span>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+
+                {/* Sequence Reordering Instructions */}
+                <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-4">
+                  <h4 className="text-xs font-semibold text-yellow-800 mb-1">
+                    Reorder Sales Orders
+                  </h4>
+                  <p className="text-xs text-yellow-700">
+                    Drag and drop the sales orders to reorder them in the sequence you want them to
+                    be dispatched.
+                  </p>
+                </div>
+
+                {/* Dispatch Sequence Table */}
+                <div className="border border-gray-200 rounded-md overflow-hidden">
+                  <Table>
+                    <TableHeader className="bg-gray-50">
+                      <TableRow>
+                        <TableHead className="text-xs font-medium text-gray-700 w-16">
+                          Order
+                        </TableHead>
+                        <TableHead className="text-xs font-medium text-gray-700">
+                          SO Number
+                        </TableHead>
+                        <TableHead className="text-xs font-medium text-gray-700">Party</TableHead>
+                        <TableHead className="text-xs font-medium text-gray-700">
+                          Customer
+                        </TableHead>
+                        <TableHead className="text-xs font-medium text-gray-700">
+                         LOTS
+                        </TableHead>
+                        <TableHead className="text-xs font-medium text-gray-700">
+                          Total Rolls
+                        </TableHead>
+                        <TableHead className="text-xs font-medium text-gray-700">
+                          Required Rolls
+                        </TableHead>
+                        <TableHead className="text-xs font-medium text-gray-700">
+                          Dispatch Rolls
+                        </TableHead>
+                        <TableHead className="text-xs font-medium text-gray-700">Loading Sheets</TableHead>
+                        <TableHead className="text-xs font-medium text-gray-700">Dispatch Order ID</TableHead>
+                        <TableHead className="text-xs font-medium text-gray-700">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {dispatchItems.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={11} className="text-center py-8 text-gray-500">
+                            No sales orders found
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        dispatchItems.map((group, index) => (
+                          <TableRow
+                            key={group.salesOrderId}
+                            className="border-b border-gray-100"
+                            draggable
+                            onDragStart={() => handleDragStart(index)}
+                            onDragEnter={() => handleDragEnter(index)}
+                            onDragOver={(e) => e.preventDefault()}
+                            onDragEnd={handleDragEnd}
+                          >
+                            <TableCell className="py-3">
+                              <div className="font-medium text-sm cursor-move">#{index + 1} ≡</div>
+                            </TableCell>
+                            <TableCell className="py-3 font-medium">
+                              {group.voucherNumber}
+                            </TableCell>
+                            <TableCell className="py-3">{group.partyName}</TableCell>
+                            <TableCell className="py-3">{group.customerName}</TableCell>
+                            <TableCell className="py-3">
+                              <div className="flex items-center">
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                  {group.allotments.length} lot
+                                  {group.allotments.length !== 1 ? 's' : ''}
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="py-3">{group.totalRolls}</TableCell>
+                            <TableCell className="py-3">{group.totalRequiredRolls}</TableCell>
+                            <TableCell className="py-3">
+                              {group.allotments.reduce(
+                                (sum, item) =>
+                                  sum +
+                                  (item.dispatchRolls !== undefined
+                                    ? item.dispatchRolls
+                                    : item.totalRolls),
+                                0
+                              )}
+                            </TableCell>
+                            <TableCell className="py-3">
+                              {group.loadingSheets && group.loadingSheets.length > 0 ? (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                  {group.loadingSheets.length} sheet{group.loadingSheets.length !== 1 ? 's' : ''}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-gray-500">Will be created</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="py-3">
+                              {group.loadingSheets && group.loadingSheets.length > 0 ? (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                  {group.loadingSheets[0]?.dispatchOrderId || 'N/A'}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-gray-500">Will be created</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="py-3">
+                              <div className="flex space-x-1">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => moveSalesOrderUp(index)}
+                                  disabled={index === 0}
+                                  className="h-6 w-6 p-0"
+                                >
+                                  <ArrowUp className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => moveSalesOrderDown(index)}
+                                  disabled={index === dispatchItems.length - 1}
+                                  className="h-6 w-6 p-0"
+                                >
+                                  <ArrowDown className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>  
+              {/* Navigation Button */}
+              <div className="flex  py-4 justify-end">
+                <Button
+                  onClick={() => setActiveTab('confirm')}
+                  disabled={dispatchItems.length === 0}
+                  className="bg-blue-600 hover:bg-blue-700 text-white h-8 px-4 text-xs"
+                >
+                  Review & Confirm Dispatch
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'confirm' && (
+            <div>
+              {/* Confirmation Summary */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-md p-3 mb-4">
+                <h3 className="text-xs font-semibold text-blue-800 mb-2">Dispatch Confirmation</h3>
+                <p className="text-xs text-gray-600 mb-3">
+                  Please review the details below before confirming the dispatch. You can reorder
+                  the sales orders as needed.
+                </p>
+                    {/* Dispatch Information Form */}
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-md p-3 mb-4">
                 <h3 className="text-xs font-semibold text-blue-800 mb-2">Dispatch Information</h3>
 
@@ -781,292 +1202,6 @@ const DispatchDetails = () => {
                 </div>
               </div>
 
-              {/* Selected Lots Summary */}
-              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-md p-3 mb-4">
-                <h3 className="text-xs font-semibold text-green-800 mb-2">
-                  Selected Sales Orders for Dispatch ({dispatchItems.length})
-                </h3>
-
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
-                  <div className="bg-blue-50 border border-blue-200 rounded-md p-2">
-                    <div className="text-xs text-blue-600 font-medium">Sales Orders</div>
-                    <div className="text-lg font-bold text-blue-800">{dispatchItems.length}</div>
-                  </div>
-                  <div className="bg-green-50 border border-green-200 rounded-md p-2">
-                    <div className="text-xs text-green-600 font-medium">Total Lots</div>
-                    <div className="text-lg font-bold text-green-800">
-                      {dispatchItems.reduce((sum, group) => sum + group.allotments.length, 0)}
-                    </div>
-                  </div>
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-md p-2">
-                    <div className="text-xs text-yellow-600 font-medium">Dispatch Rolls</div>
-                    <div className="text-lg font-bold text-yellow-800">
-                      {dispatchItems.reduce((sum, group) => 
-                        sum + group.allotments.reduce((itemSum, item) => 
-                          itemSum + (item.dispatchRolls !== undefined ? item.dispatchRolls : item.totalRolls), 0), 0)}
-                    </div>
-                  </div>
-                  <div className="bg-purple-50 border border-purple-200 rounded-md p-2">
-                    <div className="text-xs text-purple-600 font-medium">Dispatched Rolls</div>
-                    <div className="text-lg font-bold text-purple-800">
-                      {dispatchItems.reduce((sum, group) => sum + group.totalDispatchedRolls, 0)}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Selected Lots Details */}
-              <div className="border border-gray-200 rounded-md overflow-hidden mb-4">
-                <Table>
-                  <TableHeader className="bg-gray-50">
-                    <TableRow>
-                      <TableHead className="text-xs font-medium text-gray-700 w-12"></TableHead>
-                      <TableHead className="text-xs font-medium text-gray-700">SO Number</TableHead>
-                      <TableHead className="text-xs font-medium text-gray-700">Party</TableHead>
-                      <TableHead className="text-xs font-medium text-gray-700">Customer</TableHead>
-                      <TableHead className="text-xs font-medium text-gray-700">Lotments</TableHead>
-                      <TableHead className="text-xs font-medium text-gray-700">Ready Rolls</TableHead>
-                      <TableHead className="text-xs font-medium text-gray-700">Required Rolls</TableHead>
-                      <TableHead className="text-xs font-medium text-gray-700">Dispatch Rolls</TableHead>
-                      <TableHead className="text-xs font-medium text-gray-700">Dispatched Rolls</TableHead>
-                      <TableHead className="text-xs font-medium text-gray-700">Loading Sheets</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {dispatchItems.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={10} className="text-center py-8 text-gray-500">
-                          No dispatch details found
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      dispatchItems.map((group) => (
-                        <>
-                          <TableRow
-                            key={group.salesOrderId}
-                            className="border-b border-gray-100 bg-gray-50"
-                          >
-                            <TableCell className="py-3">
-                              <div className="font-medium text-sm">SO</div>
-                            </TableCell>
-                            <TableCell className="py-3 font-medium">
-                              {group.voucherNumber}
-                            </TableCell>
-                            <TableCell className="py-3">{group.partyName}</TableCell>
-                            <TableCell className="py-3">{group.customerName}</TableCell>
-                            <TableCell className="py-3">
-                              <div className="flex items-center">
-                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                  {group.allotments.length} lot
-                                  {group.allotments.length !== 1 ? 's' : ''}
-                                </span>
-                              </div>
-                            </TableCell>
-                            <TableCell className="py-3 font-medium">{group.totalRolls}</TableCell>
-                            <TableCell className="py-3 font-medium">{group.totalRequiredRolls}</TableCell>
-                            <TableCell className="py-3">
-                              <Input
-                                type="number"
-                                min="0"
-                                max={group.totalRolls}
-                                value={group.dispatchRolls || ''}
-                                onChange={(e) => {
-                                  const value = e.target.value === '' ? NaN : parseInt(e.target.value);
-                                  const newDispatchRolls = isNaN(value) ? 0 : value;
-                                  const updatedItems = [...dispatchItems];
-                                  const groupIndex = updatedItems.findIndex(
-                                    (g) => g.salesOrderId === group.salesOrderId
-                                  );
-
-                                  if (groupIndex !== -1) {
-                                    updatedItems[groupIndex] = {
-                                      ...group,
-                                      dispatchRolls: Math.min(newDispatchRolls, group.totalRolls),
-                                    };
-
-                                    // Distribute rolls proportionally among allotments
-                                    let remainingRolls = Math.min(
-                                      newDispatchRolls,
-                                      group.totalRolls
-                                    );
-                                    const updatedAllotments = group.allotments.map((allotment) => {
-                                      if (remainingRolls <= 0) {
-                                        return { ...allotment, dispatchRolls: 0 };
-                                      }
-
-                                      // Calculate proportional allocation
-                                      const allotmentProportion =
-                                        allotment.totalRolls / group.totalRolls;
-                                      const allotmentRolls = Math.min(
-                                        Math.round(allotmentProportion * newDispatchRolls),
-                                        allotment.totalRolls,
-                                        remainingRolls
-                                      );
-
-                                      remainingRolls -= allotmentRolls;
-
-                                      return { ...allotment, dispatchRolls: allotmentRolls };
-                                    });
-
-                                    // Distribute any remaining rolls to the first allotments
-                                    if (remainingRolls > 0) {
-                                      for (
-                                        let i = 0;
-                                        i < updatedAllotments.length && remainingRolls > 0;
-                                        i++
-                                      ) {
-                                        const allotment = updatedAllotments[i];
-                                        if (allotment.dispatchRolls < allotment.totalRolls) {
-                                          const additionalRolls = Math.min(
-                                            remainingRolls,
-                                            allotment.totalRolls - allotment.dispatchRolls
-                                          );
-                                          updatedAllotments[i] = {
-                                            ...allotment,
-                                            dispatchRolls:
-                                              allotment.dispatchRolls + additionalRolls,
-                                          };
-                                          remainingRolls -= additionalRolls;
-                                        }
-                                      }
-                                    }
-
-                                    updatedItems[groupIndex] = {
-                                      ...updatedItems[groupIndex],
-                                      allotments: updatedAllotments,
-                                      dispatchRolls: newDispatchRolls,
-                                    };
-                                  }
-
-                                  setDispatchItems(updatedItems);
-                                }}
-                                className="text-xs h-8 w-20"
-                              />
-                            </TableCell>
-                            <TableCell className="py-3 font-medium">
-                              {group.totalDispatchedRolls}
-                            </TableCell>
-                            <TableCell className="py-3 font-medium">
-                              {group.loadingSheets && group.loadingSheets.length > 0 ? (
-                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                                  {group.loadingSheets.length} sheet{group.loadingSheets.length !== 1 ? 's' : ''}
-                                </span>
-                              ) : (
-                                <span className="text-xs text-gray-500">Will be created</span>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                          {/* Expanded view for allotments in this group */}
-                          {group.allotments.map((allotment, allotmentIndex) => (
-                            <TableRow
-                              key={`${group.salesOrderId}-${allotment.lotNo}`}
-                              className="border-b border-gray-100"
-                            >
-                              <TableCell className="py-2 pl-8">
-                                <div className="text-xs text-muted-foreground">Lot</div>
-                              </TableCell>
-                              <TableCell className="py-2 text-xs text-muted-foreground" colSpan={2}>
-                             
-                              </TableCell>
-                              <TableCell className="py-2" colSpan={2}>
-                                <div className="font-medium text-sm">{allotment.lotNo}</div>
-                                <div className="text-xs text-muted-foreground">
-                                  {allotment.tape}
-                                </div>
-                              </TableCell>
-                              <TableCell className="py-2">{allotment.totalRolls}</TableCell>
-                              <TableCell className="py-2">{allotment.totalRequiredRolls}</TableCell>
-                              <TableCell className="py-2">
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  max={allotment.totalRolls}
-                                  value={allotment.dispatchRolls || ''}
-                                  onChange={(e) => {
-                                    const value = e.target.value === '' ? NaN : parseInt(e.target.value);
-                                    const newDispatchRolls = isNaN(value) ? 0 : value;
-                                    const updatedItems = [...dispatchItems];
-                                    const groupIndex = updatedItems.findIndex(
-                                      (g) => g.salesOrderId === group.salesOrderId
-                                    );
-
-                                    if (groupIndex !== -1) {
-                                      const allotmentIndex = updatedItems[
-                                        groupIndex
-                                      ].allotments.findIndex((a) => a.lotNo === allotment.lotNo);
-                                      if (allotmentIndex !== -1) {
-                                        updatedItems[groupIndex].allotments[allotmentIndex] = {
-                                          ...allotment,
-                                          dispatchRolls: Math.min(
-                                            newDispatchRolls,
-                                            allotment.totalRolls
-                                          ),
-                                        };
-
-                                        // Update group dispatch rolls total
-                                        const groupDispatchRolls = updatedItems[
-                                          groupIndex
-                                        ].allotments.reduce(
-                                          (sum, a) => sum + (a.dispatchRolls || 0),
-                                          0
-                                        );
-
-                                        updatedItems[groupIndex] = {
-                                          ...updatedItems[groupIndex],
-                                          dispatchRolls: groupDispatchRolls,
-                                        };
-                                      }
-                                    }
-
-                                    setDispatchItems(updatedItems);
-                                  }}
-                                  className="text-xs h-8 w-20"
-                                />
-                              </TableCell>
-                              <TableCell className="py-2">
-                                {allotment.dispatchedRolls}
-                              </TableCell>
-                              <TableCell className="py-2">
-                                {allotment.loadingSheet ? (
-                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                                    {allotment.loadingSheet.loadingNo}
-                                  </span>
-                                ) : (
-                                  <span className="text-xs text-gray-500">Will be created</span>
-                                )}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-
-              {/* Navigation Button */}
-              <div className="flex justify-end">
-                <Button
-                  onClick={() => setActiveTab('confirm')}
-                  disabled={dispatchItems.length === 0}
-                  className="bg-blue-600 hover:bg-blue-700 text-white h-8 px-4 text-xs"
-                >
-                  Review & Confirm Dispatch
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'confirm' && (
-            <div>
-              {/* Confirmation Summary */}
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-md p-3 mb-4">
-                <h3 className="text-xs font-semibold text-blue-800 mb-2">Dispatch Confirmation</h3>
-                <p className="text-xs text-gray-600 mb-3">
-                  Please review the details below before confirming the dispatch. You can reorder
-                  the sales orders as needed.
-                </p>
-
                 {/* Dispatch Information Review */}
                 <div className="bg-white border border-gray-200 rounded-md p-3 mb-4">
                   <h4 className="text-xs font-semibold text-gray-700 mb-2">Dispatch Information</h4>
@@ -1142,7 +1277,8 @@ const DispatchDetails = () => {
                           Customer
                         </TableHead>
                         <TableHead className="text-xs font-medium text-gray-700">
-                          Allotments
+                          Lots
+                         LOTS
                         </TableHead>
                         <TableHead className="text-xs font-medium text-gray-700">
                           Total Rolls
