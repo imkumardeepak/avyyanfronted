@@ -18,6 +18,8 @@ import type { DispatchPlanningDto, LoadingSheetDto } from '@/types/api-types';
 import QRCode from 'qrcode';
 import { pdf } from '@react-pdf/renderer';
 import DispatchOrderPDF from '@/components/DispatchOrderPDF';
+import { transportApi, courierApi } from '@/lib/api-client';
+import type { TransportResponseDto, CourierResponseDto } from '@/types/api-types';
 
 const LoadingSheet = () => {
   const [loadingSheets, setLoadingSheets] = useState<LoadingSheetDto[]>([]);
@@ -149,11 +151,42 @@ const LoadingSheet = () => {
         return;
       }
       
+      // Get the first sheet to check if it's transport or courier
+      const firstSheet = validSheets[0];
+      
+      // Fetch transport or courier details if needed
+      let transportDetails: TransportResponseDto | null = null;
+      let courierDetails: CourierResponseDto | null = null;
+      
+      if (firstSheet.isTransport && firstSheet.transportId) {
+        try {
+          const response = await transportApi.getTransport(firstSheet.transportId);
+          transportDetails = apiUtils.extractData(response);
+        } catch (error) {
+          console.error('Error fetching transport details:', error);
+        }
+      } else if (firstSheet.isCourier && firstSheet.courierId) {
+        try {
+          const response = await courierApi.getCourier(firstSheet.courierId);
+          courierDetails = apiUtils.extractData(response);
+        } catch (error) {
+          console.error('Error fetching courier details:', error);
+        }
+      }
+      
       // Generate QR code for the dispatch order ID
       const qrCodeDataUrl = await generateQRCode(dispatchOrderId);
       
       // Create PDF document with validation
-      const doc = <DispatchOrderPDF dispatchOrderId={dispatchOrderId} sheets={validSheets} qrCodeDataUrl={qrCodeDataUrl || ''} />;
+      const doc = (
+        <DispatchOrderPDF 
+          dispatchOrderId={dispatchOrderId} 
+          sheets={validSheets} 
+          qrCodeDataUrl={qrCodeDataUrl || ''} 
+          transportDetails={transportDetails}
+          courierDetails={courierDetails}
+        />
+      );
       
       // Check if doc is valid before proceeding
       if (!doc) {

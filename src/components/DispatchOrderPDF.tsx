@@ -1,6 +1,7 @@
 import React from 'react';
 import { Page, Text, View, Document, StyleSheet, Image } from '@react-pdf/renderer';
 import type { LoadingSheetDto } from '@/types/api-types';
+import type { TransportResponseDto, CourierResponseDto } from '@/types/api-types';
 
 // Create styles with compact layout for single page landscape
 const styles = StyleSheet.create({
@@ -261,9 +262,11 @@ interface DispatchOrderPDFProps {
   dispatchOrderId: string;
   sheets: LoadingSheetDto[];
   qrCodeDataUrl: string; // Single QR code for the dispatch order
+  transportDetails?: TransportResponseDto | null;
+  courierDetails?: CourierResponseDto | null;
 }
 
-const DispatchOrderPDF: React.FC<DispatchOrderPDFProps> = ({ dispatchOrderId, sheets, qrCodeDataUrl }) => {
+const DispatchOrderPDF: React.FC<DispatchOrderPDFProps> = ({ dispatchOrderId, sheets, qrCodeDataUrl, transportDetails, courierDetails }) => {
   // Group sheets by lotment ID (lotNo)
   const groupedByLotment: Record<string, LoadingSheetDto[]> = {};
   
@@ -306,23 +309,84 @@ const DispatchOrderPDF: React.FC<DispatchOrderPDFProps> = ({ dispatchOrderId, sh
                 <Text style={styles.value}>{sheets.length}</Text>
               </View>
               
-              <Text style={[styles.sectionHeader, { marginTop: 6 }]}>VEHICLE INFORMATION</Text>
-              <View style={styles.row}>
-                <Text style={styles.label}>Vehicle Number:</Text>
-                <Text style={styles.value}>{firstSheet.vehicleNo}</Text>
-              </View>
-              <View style={styles.row}>
-                <Text style={styles.label}>Driver Name:</Text>
-                <Text style={styles.value}>{firstSheet.driverName}</Text>
-              </View>
-              <View style={styles.row}>
-                <Text style={styles.label}>License Number:</Text>
-                <Text style={styles.value}>{firstSheet.license}</Text>
-              </View>
-              <View style={styles.row}>
-                <Text style={styles.label}>Mobile Number:</Text>
-                <Text style={styles.value}>{firstSheet.mobileNumber}</Text>
-              </View>
+              {/* Display either transport or courier information, or fallback to vehicle info */}
+              {transportDetails ? (
+                <>
+                  <Text style={[styles.sectionHeader, { marginTop: 6 }]}>TRANSPORT INFORMATION</Text>
+                  <View style={styles.row}>
+                    <Text style={styles.label}>Transport Name:</Text>
+                    <Text style={styles.value}>{transportDetails.transportName}</Text>
+                  </View>
+                  <View style={styles.row}>
+                    <Text style={styles.label}>Contact Person:</Text>
+                    <Text style={styles.value}>{transportDetails.contactPerson || 'N/A'}</Text>
+                  </View>
+                  <View style={styles.row}>
+                    <Text style={styles.label}>Vehicle Number:</Text>
+                    <Text style={styles.value}>{transportDetails.vehicleNumber || firstSheet.vehicleNo || 'N/A'}</Text>
+                  </View>
+                  <View style={styles.row}>
+                    <Text style={styles.label}>Driver Name:</Text>
+                    <Text style={styles.value}>{transportDetails.driverName || firstSheet.driverName || 'N/A'}</Text>
+                  </View>
+                  <View style={styles.row}>
+                    <Text style={styles.label}>Driver Number:</Text>
+                    <Text style={styles.value}>{transportDetails.driverNumber || 'N/A'}</Text>
+                  </View>
+                  <View style={styles.row}>
+                    <Text style={styles.label}>License Number:</Text>
+                    <Text style={styles.value}>{transportDetails.licenseNumber || firstSheet.license || 'N/A'}</Text>
+                  </View>
+                  <View style={styles.row}>
+                    <Text style={styles.label}>Mobile Number:</Text>
+                    <Text style={styles.value}>{transportDetails.driverNumber || firstSheet.mobileNumber || 'N/A'}</Text>
+                  </View>
+                </>
+              ) : courierDetails ? (
+                <>
+                  <Text style={[styles.sectionHeader, { marginTop: 6 }]}>COURIER INFORMATION</Text>
+                  <View style={styles.row}>
+                    <Text style={styles.label}>Courier Name:</Text>
+                    <Text style={styles.value}>{courierDetails.courierName}</Text>
+                  </View>
+                  <View style={styles.row}>
+                    <Text style={styles.label}>Contact Person:</Text>
+                    <Text style={styles.value}>{courierDetails.contactPerson || 'N/A'}</Text>
+                  </View>
+                  <View style={styles.row}>
+                    <Text style={styles.label}>Phone:</Text>
+                    <Text style={styles.value}>{courierDetails.phone || firstSheet.mobileNumber || 'N/A'}</Text>
+                  </View>
+                  <View style={styles.row}>
+                    <Text style={styles.label}>Email:</Text>
+                    <Text style={styles.value}>{courierDetails.email || 'N/A'}</Text>
+                  </View>
+                  <View style={styles.row}>
+                    <Text style={styles.label}>Address:</Text>
+                    <Text style={styles.value}>{courierDetails.address || 'N/A'}</Text>
+                  </View>
+                </>
+              ) : (
+                <>
+                  <Text style={[styles.sectionHeader, { marginTop: 6 }]}>VEHICLE INFORMATION</Text>
+                  <View style={styles.row}>
+                    <Text style={styles.label}>Vehicle Number:</Text>
+                    <Text style={styles.value}>{firstSheet.vehicleNo}</Text>
+                  </View>
+                  <View style={styles.row}>
+                    <Text style={styles.label}>Driver Name:</Text>
+                    <Text style={styles.value}>{firstSheet.driverName}</Text>
+                  </View>
+                  <View style={styles.row}>
+                    <Text style={styles.label}>License Number:</Text>
+                    <Text style={styles.value}>{firstSheet.license}</Text>
+                  </View>
+                  <View style={styles.row}>
+                    <Text style={styles.label}>Mobile Number:</Text>
+                    <Text style={styles.value}>{firstSheet.mobileNumber}</Text>
+                  </View>
+                </>
+              )}
             </View>
             
             {/* Right Column - QR Code */}
@@ -384,7 +448,7 @@ const DispatchOrderPDF: React.FC<DispatchOrderPDFProps> = ({ dispatchOrderId, sh
         {/* Lotment-wise Details */}
         {Object.entries(groupedByLotment).map(([lotmentId, lotmentSheets]) => (
           <View key={lotmentId} style={styles.lotmentSection}>
-            <Text style={styles.lotmentHeader}>Lotment: {lotmentId}</Text>
+            <Text style={styles.lotmentHeader}>Lot: {lotmentId}</Text>
             
             <View style={styles.compactTable}>
               <View style={styles.compactTableRow}>
@@ -429,17 +493,9 @@ const DispatchOrderPDF: React.FC<DispatchOrderPDFProps> = ({ dispatchOrderId, sh
             
             {/* Summary of quantities for this lotment */}
             <View style={[styles.row, { marginTop: 4 }]}>
-              <Text style={styles.label}>Required Rolls:</Text>
-              <Text style={styles.value}>
-                {lotmentSheets.reduce((sum, sheet) => sum + (sheet.totalRequiredRolls || 0), 0)}
-              </Text>
               <Text style={styles.label}>Dispatched Planned Rolls:</Text>
               <Text style={styles.value}>
                 {lotmentSheets.reduce((sum, sheet) => sum + (sheet.totalDispatchedRolls || 0), 0)}
-              </Text>
-              <Text style={styles.label}>Remaining Rolls:</Text>
-              <Text style={styles.value}>
-                {lotmentSheets.reduce((sum, sheet) => sum + (sheet.totalRequiredRolls - sheet.totalDispatchedRolls || 0), 0)}
               </Text>
             </View>
           </View>

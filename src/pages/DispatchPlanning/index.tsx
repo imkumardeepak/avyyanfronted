@@ -67,9 +67,6 @@ interface SalesOrderGroup {
 
 interface RollDetail {
   fgRollNo: string;
-  netWeight: number;
-  rollNo: string;
-  machineName: string;
 }
 
 const DispatchPlanning = () => {
@@ -148,14 +145,8 @@ const DispatchPlanning = () => {
             const roll = rollConfirmations.find(r => r.fgRollNo?.toString() === fgRollNo);
             
             if (roll) {
-              const netWeight = roll.netWeight || 0;
-              totalNetWeight += netWeight;
-              
               rollDetails.push({
-                fgRollNo: roll.fgRollNo?.toString() || '',
-                netWeight,
-                rollNo: roll.rollNo,
-                machineName: roll.machineName
+                fgRollNo: roll.fgRollNo?.toString() || ''
               });
             }
           } catch (error) {
@@ -764,8 +755,6 @@ const DispatchPlanning = () => {
                         {selectedLot.rolls.map((roll) => (
                           <TableRow key={roll.fgRollNo} className="border-b border-gray-100">
                             <TableCell className="py-2 px-3 text-sm">{roll.fgRollNo}</TableCell>
-                            <TableCell className="py-2 px-3 text-sm">{roll.machineName}</TableCell>
-                            <TableCell className="py-2 px-3 text-sm">{roll.rollNo}</TableCell>
                           </TableRow>
                         ))}
                         <TableRow className="bg-gray-50 font-medium">

@@ -15,15 +15,42 @@ import {
 } from '@/components/ui/table';
 import { ArrowLeft, Save, Truck, FileText, CheckCircle, ArrowUp, ArrowDown } from 'lucide-react';
 import { toast } from '@/lib/toast';
-import { storageCaptureApi, dispatchPlanningApi, apiUtils } from '@/lib/api-client';
+import { storageCaptureApi, dispatchPlanningApi, apiUtils, transportApi, courierApi } from '@/lib/api-client';
 import type { 
   StorageCaptureResponseDto, 
   UpdateStorageCaptureRequestDto,
   CreateDispatchPlanningRequestDto,
   DispatchPlanningDto,
   CreateDispatchedRollRequestDto,
-  DispatchedRollDto
+  DispatchedRollDto,
+  TransportResponseDto,
+  CourierResponseDto
 } from '@/types/api-types';
+
+// Define types for transport and courier
+interface TransportMaster {
+  id: number;
+  transportName: string;
+  contactPerson: string;
+  phone: string;
+  email: string;
+  address: string;
+  vehicleNumber: string;
+  driverName: string;
+  driverNumber: string;
+  maximumCapacityKgs: number | null;
+  isActive: boolean;
+}
+
+interface CourierMaster {
+  id: number;
+  courierName: string;
+  contactPerson: string;
+  phone: string;
+  email: string;
+  address: string;
+  isActive: boolean;
+}
 
 // Define types for our dispatch details data
 interface DispatchPlanningItem {
@@ -52,9 +79,6 @@ interface DispatchPlanningItem {
 
 interface RollDetail {
   fgRollNo: string;
-  netWeight: number;
-  rollNo: string;
-  machineName: string;
 }
 
 // New interface for grouping by sales order
@@ -164,6 +188,90 @@ const DispatchDetails = () => {
   const dragItem = useRef<number | null>(null);
   const dragOverItem = useRef<number | null>(null);
 
+  // Transport and Courier states
+  const [transports, setTransports] = useState<TransportMaster[]>([]);
+  const [couriers, setCouriers] = useState<CourierMaster[]>([]);
+  const [isTransport, setIsTransport] = useState(false);
+  const [isCourier, setIsCourier] = useState(false);
+  const [selectedTransport, setSelectedTransport] = useState<number | null>(null);
+  const [selectedCourier, setSelectedCourier] = useState<number | null>(null);
+  const [transportDetails, setTransportDetails] = useState<TransportMaster | null>(null);
+  const [courierDetails, setCourierDetails] = useState<CourierMaster | null>(null);
+
+  // Fetch transports and couriers
+  useEffect(() => {
+    const fetchTransportsAndCouriers = async () => {
+      try {
+        // Fetch transports
+        const transportResponse = await transportApi.getAllTransports();
+        const transportData = apiUtils.extractData(transportResponse);
+        setTransports(transportData.map((t: TransportResponseDto) => ({
+          id: t.id,
+          transportName: t.transportName,
+          contactPerson: t.contactPerson || '',
+          phone: t.driverNumber || '', // Use driverNumber as phone
+          email: '',
+          address: t.address || '',
+          vehicleNumber: t.vehicleNumber || '',
+          driverName: t.driverName || '',
+          driverNumber: t.driverNumber || '',
+          maximumCapacityKgs: t.maximumCapacityKgs || null,
+          isActive: t.isActive
+        })));
+
+        // Fetch couriers
+        const courierResponse = await courierApi.getAllCouriers();
+        const courierData = apiUtils.extractData(courierResponse);
+        setCouriers(courierData.map((c: CourierResponseDto) => ({
+          id: c.id,
+          courierName: c.courierName,
+          contactPerson: c.contactPerson || '',
+          phone: c.phone || '',
+          email: c.email || '',
+          address: c.address || '',
+          isActive: c.isActive
+        })));
+      } catch (error) {
+        console.error('Error fetching transports/couriers:', error);
+        toast.error('Error', 'Failed to fetch transport/courier data');
+      }
+    };
+
+    fetchTransportsAndCouriers();
+  }, []);
+
+  // Handle transport selection
+  const handleTransportChange = (transportId: number) => {
+    setSelectedTransport(transportId);
+    const transport = transports.find(t => t.id === transportId) || null;
+    setTransportDetails(transport);
+    
+    // Auto-populate vehicle and driver details if available
+    if (transport) {
+      setDispatchData(prev => ({
+        ...prev,
+        vehicleNo: transport.vehicleNumber || prev.vehicleNo,
+        driverName: transport.driverName || prev.driverName,
+        mobileNumber: transport.phone || prev.mobileNumber // Auto-populate mobile number from driver number
+      }));
+    }
+  };
+
+  // Handle courier selection
+  const handleCourierChange = (courierId: number) => {
+    setSelectedCourier(courierId);
+    const courier = couriers.find(c => c.id === courierId) || null;
+    setCourierDetails(courier);
+    
+    // Auto-populate mobile number if available
+    if (courier) {
+      setDispatchData(prev => ({
+        ...prev,
+        mobileNumber: courier.phone || prev.mobileNumber
+      }));
+    }
+  };
+
   // Function to handle drag start
   const handleDragStart = (index: number) => {
     dragItem.current = index;
@@ -215,6 +323,19 @@ const DispatchDetails = () => {
     try {
       setLoading(true);
 
+      // Validation
+      if (isTransport && !selectedTransport) {
+        toast.error('Error', 'Please select a transport');
+        setLoading(false);
+        return;
+      }
+
+      if (isCourier && !selectedCourier) {
+        toast.error('Error', 'Please select a courier');
+        setLoading(false);
+        return;
+      }
+
       // Get all storage captures for the selected lots
       const storageResponse = await storageCaptureApi.getAllStorageCaptures();
       const allStorageCaptures = apiUtils.extractData(storageResponse);
@@ -227,7 +348,7 @@ const DispatchDetails = () => {
           // Create dispatch planning record for this lot
           const dispatchPlanningData: CreateDispatchPlanningRequestDto = {
             lotNo: item.lotNo,
-            salesOrderId: item.salesOrderId || 0,
+            salesOrderId: item.salesOrder?.id || 0,
             salesOrderItemId: item.salesOrderItemId || 0,
             customerName: item.customerName,
             tape: item.tape,
@@ -240,6 +361,11 @@ const DispatchDetails = () => {
             license: dispatchData.license,
             mobileNumber: dispatchData.mobileNumber,
             remarks: dispatchData.remarks,
+            // Transport/Courier data
+            isTransport: isTransport,
+            isCourier: isCourier,
+            transportId: isTransport ? selectedTransport : null,
+            courierId: isCourier ? selectedCourier : null,
             // LoadingNo and DispatchOrderId will be auto-generated by the backend
           };
           
@@ -289,10 +415,6 @@ const DispatchDetails = () => {
               dispatchPlanningId: dispatchPlanning.id,
               lotNo: capture.lotNo,
               fgRollNo: capture.fgRollNo,
-              locationCode: capture.locationCode,
-              netWeight: 0, // This would need to be fetched from roll data
-              machineName: '', // This would need to be fetched from roll data
-              rollNo: capture.fgRollNo, // Using FGRollNo as RollNo for now
               isLoaded: false, // Set isLoaded to true when creating dispatch
               loadedAt: new Date().toISOString(),
               loadedBy: 'System', // This should be the current user
@@ -396,6 +518,176 @@ const DispatchDetails = () => {
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-md p-3 mb-4">
                 <h3 className="text-xs font-semibold text-blue-800 mb-2">Dispatch Information</h3>
 
+                {/* Transport/Courier Selection */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="transportCheckbox"
+                      checked={isTransport}
+                      onChange={(e) => {
+                        const isChecked = e.target.checked;
+                        setIsTransport(isChecked);
+                        if (isChecked) {
+                          setIsCourier(false);
+                          setSelectedCourier(null);
+                          setCourierDetails(null);
+                        } else {
+                          setSelectedTransport(null);
+                          setTransportDetails(null);
+                        }
+                      }}
+                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <Label htmlFor="transportCheckbox" className="text-xs font-medium text-gray-700">
+                      Transport
+                    </Label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="courierCheckbox"
+                      checked={isCourier}
+                      onChange={(e) => {
+                        const isChecked = e.target.checked;
+                        setIsCourier(isChecked);
+                        if (isChecked) {
+                          setIsTransport(false);
+                          setSelectedTransport(null);
+                          setTransportDetails(null);
+                        } else {
+                          setSelectedCourier(null);
+                          setCourierDetails(null);
+                        }
+                      }}
+                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <Label htmlFor="courierCheckbox" className="text-xs font-medium text-gray-700">
+                      Courier
+                    </Label>
+                  </div>
+                </div>
+
+                {/* Transport Dropdown */}
+                {isTransport && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                    <div className="space-y-1">
+                      <Label htmlFor="transportSelect" className="text-xs font-medium text-gray-700">
+                        Select Transport
+                      </Label>
+                      <select
+                        id="transportSelect"
+                        value={selectedTransport || ''}
+                        onChange={(e) => handleTransportChange(Number(e.target.value))}
+                        className="w-full rounded-md border border-gray-300 bg-white py-1.5 px-3 text-xs shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      >
+                        <option value="">Select a transport</option>
+                        {transports
+                          .filter(t => t.isActive)
+                          .map((transport) => (
+                            <option key={transport.id} value={transport.id}>
+                              {transport.transportName}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+
+                    {transportDetails && (
+                      <div className="bg-white border border-gray-200 rounded-md p-3">
+                        <h4 className="text-xs font-semibold text-gray-700 mb-2">Transport Details</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                          <div>
+                            <span className="font-medium">Name:</span> {transportDetails.transportName}
+                          </div>
+                          <div>
+                            <span className="font-medium">Contact Person:</span> {transportDetails.contactPerson}
+                          </div>
+                          <div>
+                            <span className="font-medium">Phone:</span> {transportDetails.phone}
+                          </div>
+                          <div>
+                            <span className="font-medium">Email:</span> {transportDetails.email}
+                          </div>
+                          <div className="md:col-span-2">
+                            <span className="font-medium">Address:</span> {transportDetails.address}
+                          </div>
+                          {transportDetails.vehicleNumber && (
+                            <div>
+                              <span className="font-medium">Vehicle No:</span> {transportDetails.vehicleNumber}
+                            </div>
+                          )}
+                          {transportDetails.driverName && (
+                            <div>
+                              <span className="font-medium">Driver:</span> {transportDetails.driverName}
+                            </div>
+                          )}
+                          {transportDetails.driverNumber && (
+                            <div>
+                              <span className="font-medium">Driver Number:</span> {transportDetails.driverNumber}
+                            </div>
+                          )}
+                          {transportDetails.maximumCapacityKgs && (
+                            <div>
+                              <span className="font-medium">Capacity:</span> {transportDetails.maximumCapacityKgs} kgs
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Courier Dropdown */}
+                {isCourier && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                    <div className="space-y-1">
+                      <Label htmlFor="courierSelect" className="text-xs font-medium text-gray-700">
+                        Select Courier
+                      </Label>
+                      <select
+                        id="courierSelect"
+                        value={selectedCourier || ''}
+                        onChange={(e) => handleCourierChange(Number(e.target.value))}
+                        className="w-full rounded-md border border-gray-300 bg-white py-1.5 px-3 text-xs shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      >
+                        <option value="">Select a courier</option>
+                        {couriers
+                          .filter(c => c.isActive)
+                          .map((courier) => (
+                            <option key={courier.id} value={courier.id}>
+                              {courier.courierName}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+
+                    {courierDetails && (
+                      <div className="bg-white border border-gray-200 rounded-md p-3">
+                        <h4 className="text-xs font-semibold text-gray-700 mb-2">Courier Details</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                          <div>
+                            <span className="font-medium">Name:</span> {courierDetails.courierName}
+                          </div>
+                          <div>
+                            <span className="font-medium">Contact Person:</span> {courierDetails.contactPerson}
+                          </div>
+                          <div>
+                            <span className="font-medium">Phone:</span> {courierDetails.phone}
+                          </div>
+                          <div>
+                            <span className="font-medium">Email:</span> {courierDetails.email}
+                          </div>
+                          <div className="md:col-span-2">
+                            <span className="font-medium">Address:</span> {courierDetails.address}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ... existing form fields ... */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div className="space-y-1">
                     <Label htmlFor="dispatchDate" className="text-xs font-medium text-gray-700">
@@ -799,6 +1091,23 @@ const DispatchDetails = () => {
                       <Label className="text-xs text-gray-500">Mobile Number</Label>
                       <div className="text-sm">{dispatchData.mobileNumber || 'N/A'}</div>
                     </div>
+                    {/* Transport/Courier Information */}
+                    {isTransport && (
+                      <div>
+                        <Label className="text-xs text-gray-500">Transport</Label>
+                        <div className="text-sm">
+                          {transportDetails ? transportDetails.transportName : 'Not selected'}
+                        </div>
+                      </div>
+                    )}
+                    {isCourier && (
+                      <div>
+                        <Label className="text-xs text-gray-500">Courier</Label>
+                        <div className="text-sm">
+                          {courierDetails ? courierDetails.courierName : 'Not selected'}
+                        </div>
+                      </div>
+                    )}
                     <div className="md:col-span-3">
                       <Label className="text-xs text-gray-500">Remarks</Label>
                       <div className="text-sm">{dispatchData.remarks || 'N/A'}</div>
