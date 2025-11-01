@@ -420,7 +420,7 @@ const DispatchPlanning = () => {
               <div className="text-lg font-bold text-blue-800">{filteredItems.length}</div>
             </div>
             <div className="bg-green-50 border border-green-200 rounded-md p-3">
-              <div className="text-xs text-green-600 font-medium">Total Allotments</div>
+              <div className="text-xs text-green-600 font-medium">Total Lots</div>
               <div className="text-lg font-bold text-green-800">
                 {filteredItems.reduce((sum, group) => sum + group.allotments.length, 0)}
               </div>
@@ -451,7 +451,7 @@ const DispatchPlanning = () => {
                     <TableHead className="text-xs font-medium text-gray-700">SO Number</TableHead>
                     <TableHead className="text-xs font-medium text-gray-700">Party</TableHead>
                     <TableHead className="text-xs font-medium text-gray-700">Customer</TableHead>
-                    <TableHead className="text-xs font-medium text-gray-700">Lotment</TableHead>
+                    <TableHead className="text-xs font-medium text-gray-700">Lot</TableHead>
                     <TableHead className="text-xs font-medium text-gray-700">Ready Rolls</TableHead>
                     <TableHead className="text-xs font-medium text-gray-700">Required Rolls</TableHead>
                     <TableHead className="text-xs font-medium text-gray-700">Dispatched Rolls</TableHead>

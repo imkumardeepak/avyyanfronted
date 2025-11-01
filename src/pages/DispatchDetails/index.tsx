@@ -1108,11 +1108,11 @@ const DispatchDetails = () => {
                   </div>
                 )}
 
-                {/* ... existing form fields ... */}
+                {/* Grid with dispatch data fields - removing vehicle, driver, license, and mobile number fields */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div className="space-y-1">
                     <Label htmlFor="dispatchDate" className="text-xs font-medium text-gray-700">
-                      Dispatch Date
+                      Dispatch Planning Date
                     </Label>
                     <Input
                       id="dispatchDate"
@@ -1125,66 +1125,8 @@ const DispatchDetails = () => {
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    <Label htmlFor="vehicleNo" className="text-xs font-medium text-gray-700">
-                      Vehicle Number
-                    </Label>
-                    <Input
-                      id="vehicleNo"
-                      placeholder="Enter vehicle number"
-                      value={dispatchData.vehicleNo}
-                      onChange={(e) =>
-                        setDispatchData({ ...dispatchData, vehicleNo: e.target.value })
-                      }
-                      className="text-xs h-8"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label htmlFor="driverName" className="text-xs font-medium text-gray-700">
-                      Driver Name
-                    </Label>
-                    <Input
-                      id="driverName"
-                      placeholder="Enter driver name"
-                      value={dispatchData.driverName}
-                      onChange={(e) =>
-                        setDispatchData({ ...dispatchData, driverName: e.target.value })
-                      }
-                      className="text-xs h-8"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label htmlFor="license" className="text-xs font-medium text-gray-700">
-                      License
-                    </Label>
-                    <Input
-                      id="license"
-                      placeholder="Enter license number"
-                      value={dispatchData.license}
-                      onChange={(e) =>
-                        setDispatchData({ ...dispatchData, license: e.target.value })
-                      }
-                      className="text-xs h-8"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label htmlFor="mobileNumber" className="text-xs font-medium text-gray-700">
-                      Mobile Number
-                    </Label>
-                    <Input
-                      id="mobileNumber"
-                      placeholder="Enter mobile number"
-                      value={dispatchData.mobileNumber}
-                      onChange={(e) =>
-                        setDispatchData({ ...dispatchData, mobileNumber: e.target.value })
-                      }
-                      className="text-xs h-8"
-                    />
-                  </div>
-
+                  {/* Removed vehicleNo, driverName, license, and mobileNumber fields as requested */}
+                  
                   <div className="md:col-span-3 space-y-1">
                     <Label htmlFor="remarks" className="text-xs font-medium text-gray-700">
                       Remarks
@@ -1202,230 +1144,47 @@ const DispatchDetails = () => {
                 </div>
               </div>
 
-                {/* Dispatch Information Review */}
-                <div className="bg-white border border-gray-200 rounded-md p-3 mb-4">
-                  <h4 className="text-xs font-semibold text-gray-700 mb-2">Dispatch Information</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                    <div>
-                      <Label className="text-xs text-gray-500">Dispatch Date</Label>
-                      <div className="text-sm">{dispatchData.dispatchDate || 'N/A'}</div>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-gray-500">Vehicle Number</Label>
-                      <div className="text-sm">{dispatchData.vehicleNo || 'N/A'}</div>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-gray-500">Driver Name</Label>
-                      <div className="text-sm">{dispatchData.driverName || 'N/A'}</div>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-gray-500">License</Label>
-                      <div className="text-sm">{dispatchData.license || 'N/A'}</div>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-gray-500">Mobile Number</Label>
-                      <div className="text-sm">{dispatchData.mobileNumber || 'N/A'}</div>
-                    </div>
-                    {/* Transport/Courier Information */}
-                    {isTransport && (
-                      <div>
-                        <Label className="text-xs text-gray-500">Transport</Label>
-                        <div className="text-sm">
-                          {transportDetails ? transportDetails.transportName : 'Not selected'}
-                        </div>
-                      </div>
-                    )}
-                    {isCourier && (
-                      <div>
-                        <Label className="text-xs text-gray-500">Courier</Label>
-                        <div className="text-sm">
-                          {courierDetails ? courierDetails.courierName : 'Not selected'}
-                        </div>
-                      </div>
-                    )}
-                    <div className="md:col-span-3">
-                      <Label className="text-xs text-gray-500">Remarks</Label>
-                      <div className="text-sm">{dispatchData.remarks || 'N/A'}</div>
+          
+
+              {/* Dispatch Summary */}
+              <div className="bg-white border border-gray-200 rounded-md p-3 mt-4">
+                <h4 className="text-xs font-semibold text-gray-700 mb-2">Dispatch Summary</h4>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
+                  <div className="bg-blue-50 border border-blue-200 rounded-md p-2">
+                    <div className="text-xs text-blue-600 font-medium">Sales Orders</div>
+                    <div className="text-lg font-bold text-blue-800">{dispatchItems.length}</div>
+                  </div>
+                  <div className="bg-green-50 border border-green-200 rounded-md p-2">
+                    <div className="text-xs text-green-600 font-medium">Total Lots</div>
+                    <div className="text-lg font-bold text-green-800">
+                      {dispatchItems.reduce((sum, group) => sum + group.allotments.length, 0)}
                     </div>
                   </div>
-                </div>
-
-                {/* Sequence Reordering Instructions */}
-                <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-4">
-                  <h4 className="text-xs font-semibold text-yellow-800 mb-1">
-                    Reorder Sales Orders
-                  </h4>
-                  <p className="text-xs text-yellow-700">
-                    Drag and drop the sales orders to reorder them in the sequence you want them to
-                    be dispatched.
-                  </p>
-                </div>
-
-                {/* Dispatch Sequence Table */}
-                <div className="border border-gray-200 rounded-md overflow-hidden">
-                  <Table>
-                    <TableHeader className="bg-gray-50">
-                      <TableRow>
-                        <TableHead className="text-xs font-medium text-gray-700 w-16">
-                          Order
-                        </TableHead>
-                        <TableHead className="text-xs font-medium text-gray-700">
-                          SO Number
-                        </TableHead>
-                        <TableHead className="text-xs font-medium text-gray-700">Party</TableHead>
-                        <TableHead className="text-xs font-medium text-gray-700">
-                          Customer
-                        </TableHead>
-                        <TableHead className="text-xs font-medium text-gray-700">
-                          Lots
-                         LOTS
-                        </TableHead>
-                        <TableHead className="text-xs font-medium text-gray-700">
-                          Total Rolls
-                        </TableHead>
-                        <TableHead className="text-xs font-medium text-gray-700">
-                          Required Rolls
-                        </TableHead>
-                        <TableHead className="text-xs font-medium text-gray-700">
-                          Dispatch Rolls
-                        </TableHead>
-                        <TableHead className="text-xs font-medium text-gray-700">Loading Sheets</TableHead>
-                        <TableHead className="text-xs font-medium text-gray-700">Dispatch Order ID</TableHead>
-                        <TableHead className="text-xs font-medium text-gray-700">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {dispatchItems.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={11} className="text-center py-8 text-gray-500">
-                            No sales orders found
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        dispatchItems.map((group, index) => (
-                          <TableRow
-                            key={group.salesOrderId}
-                            className="border-b border-gray-100"
-                            draggable
-                            onDragStart={() => handleDragStart(index)}
-                            onDragEnter={() => handleDragEnter(index)}
-                            onDragOver={(e) => e.preventDefault()}
-                            onDragEnd={handleDragEnd}
-                          >
-                            <TableCell className="py-3">
-                              <div className="font-medium text-sm cursor-move">#{index + 1} ≡</div>
-                            </TableCell>
-                            <TableCell className="py-3 font-medium">
-                              {group.voucherNumber}
-                            </TableCell>
-                            <TableCell className="py-3">{group.partyName}</TableCell>
-                            <TableCell className="py-3">{group.customerName}</TableCell>
-                            <TableCell className="py-3">
-                              <div className="flex items-center">
-                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                  {group.allotments.length} lot
-                                  {group.allotments.length !== 1 ? 's' : ''}
-                                </span>
-                              </div>
-                            </TableCell>
-                            <TableCell className="py-3">{group.totalRolls}</TableCell>
-                            <TableCell className="py-3">{group.totalRequiredRolls}</TableCell>
-                            <TableCell className="py-3">
-                              {group.allotments.reduce(
-                                (sum, item) =>
-                                  sum +
-                                  (item.dispatchRolls !== undefined
-                                    ? item.dispatchRolls
-                                    : item.totalRolls),
-                                0
-                              )}
-                            </TableCell>
-                            <TableCell className="py-3">
-                              {group.loadingSheets && group.loadingSheets.length > 0 ? (
-                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                                  {group.loadingSheets.length} sheet{group.loadingSheets.length !== 1 ? 's' : ''}
-                                </span>
-                              ) : (
-                                <span className="text-xs text-gray-500">Will be created</span>
-                              )}
-                            </TableCell>
-                            <TableCell className="py-3">
-                              {group.loadingSheets && group.loadingSheets.length > 0 ? (
-                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                  {group.loadingSheets[0]?.dispatchOrderId || 'N/A'}
-                                </span>
-                              ) : (
-                                <span className="text-xs text-gray-500">Will be created</span>
-                              )}
-                            </TableCell>
-                            <TableCell className="py-3">
-                              <div className="flex space-x-1">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => moveSalesOrderUp(index)}
-                                  disabled={index === 0}
-                                  className="h-6 w-6 p-0"
-                                >
-                                  <ArrowUp className="h-3 w-3" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => moveSalesOrderDown(index)}
-                                  disabled={index === dispatchItems.length - 1}
-                                  className="h-6 w-6 p-0"
-                                >
-                                  <ArrowDown className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-md p-2">
+                    <div className="text-xs text-yellow-600 font-medium">Dispatch Rolls</div>
+                    <div className="text-lg font-bold text-yellow-800">
+                      {dispatchItems.reduce(
+                        (sum, group) =>
+                          sum +
+                          group.allotments.reduce(
+                            (itemSum, item) =>
+                              itemSum +
+                              (item.dispatchRolls !== undefined
+                                ? item.dispatchRolls
+                                : item.totalRolls),
+                            0
+                          ),
+                        0
                       )}
-                    </TableBody>
-                  </Table>
-                </div>
-
-                {/* Dispatch Summary */}
-                <div className="bg-white border border-gray-200 rounded-md p-3 mt-4">
-                  <h4 className="text-xs font-semibold text-gray-700 mb-2">Dispatch Summary</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
-                    <div className="bg-blue-50 border border-blue-200 rounded-md p-2">
-                      <div className="text-xs text-blue-600 font-medium">Sales Orders</div>
-                      <div className="text-lg font-bold text-blue-800">{dispatchItems.length}</div>
-                    </div>
-                    <div className="bg-green-50 border border-green-200 rounded-md p-2">
-                      <div className="text-xs text-green-600 font-medium">Total Lots</div>
-                      <div className="text-lg font-bold text-green-800">
-                        {dispatchItems.reduce((sum, group) => sum + group.allotments.length, 0)}
-                      </div>
-                    </div>
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-md p-2">
-                      <div className="text-xs text-yellow-600 font-medium">Dispatch Rolls</div>
-                      <div className="text-lg font-bold text-yellow-800">
-                        {dispatchItems.reduce(
-                          (sum, group) =>
-                            sum +
-                            group.allotments.reduce(
-                              (itemSum, item) =>
-                                itemSum +
-                                (item.dispatchRolls !== undefined
-                                  ? item.dispatchRolls
-                                  : item.totalRolls),
-                              0
-                            ),
-                          0
-                        )}
-                      </div>
-                    </div>
-                    <div className="bg-purple-50 border border-purple-200 rounded-md p-2">
-                      <div className="text-xs text-purple-600 font-medium">Dispatched Rolls</div>
-                      <div className="text-lg font-bold text-purple-800">
-                        {dispatchItems.reduce((sum, group) => sum + group.totalDispatchedRolls, 0)}
-                      </div>
                     </div>
                   </div>
+                  <div className="bg-purple-50 border border-purple-200 rounded-md p-2">
+                    <div className="text-xs text-purple-600 font-medium">Dispatched Rolls</div>
+                    <div className="text-lg font-bold text-purple-800">
+                      {dispatchItems.reduce((sum, group) => sum + group.totalDispatchedRolls, 0)}
+                    </div>
+                  </div>
+                </div>
                   
                   {/* Status Summary */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

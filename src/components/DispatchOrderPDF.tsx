@@ -468,13 +468,13 @@ const DispatchOrderPDF: React.FC<DispatchOrderPDFProps> = ({ dispatchOrderId, sh
                   <Text style={styles.compactTableCellHeader}>Status</Text>
                 </View>
               </View>
-              {lotmentSheets.map(sheet => (
+              {lotmentSheets.map((sheet, index) => (
                 <View key={sheet.id} style={styles.compactTableRow}>
                   <View style={styles.compactTableCol}>
                     <Text style={styles.compactTableCell}>{sheet.loadingNo}</Text>
                   </View>
                   <View style={styles.compactTableCol}>
-                    <Text style={styles.compactTableCell}>#{sheet.sequenceNumber}</Text>
+                    <Text style={styles.compactTableCell}>#{index + 1}</Text>
                   </View>
                   <View style={styles.compactTableCol}>
                     <Text style={styles.compactTableCell}>{sheet.customerName}</Text>
