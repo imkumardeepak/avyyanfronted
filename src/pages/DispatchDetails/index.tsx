@@ -336,8 +336,10 @@ const DispatchDetails = () => {
         return;
       }
 
-      // Get all storage captures for the selected lots
-      const storageResponse = await storageCaptureApi.getAllStorageCaptures();
+      // Get all storage captures for the selected lots where isDispatched = false
+      const storageResponse = await storageCaptureApi.searchStorageCaptures({
+        isDispatched: false
+      });
       const allStorageCaptures = apiUtils.extractData(storageResponse);
 
       // Prepare dispatch planning data for all lots
@@ -378,7 +380,8 @@ const DispatchDetails = () => {
       const createdDispatchPlannings = dispatchPlanningResult.data;
 
       // For each lot, update only the specified number of rolls
-      const updatePromises = [];
+      const updatePromises: Promise<any>[] = [];
+      const dispatchedRollPromises: Promise<any>[] = []; // New array for dispatched roll promises
       let dispatchPlanningIndex = 0;
 
       for (const group of dispatchItems) {
@@ -421,7 +424,8 @@ const DispatchDetails = () => {
             };
 
             // Add promise to create dispatched roll
-            dispatchPlanningApi.createDispatchedRoll(dispatchedRollData);
+            const dispatchedRollPromise = dispatchPlanningApi.createDispatchedRoll(dispatchedRollData);
+            dispatchedRollPromises.push(dispatchedRollPromise);
 
             return storageCaptureApi.updateStorageCapture(capture.id, updateDto);
           });
@@ -430,8 +434,8 @@ const DispatchDetails = () => {
         }
       }
 
-      // Wait for all updates to complete
-      await Promise.all(updatePromises);
+      // Wait for all updates and dispatched roll creations to complete
+      await Promise.all([...updatePromises, ...dispatchedRollPromises]);
 
       const totalGroups = dispatchItems.length;
       const totalLots = dispatchItems.reduce((sum, group) => sum + group.allotments.length, 0);

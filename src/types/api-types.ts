@@ -1076,6 +1076,7 @@ export interface StorageCaptureSearchRequestDto {
   tape?: string;
   customerName?: string;
   isActive?: boolean;
+  isDispatched?: boolean;
 }
 
 // New DTOs for StorageCapture roll data response

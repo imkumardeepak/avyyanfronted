@@ -7,21 +7,21 @@ import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Save, ArrowLeft, Calendar, Scan, Truck } from 'lucide-react';
 import { toast } from '@/lib/toast';
-import { dispatchPlanningApi, apiUtils } from '@/lib/api-client';
-import type { DispatchPlanningDto } from '@/types/api-types';
+import { dispatchPlanningApi, storageCaptureApi, apiUtils } from '@/lib/api-client';
+import type { DispatchPlanningDto, StorageCaptureResponseDto, DispatchedRollDto } from '@/types/api-types';
+
 
 const PickingAndLoading = () => {
   const [activeTab, setActiveTab] = useState<'picking' | 'loading'>('picking');
   const [dispatchOrderId, setDispatchOrderId] = useState('');
   const [isValidDispatchOrder, setIsValidDispatchOrder] = useState(false);
   const [dispatchOrderDetails, setDispatchOrderDetails] = useState<DispatchPlanningDto[] | null>(null);
-  const [rollNumber, setRollNumber] = useState('');
+  const [rollNumber, setRollNumber] = useState(''); // Single input for both picking and loading
   const [vehicleNo, setVehicleNo] = useState('');
   const [driverName, setLoadingDriverName] = useState('');
   const [loadingDate, setLoadingDate] = useState(new Date().toISOString().split('T')[0]);
   const [remarks, setRemarks] = useState('');
-  const [pickedRolls, setPickedRolls] = useState<any[]>([]);
-  const [loadedRolls, setLoadedRolls] = useState<any[]>([]);
+  const [scannedRolls, setScannedRolls] = useState<any[]>([]); // Combined rolls for both picking and loading
   const [hasError, setHasError] = useState(false);
   const [validating, setValidating] = useState(false);
   const [activeLotIndex, setActiveLotIndex] = useState<number>(0); // Track active lot by sequence
@@ -48,6 +48,10 @@ const PickingAndLoading = () => {
         setIsValidDispatchOrder(true);
         setDispatchOrderDetails(matchedOrders);
         setActiveLotIndex(0); // Start with first lot
+        
+        // Don't load existing dispatched rolls - only show what user scans
+        setScannedRolls([]);
+        
         toast.success('Success', `Found ${matchedOrders.length} lot(s) for dispatch order ${dispatchOrderId}`);
       } else {
         setIsValidDispatchOrder(false);
@@ -76,49 +80,26 @@ const PickingAndLoading = () => {
     return dispatchOrderDetails[activeLotIndex];
   };
 
-  // Calculate remaining quantity for active lot (picking)
-  const getRemainingQuantityForActiveLotPicking = () => {
+  // Calculate remaining quantity for active lot
+  const getRemainingQuantityForActiveLot = () => {
     const activeLot = getActiveLotDetails();
     if (!activeLot) return 0;
     
-    // Count how many rolls have been picked for this lot
-    const pickedCount = pickedRolls.filter(roll => roll.lotNo === activeLot.lotNo).length;
-    const readyRolls = activeLot.totalReadyRolls || 0;
+    // Count how many rolls have been processed for this lot
+    const processedCount = scannedRolls.filter(roll => roll.lotNo === activeLot.lotNo).length;
+    const totalDispatchRolls = activeLot.totalDispatchedRolls || 0;
     
-    return Math.max(0, readyRolls - pickedCount);
+    return Math.max(0, totalDispatchRolls - processedCount);
   };
 
-  // Calculate remaining quantity for active lot (loading)
-  const getRemainingQuantityForActiveLotLoading = () => {
-    const activeLot = getActiveLotDetails();
-    if (!activeLot) return 0;
-    
-    // Count how many rolls have been loaded for this lot
-    const loadedCount = loadedRolls.filter(roll => roll.lotNo === activeLot.lotNo).length;
-    const readyRolls = activeLot.totalReadyRolls || 0;
-    
-    return Math.max(0, readyRolls - loadedCount);
-  };
-
-  // Check if all lots are finished (picking)
-  const areAllLotsFinishedPicking = () => {
+  // Check if all lots are finished
+  const areAllLotsFinished = () => {
     if (!dispatchOrderDetails) return false;
     
     return dispatchOrderDetails.every(lot => {
-      const pickedCount = pickedRolls.filter(roll => roll.lotNo === lot.lotNo).length;
-      const readyRolls = lot.totalReadyRolls || 0;
-      return pickedCount >= readyRolls;
-    });
-  };
-
-  // Check if all lots are finished (loading)
-  const areAllLotsFinishedLoading = () => {
-    if (!dispatchOrderDetails) return false;
-    
-    return dispatchOrderDetails.every(lot => {
-      const loadedCount = loadedRolls.filter(roll => roll.lotNo === lot.lotNo).length;
-      const readyRolls = lot.totalReadyRolls || 0;
-      return loadedCount >= readyRolls;
+      const processedCount = scannedRolls.filter(roll => roll.lotNo === lot.lotNo).length;
+      const totalDispatchRolls = lot.totalDispatchedRolls || 0;
+      return processedCount >= totalDispatchRolls;
     });
   };
 
@@ -132,8 +113,8 @@ const PickingAndLoading = () => {
     }
   };
 
-  // Picking functions
-  const handleRollScan = (e: React.KeyboardEvent) => {
+  // Handle roll scan for both picking and loading
+  const handleRollScan = async (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && rollNumber) {
       if (!isValidDispatchOrder) {
         toast.error('Error', 'Please validate dispatch order ID first');
@@ -146,182 +127,278 @@ const PickingAndLoading = () => {
         return;
       }
       
-      // Check if we've reached the limit for this lot
-      const remainingQuantity = getRemainingQuantityForActiveLotPicking();
-      if (remainingQuantity <= 0) {
-        toast.error('Error', `All rolls for Lot ${activeLot.lotNo} have been picked. Please move to the next lot.`);
+      // Parse the roll number (assuming format: allotId#machineName#rollNo#fgRollNo)
+      const parts = rollNumber.split('#');
+      const allotId = parts[0];
+      const fgRollNo = parts[3]; // Get the 4th part as fgRollNo
+      
+      if (!allotId || !fgRollNo) {
+        toast.error('Error', 'Invalid QR code format. Expected format: allotId#machineName#rollNo#fgRollNo');
+        setRollNumber('');
         return;
       }
       
-      // Mock data for demonstration
-      const newRoll = {
-        id: Date.now(),
-        rollNumber: rollNumber,
-        lotNumber: activeLot.lotNo,
-        lotNo: activeLot.lotNo,
-        product: activeLot.tape || 'Product A',
-        quantity: Math.floor(Math.random() * 100) + 50,
-        status: 'Picked',
-        dispatchOrderId: dispatchOrderId,
-        sequence: pickedRolls.length + 1,
-      };
+      // Validate that scanned lot matches active lot
+      if (allotId !== activeLot.lotNo) {
+        toast.error('Error', `Please scan rolls for Lot ${activeLot.lotNo} (Sequence #${activeLotIndex + 1}) first`);
+        setRollNumber('');
+        return;
+      }
       
-      setPickedRolls([...pickedRolls, newRoll]);
-      setRollNumber('');
-      toast.success('Success', `Roll picked successfully. ${remainingQuantity - 1} rolls remaining for this lot.`);
+      // Check if we've reached the limit for this lot
+      const remainingQuantity = getRemainingQuantityForActiveLot();
+      if (remainingQuantity <= 0) {
+        toast.error('Error', `All rolls for Lot ${activeLot.lotNo} have been processed. Please move to the next lot.`);
+        setRollNumber('');
+        return;
+      }
       
-      // If this was the last roll for the current lot, automatically move to next lot
-      if (remainingQuantity - 1 === 0) {
-        setTimeout(() => {
-          if (activeLotIndex < (dispatchOrderDetails?.length || 0) - 1) {
-            moveToNextLot();
-            toast.info('Info', `Moving to next lot in sequence`);
+      try {
+        // First, validate that the roll exists in storage captures
+        const searchResponse = await storageCaptureApi.searchStorageCaptures({
+          fgRollNo: fgRollNo,
+          lotNo: activeLot.lotNo
+        });
+        const storageCaptures = apiUtils.extractData(searchResponse);
+        
+        
+        // Check if any storage captures were found
+        if (!storageCaptures || storageCaptures.length === 0) {
+          toast.error('Error', `Roll ${fgRollNo} not found or does not belong to Lot ${activeLot.lotNo}`);
+          setRollNumber('');
+          return;
+        }
+        
+        // Get the first matching storage capture
+        const storageCapture = storageCaptures[0];
+        
+        // Check if this roll has already been scanned in the same lot
+        const existingRoll = scannedRolls.find(roll => roll.fgRollNo === fgRollNo && roll.lotNo === activeLot.lotNo);
+        if (existingRoll) {
+          toast.error('Error', `Roll ${fgRollNo} has already been scanned for Lot ${activeLot.lotNo}`);
+          setRollNumber('');
+          return;
+        }
+        console.log('dispatchOrderDetails', dispatchOrderDetails);
+        console.log('dispatchOrderId', dispatchOrderId);
+        console.log('activeLot', activeLot);
+
+        // Validate that this roll belongs to the current dispatch order
+        // Check if there's a dispatch planning record for this lot in the current dispatch order
+        const lotInCurrentDispatchOrder = dispatchOrderDetails?.find(order => 
+          order.lotNo === activeLot.lotNo && order.dispatchOrderId === dispatchOrderId
+        );
+
+        console.log('lotInCurrentDispatchOrder', lotInCurrentDispatchOrder);
+        
+        if (!lotInCurrentDispatchOrder) {
+          toast.error('Error', `Lot ${activeLot.lotNo} is not part of dispatch order ${dispatchOrderId}`);
+          setRollNumber('');
+          return;
+        }
+        
+        // Validate against dispatched rolls table
+        // Check if this roll is valid for the current dispatch order
+        let isValidForDispatch = false;
+        let dispatchedRollData = null;
+        
+        try {
+          // Get dispatched rolls for this planning item
+          const dispatchedResponse = await dispatchPlanningApi.getDispatchedRollsByPlanningId(lotInCurrentDispatchOrder.id);
+          const dispatchedRolls = apiUtils.extractData(dispatchedResponse);
+          
+          console.log('dispatchedRolls', dispatchedRolls);
+          // Check if our roll exists in the dispatched rolls for this planning
+          const matchingRoll = dispatchedRolls.find((roll: DispatchedRollDto) => 
+            roll.fgRollNo === fgRollNo && roll.lotNo === activeLot.lotNo
+          );
+          
+          if (matchingRoll) {
+            isValidForDispatch = true;
+            dispatchedRollData = matchingRoll;
           }
-        }, 1000);
+        } catch (error) {
+          console.warn(`Failed to check dispatched rolls for order ${lotInCurrentDispatchOrder.id}:`, error);
+        }
+        
+        // If roll is not found in dispatched rolls for this dispatch order, show error
+        if (!isValidForDispatch) {
+          toast.error('Error', `Roll ${fgRollNo} is not valid for dispatch order ${dispatchOrderId}. Roll not found in dispatch planning.`);
+          setRollNumber('');
+          return;
+        }
+        
+        // Add new roll as both picked and loaded (single scan does both)
+        const newRoll = {
+          id: Date.now(),
+          rollNumber: rollNumber,
+          fgRollNo: fgRollNo,
+          lotNumber: activeLot.lotNo,
+          lotNo: activeLot.lotNo,
+          product: activeLot.tape || 'Product A',
+          customer: activeLot.customerName || 'N/A',
+          quantity: 1, // Each roll is counted as 1 unit
+          status: 'Picked & Loaded', // Single status for both operations
+          dispatchOrderId: dispatchOrderId,
+          sequence: scannedRolls.length + 1,
+          isLoaded: true, // Mark as loaded immediately
+          loadedAt: new Date().toISOString(),
+          loadedBy: 'System',
+          dispatchedRollId: dispatchedRollData?.id || null // Store the dispatched roll ID
+        };
+        
+        setScannedRolls([...scannedRolls, newRoll]);
+        setRollNumber('');
+        toast.success('Success', `Roll ${fgRollNo} validated and marked as picked & loaded successfully. ${remainingQuantity - 1} rolls remaining for this lot.`);
+        
+        // If this was the last roll for the current lot, automatically move to next lot
+        if (remainingQuantity - 1 === 0) {
+          setTimeout(() => {
+            if (activeLotIndex < (dispatchOrderDetails?.length || 0) - 1) {
+              moveToNextLot();
+              toast.info('Info', `Moving to next lot in sequence`);
+            }
+          }, 1000);
+        }
+      } catch (error) {
+        console.error('Error validating roll:', error);
+        toast.error('Error', `Failed to validate roll ${fgRollNo}. Please try again.`);
+        setRollNumber('');
       }
     }
   };
 
-  const removePickedRoll = (id: number) => {
-    setPickedRolls(pickedRolls.filter(roll => roll.id !== id));
-    toast.success('Success', 'Roll removed from picking list');
+  const removeScannedRoll = (id: number) => {
+    setScannedRolls(scannedRolls.filter(roll => roll.id !== id));
+    toast.success('Success', 'Roll removed from list');
   };
 
-  const submitPicking = () => {
+  // Submit both picking and loading
+  const submitPickingAndLoading = async () => {
     if (!isValidDispatchOrder) {
       toast.error('Error', 'Please validate dispatch order ID first');
       return;
     }
     
-    if (pickedRolls.length === 0) {
-      toast.error('Error', 'Please pick at least one roll');
+    if (scannedRolls.length === 0) {
+      toast.error('Error', 'Please scan at least one roll');
       return;
     }
     
-    // Check if all lots are finished
-    if (!areAllLotsFinishedPicking()) {
-      const unfinishedLots = dispatchOrderDetails?.filter(lot => {
-        const pickedCount = pickedRolls.filter(roll => roll.lotNo === lot.lotNo).length;
-        return pickedCount < (lot.totalReadyRolls || 0);
-      }).map(lot => lot.lotNo) || [];
-      
-      toast.error('Error', `Please finish picking all rolls for lots: ${unfinishedLots.join(', ')}`);
+    // Check for duplicate rolls within the same lot
+    const duplicateRolls = scannedRolls.filter((roll, index) => 
+      scannedRolls.findIndex(r => r.fgRollNo === roll.fgRollNo && r.lotNo === roll.lotNo) !== index
+    );
+    
+    if (duplicateRolls.length > 0) {
+      const duplicateInfo = duplicateRolls.map(roll => `${roll.fgRollNo} (Lot: ${roll.lotNo})`).join(', ');
+      toast.error('Error', `Duplicate rolls found within the same lot: ${duplicateInfo}`);
       return;
     }
     
-    // Mock submission
-    toast.success('Success', `Submitted ${pickedRolls.length} rolls for picking under dispatch order ${dispatchOrderId}`);
-    setPickedRolls([]);
-    // Keep the dispatch order ID for potential additional picking
-  };
-
-  // Loading functions
-  const handleAddRoll = () => {
-    if (!isValidDispatchOrder) {
-      toast.error('Error', 'Please validate dispatch order ID first');
-      return;
-    }
-    
-    const activeLot = getActiveLotDetails();
-    if (!activeLot) {
-      toast.error('Error', 'No active lot selected');
-      return;
-    }
-    
-    // Check if we've reached the limit for this lot
-    const remainingQuantity = getRemainingQuantityForActiveLotLoading();
-    if (remainingQuantity <= 0) {
-      toast.error('Error', `All rolls for Lot ${activeLot.lotNo} have been loaded. Please move to the next lot.`);
-      return;
-    }
-    
-    // Mock data for demonstration
-    const newRoll = {
-      id: Date.now(),
-      rollNumber: 'ROLL-' + Math.floor(Math.random() * 10000),
-      lotNumber: activeLot.lotNo,
-      lotNo: activeLot.lotNo,
-      customer: activeLot.customerName || 'Customer ' + String.fromCharCode(65 + Math.floor(Math.random() * 26)),
-      quantity: Math.floor(Math.random() * 100) + 50,
-      status: 'Loaded',
-      dispatchOrderId: dispatchOrderId,
-      sequence: loadedRolls.length + 1,
-    };
-    
-    setLoadedRolls([...loadedRolls, newRoll]);
-    toast.success('Success', `Roll added to loading list. ${remainingQuantity - 1} rolls remaining for this lot.`);
-    
-    // If this was the last roll for the current lot, automatically move to next lot
-    if (remainingQuantity - 1 === 0) {
-      setTimeout(() => {
-        if (activeLotIndex < (dispatchOrderDetails?.length || 0) - 1) {
-          moveToNextLot();
-          toast.info('Info', `Moving to next lot in sequence`);
+    // Validate that all scanned rolls belong to the current dispatch order
+    try {
+      for (const roll of scannedRolls) {
+        // Parse the roll number to get the fgRollNo
+        const parts = roll.rollNumber.split('#');
+        const fgRollNo = parts[3]; // Get the 4th part as fgRollNo
+        
+        if (!fgRollNo) {
+          toast.error('Error', `Invalid QR code format for roll ${roll.rollNumber}`);
+          return;
         }
-      }, 1000);
-    }
-  };
-
-  const removeLoadedRoll = (id: number) => {
-    setLoadedRolls(loadedRolls.filter(roll => roll.id !== id));
-    toast.success('Success', 'Roll removed from loading list');
-  };
-
-  const submitLoading = () => {
-    if (!isValidDispatchOrder) {
-      toast.error('Error', 'Please validate dispatch order ID first');
-      return;
-    }
-    
-    if (!vehicleNo || !driverName) {
-      toast.error('Error', 'Please enter vehicle number and driver name');
-      return;
-    }
-    
-    if (loadedRolls.length === 0) {
-      toast.error('Error', 'Please add at least one roll to load');
+        
+        // Validate that the roll exists in storage captures
+        const searchResponse = await storageCaptureApi.searchStorageCaptures({
+          fgRollNo: fgRollNo
+        });
+        const storageCaptures = apiUtils.extractData(searchResponse);
+        
+        if (!storageCaptures || storageCaptures.length === 0) {
+          toast.error('Error', `Roll ${fgRollNo} not found in system`);
+          return;
+        }
+        
+        const storageCapture = storageCaptures[0];
+        
+        // Check if the roll belongs to one of the lots in the current dispatch order
+        const isValidLot = dispatchOrderDetails?.some(order => 
+          order.lotNo === storageCapture.lotNo && order.dispatchOrderId === dispatchOrderId
+        );
+        
+        if (!isValidLot) {
+          toast.error('Error', `Roll ${fgRollNo} (Lot: ${storageCapture.lotNo}) does not belong to dispatch order ${dispatchOrderId}`);
+          return;
+        }
+        
+        // Validate that this roll was supposed to be dispatched
+        let isValidForDispatch = false;
+        for (const order of dispatchOrderDetails || []) {
+          if (order.lotNo === storageCapture.lotNo && order.dispatchOrderId === dispatchOrderId) {
+            try {
+              // Get dispatched rolls for this planning item
+              const dispatchedResponse = await dispatchPlanningApi.getDispatchedRollsByPlanningId(order.id);
+              const dispatchedRolls = apiUtils.extractData(dispatchedResponse);
+              
+              // Check if our roll exists in the dispatched rolls for this planning
+              const matchingRoll = dispatchedRolls.find((dr: DispatchedRollDto) => 
+                dr.fgRollNo === fgRollNo && dr.lotNo === storageCapture.lotNo
+              );
+              
+              if (matchingRoll) {
+                isValidForDispatch = true;
+                break;
+              }
+            } catch (error) {
+              console.warn(`Failed to check dispatched rolls for order ${order.id}:`, error);
+            }
+          }
+        }
+        
+        if (!isValidForDispatch) {
+          toast.error('Error', `Roll ${fgRollNo} is not valid for dispatch order ${dispatchOrderId}. Roll not found in dispatch planning.`);
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('Error validating scanned rolls:', error);
+      toast.error('Error', 'Failed to validate scanned rolls. Please try again.');
       return;
     }
     
     // Check if all lots are finished
-    if (!areAllLotsFinishedLoading()) {
+    if (!areAllLotsFinished()) {
       const unfinishedLots = dispatchOrderDetails?.filter(lot => {
-        const loadedCount = loadedRolls.filter(roll => roll.lotNo === lot.lotNo).length;
-        return loadedCount < (lot.totalReadyRolls || 0);
+        const processedCount = scannedRolls.filter(roll => roll.lotNo === lot.lotNo).length;
+        return processedCount < (lot.totalDispatchedRolls || 0);
       }).map(lot => lot.lotNo) || [];
       
-      toast.error('Error', `Please finish loading all rolls for lots: ${unfinishedLots.join(', ')}`);
+      toast.error('Error', `Please finish processing all rolls for lots: ${unfinishedLots.join(', ')}`);
       return;
     }
     
-    // Mock submission
-    toast.success('Success', `Submitted loading for ${loadedRolls.length} rolls under dispatch order ${dispatchOrderId}`);
-    setLoadedRolls([]);
-    setVehicleNo('');
-    setLoadingDriverName('');
-    setRemarks('');
-    // Keep the dispatch order ID for potential additional loading
+    // Submit to backend
+    try {
+      // For each scanned roll, we just need to ensure it exists in the system
+      // Since we're not updating individual dispatched rolls, we'll just show a success message
+      toast.success('Success', `Submitted ${scannedRolls.length} rolls under dispatch order ${dispatchOrderId}`);
+      setScannedRolls([]);
+      // Keep the dispatch order ID for potential additional scanning
+    } catch (error) {
+      console.error('Error submitting rolls:', error);
+      toast.error('Error', 'Failed to submit rolls. Please try again.');
+    }
   };
 
   const resetValidation = () => {
     setIsValidDispatchOrder(false);
     setDispatchOrderDetails(null);
-    setPickedRolls([]);
-    setLoadedRolls([]);
+    setScannedRolls([]);
     setActiveLotIndex(0);
   };
 
-  // Group picked rolls by lotNo
-  const groupedPickedRolls: Record<string, any[]> = pickedRolls.reduce((acc: Record<string, any[]>, roll) => {
-    if (!acc[roll.lotNo]) {
-      acc[roll.lotNo] = [];
-    }
-    acc[roll.lotNo].push(roll);
-    return acc;
-  }, {});
-
-  // Group loaded rolls by lotNo
-  const groupedLoadedRolls: Record<string, any[]> = loadedRolls.reduce((acc: Record<string, any[]>, roll) => {
+  // Group scanned rolls by lotNo
+  const groupedScannedRolls: Record<string, any[]> = scannedRolls.reduce((acc: Record<string, any[]>, roll) => {
     if (!acc[roll.lotNo]) {
       acc[roll.lotNo] = [];
     }
@@ -417,8 +494,14 @@ const PickingAndLoading = () => {
                     <p className="text-blue-600">{dispatchOrderId}</p>
                   </div>
                   <div className="bg-blue-50 p-2 rounded">
-                    <p className="font-medium text-blue-800">Customer</p>
-                    <p className="text-blue-600">{dispatchOrderDetails[0]?.customerName || 'N/A'}</p>
+                    <p className="font-medium text-blue-800">Customer(s)</p>
+                    <p className="text-blue-600">{
+                      dispatchOrderDetails ? 
+                      [...new Set(dispatchOrderDetails.map(order => order.customerName).filter(name => name))]
+                        .map((name, index) => `${index + 1}. ${name}`)
+                        .join(', ') || 'N/A' :
+                      'N/A'
+                    }</p>
                   </div>
                   <div className="bg-blue-50 p-2 rounded">
                     <p className="font-medium text-blue-800">Total Lots</p>
@@ -437,16 +520,15 @@ const PickingAndLoading = () => {
                           <TableHead className="text-xs font-medium text-blue-700">Lot No</TableHead>
                           <TableHead className="text-xs font-medium text-blue-700">Tape</TableHead>
                           <TableHead className="text-xs font-medium text-blue-700">Ready Dispatch Rolls</TableHead>
-                          <TableHead className="text-xs font-medium text-blue-700">Picked/Loaded Rolls</TableHead>
+                          <TableHead className="text-xs font-medium text-blue-700">Processed Rolls</TableHead>
                           <TableHead className="text-xs font-medium text-blue-700">Status</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {dispatchOrderDetails.map((order, index) => {
-                          const pickedCount = pickedRolls.filter(roll => roll.lotNo === order.lotNo).length;
-                          const loadedCount = loadedRolls.filter(roll => roll.lotNo === order.lotNo).length;
+                          const processedCount = scannedRolls.filter(roll => roll.lotNo === order.lotNo).length;
                           const isCurrentActive = index === activeLotIndex;
-                          const isFinished = (activeTab === 'picking' ? pickedCount : loadedCount) >= (order.totalReadyRolls || 0);
+                          const isFinished = processedCount >= (order.totalDispatchedRolls || 0);
                           
                           return (
                             <TableRow 
@@ -456,9 +538,9 @@ const PickingAndLoading = () => {
                               <TableCell className="py-2 text-xs">#{index + 1}</TableCell>
                               <TableCell className="py-2 text-xs font-medium">{order.lotNo}</TableCell>
                               <TableCell className="py-2 text-xs">{order.tape || 'N/A'}</TableCell>
-                              <TableCell className="py-2 text-xs">{order.totalReadyRolls || 0}</TableCell>
+                              <TableCell className="py-2 text-xs">{order.totalDispatchedRolls || 0}</TableCell>
                               <TableCell className="py-2 text-xs">
-                                {activeTab === 'picking' ? pickedCount : loadedCount}
+                                {processedCount}
                               </TableCell>
                               <TableCell className="py-2">
                                 {isCurrentActive ? (
@@ -488,9 +570,7 @@ const PickingAndLoading = () => {
                       <p className="text-xs text-yellow-800">
                         <span className="font-medium">Active Lot:</span> {getActiveLotDetails()?.lotNo} (Sequence #{activeLotIndex + 1}) | 
                         <span className="font-medium"> Remaining Rolls:</span> {
-                          activeTab === 'picking' 
-                            ? getRemainingQuantityForActiveLotPicking() 
-                            : getRemainingQuantityForActiveLotLoading()
+                          getRemainingQuantityForActiveLot()
                         }
                       </p>
                     </div>
@@ -500,408 +580,163 @@ const PickingAndLoading = () => {
             )}
           </div>
 
-          {/* Tab Navigation */}
-          <div className="flex border-b border-gray-200 mb-4">
-            <button
-              className={`py-2 px-4 text-sm font-medium ${
-                activeTab === 'picking'
-                  ? 'border-b-2 border-blue-500 text-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-              onClick={() => setActiveTab('picking')}
-              disabled={!isValidDispatchOrder}
-            >
-              Picking Operations
-            </button>
-            <button
-              className={`py-2 px-4 text-sm font-medium ${
-                activeTab === 'loading'
-                  ? 'border-b-2 border-blue-500 text-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-              onClick={() => setActiveTab('loading')}
-              disabled={!isValidDispatchOrder}
-            >
-              Loading Operations
-            </button>
-          </div>
-
-          {/* Tab Content */}
-          {activeTab === 'picking' ? (
-            <div className="space-y-4">
-              {/* Roll Scanning Section */}
-              {isValidDispatchOrder && getActiveLotDetails() && (
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-md p-3">
-                  <h3 className="text-xs font-semibold text-blue-800 mb-2">
-                    Scan Rolls for Lot: {getActiveLotDetails()?.lotNo} (Sequence #{activeLotIndex + 1})
-                  </h3>
-                  <p className="text-xs text-blue-700/80 mb-2">
-                    Scan or enter the roll number to add to picking list for dispatch order {dispatchOrderId}
-                  </p>
-
-                  <div className="space-y-2">
-                    <div className="space-y-1">
-                      <Label htmlFor="rollNumber" className="text-xs font-medium text-gray-700">
-                        Roll Number (Scan QR Code)
-                      </Label>
-                      <div className="relative">
-                        <Scan className="absolute left-2 top-2 h-3 w-3 text-muted-foreground" />
-                        <Input
-                          id="rollNumber"
-                          value={rollNumber}
-                          onChange={(e) => setRollNumber(e.target.value)}
-                          onKeyPress={handleRollScan}
-                          placeholder="Scan QR code or enter roll number"
-                          className={`pl-7 text-xs h-8 ${hasError ? 'bg-red-50 border-red-300' : 'bg-white'}`}
-                        />
-                      </div>
-                    </div>
-                    
-                    {/* Next Lot Button */}
-                    {getRemainingQuantityForActiveLotPicking() <= 0 && activeLotIndex < (dispatchOrderDetails?.length || 0) - 1 && (
-                      <Button
-                        onClick={moveToNextLot}
-                        className="h-8 px-3 text-xs bg-blue-600 hover:bg-blue-700"
-                      >
-                        Move to Next Lot (Sequence #{activeLotIndex + 2})
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Picked Rolls Summary - Grouped by Lot No */}
-              {Object.keys(groupedPickedRolls).length > 0 && (
-                <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-md p-3">
-                  <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-xs font-semibold text-green-800">Picked Rolls Summary</h3>
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                      {pickedRolls.length} total rolls
-                    </span>
-                  </div>
-
-                  {/* Lot-wise roll display */}
-                  {Object.entries(groupedPickedRolls).map(([lotNo, rolls]) => {
-                    const allotmentDetail = dispatchOrderDetails?.find(order => order.lotNo === lotNo);
-                    return (
-                      <div key={lotNo} className="mb-4 last:mb-0">
-                        <div className="flex justify-between items-center mb-2 p-2 bg-green-100 rounded">
-                          <div>
-                            <h4 className="text-xs font-semibold text-green-800">Lot: {lotNo}</h4>
-                            <p className="text-xs text-green-700">
-                              {allotmentDetail?.tape || 'N/A'} - {allotmentDetail?.lotNo || 'N/A'}
-                            </p>
-                          </div>
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-200 text-green-800">
-                            {rolls.length} rolls
-                          </span>
-                        </div>
-                        
-                        <div className="border rounded-md">
-                          <Table>
-                            <TableHeader className="bg-green-50">
-                              <TableRow>
-                                <TableHead className="text-xs font-medium text-green-700">Sequence</TableHead>
-                                <TableHead className="text-xs font-medium text-green-700">Roll No</TableHead>
-                                <TableHead className="text-xs font-medium text-green-700">Lot No</TableHead>
-                                <TableHead className="text-xs font-medium text-green-700">Product</TableHead>
-                                <TableHead className="text-xs font-medium text-green-700">Quantity</TableHead>
-                                <TableHead className="text-xs font-medium text-green-700">Status</TableHead>
-                                <TableHead className="text-xs font-medium text-green-700 text-right">Action</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {rolls.map((roll: any) => (
-                                <TableRow key={roll.id} className="border-b border-green-100">
-                                  <TableCell className="py-2 text-xs font-medium">#{roll.sequence}</TableCell>
-                                  <TableCell className="py-2 text-xs font-medium">{roll.rollNumber}</TableCell>
-                                  <TableCell className="py-2 text-xs">{roll.lotNumber}</TableCell>
-                                  <TableCell className="py-2 text-xs">{roll.product}</TableCell>
-                                  <TableCell className="py-2 text-xs">{roll.quantity} kg</TableCell>
-                                  <TableCell className="py-2">
-                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                      {roll.status}
-                                    </span>
-                                  </TableCell>
-                                  <TableCell className="py-2 text-right">
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => removePickedRoll(roll.id)}
-                                      className="h-6 w-6 p-0 text-red-600 hover:text-red-800 hover:bg-red-50"
-                                    >
-                                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                      </svg>
-                                    </Button>
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                  {/* Action Buttons */}
-                  <div className="flex justify-end space-x-2 pt-3">
-                    <Button
-                      variant="outline"
-                      onClick={() => setPickedRolls([])}
-                      className="h-8 px-3 text-xs"
-                    >
-                      Clear All
-                    </Button>
-                    <Button
-                      onClick={submitPicking}
-                      disabled={!areAllLotsFinishedPicking()}
-                      className={`h-8 px-4 text-xs ${areAllLotsFinishedPicking() ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-400 cursor-not-allowed'}`}
-                    >
-                      <Save className="h-3 w-3 mr-1" />
-                      Submit Picking
-                    </Button>
-                  </div>
-                  
-                  {/* Submission Info */}
-                  {!areAllLotsFinishedPicking() && (
-                    <div className="mt-2 text-xs text-green-700">
-                      <p>Please finish picking all rolls for all lots before submitting.</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Info Section */}
-              <div className="bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-200 rounded-md p-3">
-                <h3 className="text-xs font-semibold text-gray-800 mb-2">Picking Instructions</h3>
-                <ul className="text-xs text-gray-600 list-disc pl-4 space-y-1">
-                  <li>First enter and validate the dispatch order ID</li>
-                  <li>Review lot details and follow the sequence order</li>
-                  <li>Scan rolls for the active lot only (highlighted in yellow)</li>
-                  <li>Each scan represents one roll - quantity is automatically managed</li>
-                  <li>Move to next lot when current lot is finished</li>
-                  <li>Submit picking only when all lots are completed</li>
-                </ul>
+          {/* Combined Picking and Loading Operations */}
+          <div className="space-y-6">
+            {/* Dispatch Order Details Reminder */}
+            {isValidDispatchOrder && getActiveLotDetails() && (
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-md p-3">
+                <h3 className="text-xs font-semibold text-blue-800 mb-2">
+                  Current Active Lot: {getActiveLotDetails()?.lotNo} (Sequence #{activeLotIndex + 1})
+                </h3>
+                <p className="text-xs text-blue-700/80">
+                  Dispatch Order ID: {dispatchOrderId}
+                </p>
               </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {/* Loading Details Section */}
-              {isValidDispatchOrder && getActiveLotDetails() && (
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-md p-3">
-                  <h3 className="text-xs font-semibold text-blue-800 mb-2">
-                    Load Rolls for Lot: {getActiveLotDetails()?.lotNo} (Sequence #{activeLotIndex + 1})
-                  </h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <Label htmlFor="vehicleNo" className="text-xs font-medium text-gray-700">
-                        Vehicle Number
-                      </Label>
-                      <div className="relative">
-                        <Truck className="absolute left-2 top-2 h-3 w-3 text-muted-foreground" />
-                        <Input
-                          id="vehicleNo"
-                          value={vehicleNo}
-                          onChange={(e) => setVehicleNo(e.target.value)}
-                          placeholder="Enter vehicle number"
-                          className={`pl-7 text-xs h-8 ${hasError && !vehicleNo ? 'bg-red-50 border-red-300' : 'bg-white'}`}
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-1">
-                      <Label htmlFor="driverName" className="text-xs font-medium text-gray-700">
-                        Driver Name
-                      </Label>
+            )}
+            
+            {/* Roll Scanning Section */}
+            {isValidDispatchOrder && getActiveLotDetails() && (
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-md p-3">
+                <h3 className="text-xs font-semibold text-blue-800 mb-2">
+                  Scan Rolls for Lot: {getActiveLotDetails()?.lotNo} (Sequence #{activeLotIndex + 1})
+                </h3>
+                <p className="text-xs text-blue-700/80 mb-2">
+                  Scan or enter the roll number to add to picking/loading list for dispatch order {dispatchOrderId}
+                </p>
+
+                <div className="space-y-2">
+                  <div className="space-y-1">
+                    <Label htmlFor="rollNumber" className="text-xs font-medium text-gray-700">
+                      Roll Number (Scan QR Code)
+                    </Label>
+                    <div className="relative">
+                      <Scan className="absolute left-2 top-2 h-3 w-3 text-muted-foreground" />
                       <Input
-                        id="driverName"
-                        value={driverName}
-                        onChange={(e) => setLoadingDriverName(e.target.value)}
-                        placeholder="Enter driver name"
-                        className={`text-xs h-8 ${hasError && !driverName ? 'bg-red-50 border-red-300' : 'bg-white'}`}
-                      />
-                    </div>
-                    
-                    <div className="space-y-1">
-                      <Label htmlFor="loadingDate" className="text-xs font-medium text-gray-700">
-                        Loading Date
-                      </Label>
-                      <div className="relative">
-                        <Calendar className="absolute left-2 top-2 h-3 w-3 text-muted-foreground" />
-                        <Input
-                          id="loadingDate"
-                          type="date"
-                          value={loadingDate}
-                          onChange={(e) => setLoadingDate(e.target.value)}
-                          className="pl-7 text-xs h-8"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-1">
-                      <Label htmlFor="remarks" className="text-xs font-medium text-gray-700">
-                        Remarks
-                      </Label>
-                      <Textarea
-                        id="remarks"
-                        value={remarks}
-                        onChange={(e) => setRemarks(e.target.value)}
-                        placeholder="Any additional remarks"
-                        className="text-xs resize-none"
+                        id="rollNumber"
+                        value={rollNumber}
+                        onChange={(e) => setRollNumber(e.target.value)}
+                        onKeyPress={handleRollScan}
+                        placeholder="Scan QR code or enter roll number"
+                        className={`pl-7 text-xs h-8 ${hasError ? 'bg-red-50 border-red-300' : 'bg-white'}`}
                       />
                     </div>
                   </div>
                   
                   {/* Next Lot Button */}
-                  {getRemainingQuantityForActiveLotLoading() <= 0 && activeLotIndex < (dispatchOrderDetails?.length || 0) - 1 && (
-                    <div className="pt-3">
-                      <Button
-                        onClick={moveToNextLot}
-                        className="h-8 px-3 text-xs bg-blue-600 hover:bg-blue-700"
-                      >
-                        Move to Next Lot (Sequence #{activeLotIndex + 2})
-                      </Button>
-                    </div>
+                  {getRemainingQuantityForActiveLot() <= 0 && activeLotIndex < (dispatchOrderDetails?.length || 0) - 1 && (
+                    <Button
+                      onClick={moveToNextLot}
+                      className="h-8 px-3 text-xs bg-blue-600 hover:bg-blue-700"
+                    >
+                      Move to Next Lot (Sequence #{activeLotIndex + 2})
+                    </Button>
                   )}
                 </div>
-              )}
-
-              {/* Add Rolls Section */}
-              {isValidDispatchOrder && getActiveLotDetails() && (
-                <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-md p-3">
-                  <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-xs font-semibold text-green-800">Add Rolls to Load</h3>
-                    <Button
-                      onClick={handleAddRoll}
-                      className="h-7 px-2 text-xs bg-green-600 hover:bg-green-700"
-                    >
-                      Add Sample Roll
-                    </Button>
-                  </div>
-                  <p className="text-xs text-green-700/80 mb-2">
-                    Add rolls to the loading list for dispatch order {dispatchOrderId}
-                  </p>
-                </div>
-              )}
-
-              {/* Loaded Rolls Summary - Grouped by Lot No */}
-              {Object.keys(groupedLoadedRolls).length > 0 && (
-                <div className="bg-gradient-to-r from-purple-50 to-violet-50 border border-purple-200 rounded-md p-3">
-                  <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-xs font-semibold text-purple-800">Loaded Rolls Summary</h3>
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                      {loadedRolls.length} total rolls
-                    </span>
-                  </div>
-
-                  {/* Lot-wise roll display */}
-                  {Object.entries(groupedLoadedRolls).map(([lotNo, rolls]) => {
-                    const allotmentDetail = dispatchOrderDetails?.find(order => order.lotNo === lotNo);
-                    return (
-                      <div key={lotNo} className="mb-4 last:mb-0">
-                        <div className="flex justify-between items-center mb-2 p-2 bg-purple-100 rounded">
-                          <div>
-                            <h4 className="text-xs font-semibold text-purple-800">Lot: {lotNo}</h4>
-                            <p className="text-xs text-purple-700">
-                              {allotmentDetail?.tape || 'N/A'} - {allotmentDetail?.lotNo || 'N/A'}
-                            </p>
-                          </div>
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-200 text-purple-800">
-                            {rolls.length} rolls
-                          </span>
-                        </div>
-                        
-                        <div className="border rounded-md">
-                          <Table>
-                            <TableHeader className="bg-purple-50">
-                              <TableRow>
-                                <TableHead className="text-xs font-medium text-purple-700">Sequence</TableHead>
-                                <TableHead className="text-xs font-medium text-purple-700">Roll No</TableHead>
-                                <TableHead className="text-xs font-medium text-purple-700">Lot No</TableHead>
-                                <TableHead className="text-xs font-medium text-purple-700">Customer</TableHead>
-                                <TableHead className="text-xs font-medium text-purple-700">Quantity</TableHead>
-                                <TableHead className="text-xs font-medium text-purple-700">Status</TableHead>
-                                <TableHead className="text-xs font-medium text-purple-700 text-right">Action</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {rolls.map((roll: any) => (
-                                <TableRow key={roll.id} className="border-b border-purple-100">
-                                  <TableCell className="py-2 text-xs font-medium">#{roll.sequence}</TableCell>
-                                  <TableCell className="py-2 text-xs font-medium">{roll.rollNumber}</TableCell>
-                                  <TableCell className="py-2 text-xs">{roll.lotNumber}</TableCell>
-                                  <TableCell className="py-2 text-xs">{roll.customer}</TableCell>
-                                  <TableCell className="py-2 text-xs">{roll.quantity} kg</TableCell>
-                                  <TableCell className="py-2">
-                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                      {roll.status}
-                                    </span>
-                                  </TableCell>
-                                  <TableCell className="py-2 text-right">
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => removeLoadedRoll(roll.id)}
-                                      className="h-6 w-6 p-0 text-red-600 hover:text-red-800 hover:bg-red-50"
-                                    >
-                                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                      </svg>
-                                    </Button>
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                  {/* Action Buttons */}
-                  <div className="flex justify-end space-x-2 pt-3">
-                    <Button
-                      variant="outline"
-                      onClick={() => setLoadedRolls([])}
-                      className="h-8 px-3 text-xs"
-                    >
-                      Clear All
-                    </Button>
-                    <Button
-                      onClick={submitLoading}
-                      disabled={!areAllLotsFinishedLoading()}
-                      className={`h-8 px-4 text-xs ${areAllLotsFinishedLoading() ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-400 cursor-not-allowed'}`}
-                    >
-                      <Save className="h-3 w-3 mr-1" />
-                      Submit Loading
-                    </Button>
-                  </div>
-                  
-                  {/* Submission Info */}
-                  {!areAllLotsFinishedLoading() && (
-                    <div className="mt-2 text-xs text-purple-700">
-                      <p>Please finish loading all rolls for all lots before submitting.</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Info Section */}
-              <div className="bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-200 rounded-md p-3">
-                <h3 className="text-xs font-semibold text-gray-800 mb-2">Loading Instructions</h3>
-                <ul className="text-xs text-gray-600 list-disc pl-4 space-y-1">
-                  <li>First enter and validate the dispatch order ID</li>
-                  <li>Review lot details and follow the sequence order</li>
-                  <li>Add rolls for the active lot only (highlighted in yellow)</li>
-                  <li>Each added roll represents one roll - quantity is automatically managed</li>
-                  <li>Move to next lot when current lot is finished</li>
-                  <li>Submit loading only when all lots are completed</li>
-                </ul>
               </div>
-            </div>
-          )}
+            )}
+
+            {/* Scanned Rolls Summary - Grouped by Lot No */}
+            {Object.keys(groupedScannedRolls).length > 0 && (
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-md p-3">
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="text-xs font-semibold text-green-800">Scanned Rolls Summary</h3>
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    {scannedRolls.length} total rolls
+                  </span>
+                </div>
+
+                {/* Lot-wise roll display */}
+                {Object.entries(groupedScannedRolls).map(([lotNo, rolls]) => {
+                  const allotmentDetail = dispatchOrderDetails?.find(order => order.lotNo === lotNo);
+                  return (
+                    <div key={lotNo} className="mb-4 last:mb-0">
+                      <div className="flex justify-between items-center mb-2 p-2 bg-green-100 rounded">
+                        <div>
+                          <h4 className="text-xs font-semibold text-green-800">Lot: {lotNo}</h4>
+                          <p className="text-xs text-green-700">
+                            {allotmentDetail?.tape || 'N/A'} - {allotmentDetail?.lotNo || 'N/A'}
+                          </p>
+                        </div>
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-200 text-green-800">
+                          {rolls.length} rolls
+                        </span>
+                      </div>
+                      
+                      <div className="border rounded-md">
+                        <Table>
+                          <TableHeader className="bg-green-50">
+                            <TableRow>
+                              <TableHead className="text-xs font-medium text-green-700">Sequence</TableHead>
+                              <TableHead className="text-xs font-medium text-green-700">Roll No</TableHead>
+                              <TableHead className="text-xs font-medium text-green-700">Lot No</TableHead>
+                              <TableHead className="text-xs font-medium text-green-700">Product</TableHead>
+                              <TableHead className="text-xs font-medium text-green-700">Customer</TableHead>
+                              <TableHead className="text-xs font-medium text-green-700">Status</TableHead>
+                              <TableHead className="text-xs font-medium text-green-700 text-right">Action</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {rolls.map((roll: any) => (
+                              <TableRow key={roll.id} className="border-b border-green-100">
+                                <TableCell className="py-2 text-xs font-medium">#{roll.sequence}</TableCell>
+                                <TableCell className="py-2 text-xs font-medium">{roll.fgRollNo || roll.rollNumber}</TableCell>
+                                <TableCell className="py-2 text-xs">{roll.lotNumber}</TableCell>
+                                <TableCell className="py-2 text-xs">{roll.product}</TableCell>
+                                <TableCell className="py-2 text-xs">{roll.customer}</TableCell>
+                                <TableCell className="py-2">
+                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                    {roll.status}
+                                  </span>
+                                </TableCell>
+                                <TableCell className="py-2 text-right">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => removeScannedRoll(roll.id)}
+                                    className="h-6 w-6 p-0 text-red-600 hover:text-red-800 hover:bg-red-50"
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Action Buttons */}
+                <div className="flex justify-end space-x-2 pt-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => setScannedRolls([])}
+                    className="h-8 px-3 text-xs"
+                  >
+                    Clear All
+                  </Button>
+                  <Button
+                    onClick={submitPickingAndLoading}
+                    disabled={!areAllLotsFinished()}
+                    className={`h-8 px-4 text-xs ${areAllLotsFinished() ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-400 cursor-not-allowed'}`}
+                  >
+                    <Save className="h-3 w-3 mr-1" />
+                    Submit All Operations
+                  </Button>
+                </div>
+                
+                {/* Submission Info */}
+                {!areAllLotsFinished() && (
+                  <div className="mt-2 text-xs text-green-700">
+                    <p>Please finish processing all rolls for all lots before submitting.</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>
