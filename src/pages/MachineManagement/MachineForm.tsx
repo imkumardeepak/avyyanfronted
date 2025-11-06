@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { machineApi, apiUtils } from '@/lib/api-client';
 import { toast } from '@/lib/toast';
@@ -33,6 +34,7 @@ const formSchema = z.object({
   // Removed efficiency field as requested
   description: z.string().max(500, 'Description must be less than 500 characters').optional(),
   isActive: z.boolean().optional(),
+  machineType: z.enum(['Single Jersey', 'Double Jersey']).optional(), // Added machine type field
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -110,20 +112,26 @@ const MachineForm = () => {
       // Removed efficiency field as requested
       description: '',
       isActive: true,
+      machineType: 'Single Jersey', // Default to Single Jersey
     },
   });
 
-  // Watch dia and gg values to calculate needles automatically
+  // Watch dia, gg, and machineType values to calculate needles automatically
   const diaValue = form.watch('dia');
   const ggValue = form.watch('gg');
+  const machineTypeValue = form.watch('machineType');
 
-  // Calculate needles automatically when dia or gg changes
+  // Calculate needles automatically when dia, gg, or machineType changes
   useEffect(() => {
     if (diaValue > 0 && ggValue > 0) {
-      const calculatedNeedles = Math.round(diaValue * ggValue * 3.142);
+      const baseNeedles = diaValue * ggValue * 3.142;
+      // For Double Jersey, multiply by 2
+      const calculatedNeedles = machineTypeValue === 'Double Jersey' 
+        ? Math.round(baseNeedles * 2) 
+        : Math.round(baseNeedles);
       form.setValue('needle', calculatedNeedles);
     }
-  }, [diaValue, ggValue, form]);
+  }, [diaValue, ggValue, machineTypeValue, form]);
 
   useEffect(() => {
     if (machine && isEditMode) {
@@ -137,6 +145,8 @@ const MachineForm = () => {
       // Removed efficiency field as requested
       form.setValue('description', machine.description || '');
       form.setValue('isActive', machine.isActive);
+      // Set machine type from the loaded machine data, default to Single Jersey if not present
+      form.setValue('machineType', (machine.machineType as 'Single Jersey' | 'Double Jersey') || 'Single Jersey');
     }
   }, [machine, isEditMode, form]);
 
@@ -206,7 +216,28 @@ const MachineForm = () => {
               )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="machineType">Machine Type</Label>
+                <Select
+                  value={form.watch('machineType')}
+                  onValueChange={(value) => form.setValue('machineType', value as 'Single Jersey' | 'Double Jersey')}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select machine type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Single Jersey">Single Jersey</SelectItem>
+                    <SelectItem value="Double Jersey">Double Jersey</SelectItem>
+                  </SelectContent>
+                </Select>
+                {form.formState.errors.machineType && (
+                  <p className="text-sm text-destructive">
+                    {form.formState.errors.machineType.message}
+                  </p>
+                )}
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="dia">Diameter (Inch)</Label>
                 <Input
@@ -250,7 +281,7 @@ const MachineForm = () => {
                   <p className="text-sm text-destructive">{form.formState.errors.needle.message}</p>
                 )}
                 <p className="text-xs text-muted-foreground">
-                  Calculated as: Dia × GG × 3.142 = {diaValue} × {ggValue} × 3.142 ≈ {diaValue > 0 && ggValue > 0 ? Math.round(diaValue * ggValue * 3.142) : '0'}
+                  Calculated as: Dia × GG × 3.142{machineTypeValue === 'Double Jersey' ? ' × 2' : ''} = {diaValue} × {ggValue} × 3.142{machineTypeValue === 'Double Jersey' ? ' × 2' : ''} ≈ {diaValue > 0 && ggValue > 0 ? (machineTypeValue === 'Double Jersey' ? Math.round(diaValue * ggValue * 3.142 * 2) : Math.round(diaValue * ggValue * 3.142)) : '0'}
                 </p>
               </div>
 

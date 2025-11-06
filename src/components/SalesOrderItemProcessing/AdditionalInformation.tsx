@@ -77,7 +77,7 @@ export function AdditionalInformation({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="colour-code">Colour Code</Label>
+            <Label htmlFor="colour-code">Cone Tip</Label>
             <Input
               id="colour-code"
               value={additionalFields.colourCode}

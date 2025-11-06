@@ -140,24 +140,7 @@ const navConfig: NavItem[] = [
         icon: ArrowRight,
         description: 'Capture and manage FG rolls',
       },
-      {
-        title: PAGE_NAMES.PICK_ROLL_CAPTURE,
-        href: '/pick-roll-capture',
-        icon: ArrowRight,
-        description: 'Capture and manage pick rolls',
-      },
-      {
-        title: PAGE_NAMES.LOAD_CAPTURE,
-        href: '/load-capture',
-        icon: ArrowRight,
-        description: 'Capture and manage load operations',
-      },
-      {
-        title: PAGE_NAMES.PICKING_AND_LOADING,
-        href: '/picking-loading',
-        icon: ArrowRight,
-        description: 'Manage both picking and loading operations',
-      },
+     
     ],
   },
   {
@@ -191,8 +174,26 @@ const navConfig: NavItem[] = [
       {
         title: 'Loading Sheets',
         href: '/loading-sheets',
-        icon: FileText,
+        icon:  ArrowRight,
         description: 'View and manage loading sheets',
+      },
+       {
+        title: PAGE_NAMES.PICK_ROLL_CAPTURE,
+        href: '/pick-roll-capture',
+        icon: ArrowRight,
+        description: 'Capture and manage pick rolls',
+      },
+      {
+        title: PAGE_NAMES.LOAD_CAPTURE,
+        href: '/load-capture',
+        icon: ArrowRight,
+        description: 'Capture and manage load operations',
+      },
+      {
+        title: PAGE_NAMES.PICKING_AND_LOADING,
+        href: '/picking-loading',
+        icon: ArrowRight,
+        description: 'Manage both picking and loading operations',
       },
     ],
   },

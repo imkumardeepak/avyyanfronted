@@ -227,6 +227,7 @@ export interface MachineResponseDto {
     createdAt: string;
     updatedAt?: string;
     isActive: boolean;
+    machineType?: string; // Added machineType field
 }
 
 export interface CreateMachineRequestDto {
@@ -239,6 +240,7 @@ export interface CreateMachineRequestDto {
     constat?: number;       // Optional, >= 0
     efficiency: number;     // Required, 0.01-100
     description?: string;   // Optional, max 500 chars
+    machineType?: string;   // Added machineType field
 }
 
 export interface UpdateMachineRequestDto {
@@ -252,6 +254,7 @@ export interface UpdateMachineRequestDto {
     efficiency: number;     // Required, 0.01-100
     description?: string;   // Optional, max 500 chars
     isActive?: boolean;     // Optional, default: true
+    machineType?: string;   // Added machineType field
 }
 
 export interface MachineSearchRequestDto {
@@ -506,6 +509,7 @@ export interface MachineFormData {
     efficiency: number;
     description?: string;
     isActive: boolean;
+    machineType?: string; // Added machineType field
 }
 
 // ============================================

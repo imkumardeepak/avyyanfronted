@@ -1254,6 +1254,8 @@ const SalesOrderItemProcessingRefactored = () => {
             onClearAllMachines={() => setSelectedMachines([])}
             machineDiameter={parsedDescriptionValues.diameter || undefined}
             machineGauge={parsedDescriptionValues.gauge || undefined}
+            stitchLength={productionCalc.stichLength || undefined}
+            count={productionCalc.count || undefined}
           />
         </>
       )}
