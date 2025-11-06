@@ -118,9 +118,10 @@ export function MachineLoadDistribution({
       // Convert to kg per hour
       const productionKgPerHour = (productionGramsPerMinute / 1000) * 60;
       
-      // Calculate estimated time in hours
+      // Calculate estimated time in hours and then convert to days
       if (productionKgPerHour > 0) {
-        return allocatedWeight / productionKgPerHour;
+        const hours = allocatedWeight / productionKgPerHour;
+        return hours / 24; // Return time in days
       }
       
       return 0;
@@ -331,11 +332,8 @@ export function MachineLoadDistribution({
                                   <p>Time = Weight / (Rate / 1000 × 60)</p>
                                   <p className="mt-1 font-medium">
                                     Est. Time: {(() => {
-                                      const hours = calculateEstimatedProductionTime(machine.allocatedWeight, params);
-                                      const days = hours / 24;
-                                      return days >= 1 
-                                        ? `${days.toFixed(2)} days` 
-                                        : `${hours.toFixed(2)} hours`;
+                                      const days = calculateEstimatedProductionTime(machine.allocatedWeight, params);
+                                      return `${days.toFixed(2)} days`;
                                     })()}
                                   </p>
                                 </div>
@@ -468,11 +466,8 @@ export function MachineLoadDistribution({
                                 <p className="font-medium text-sm">
                                   {machine.allocatedWeight > 0 && stitchLength && count
                                     ? (() => {
-                                        const hours = calculateEstimatedProductionTime(machine.allocatedWeight, params);
-                                        const days = hours / 24;
-                                        return days >= 1 
-                                          ? `${days.toFixed(1)} days` 
-                                          : `${hours.toFixed(1)} hrs`;
+                                        const days = calculateEstimatedProductionTime(machine.allocatedWeight, params);
+                                        return `${days.toFixed(1)} days`;
                                       })()
                                     : '-'}
                                 </p>
@@ -580,10 +575,8 @@ export function MachineLoadDistribution({
                                   className={`font-bold ${isOverAllocated ? 'text-red-800' : 'text-green-800'}`}
                                 >
                                   {(() => {
-                                    const days = totalEstimatedTime / 24;
-                                    return days >= 1 
-                                      ? `${days.toFixed(1)} days` 
-                                      : `${totalEstimatedTime.toFixed(1)} hrs`;
+                                    const days = totalEstimatedTime;
+                                    return `${days.toFixed(1)} days`;
                                   })()}
                                 </p>
                               </div>

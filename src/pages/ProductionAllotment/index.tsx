@@ -560,7 +560,7 @@ const ProductionAllotment: React.FC = () => {
                 <TableHead>Load Weight (kg)</TableHead>
                 <TableHead>Total Rolls</TableHead>
                 <TableHead>Rolls per Kg</TableHead>
-                <TableHead>Est. Production Time (hrs)</TableHead>
+                <TableHead>Est. Production Time (days)</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
