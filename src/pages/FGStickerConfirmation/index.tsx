@@ -66,6 +66,18 @@ const FGStickerConfirmation: React.FC = () => {
         netWeight: netWeight,
       }));
     }
+    //for input gross weight
+    if (name === 'grossWeight') {
+      const grossWeight = value === '' ? NaN : parseFloat(value);
+      const tareWeight = parseFloat(weightData.tareWeight) || 0;
+      const netWeight = isNaN(grossWeight) ? tareWeight.toFixed(2) : (grossWeight - tareWeight).toFixed(2);
+      setWeightData((prev) => ({
+       ...prev,
+        grossWeight: value,
+        netWeight: netWeight,
+      }));
+    }
+    //for input gross weight  
   };
 
   // Add new function to fetch weight data from TCP client
@@ -685,7 +697,14 @@ const FGStickerConfirmation: React.FC = () => {
               <div className="grid grid-cols-3 md:grid-cols-3 gap-3">
                 <div className="bg-white p-2 rounded border text-center">
                   <div className="text-xs text-gray-500">Gross WT.(kg)</div>
-                  <div className="text-xl font-bold text-blue-600">{weightData.grossWeight}</div>
+                  {/* <div className="text-xl font-bold text-blue-600">{weightData.grossWeight}</div> */}
+                  <Input    id="grossWeight"
+                    name="grossWeight"  value={weightData.grossWeight || ''}
+                    onChange={handleChange}
+                     type="number"
+                     step="0.01"
+                      className="text-xl font-bold text-center h-6 p-0 text-blue-600"
+                          />
                 </div>
                 <div className="bg-white p-2 rounded border text-center">
                   <div className="text-xs text-gray-500">Tare WT.(kg)</div>

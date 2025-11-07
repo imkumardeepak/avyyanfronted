@@ -176,8 +176,11 @@ const RollInspection: React.FC = () => {
       requiredFields.push({ value: formData.grade, name: 'Grade' });
     }
     
-    // Add remarks as required field for all actions
-    requiredFields.push({ value: formData.remarks, name: 'Remarks' });
+    // Require remarks only for reject action
+    if (actionType === 'reject' && !formData.remarks.trim()) {
+      toast.error('Error', 'Remarks are required when rejecting a roll');
+      return;
+    }
     
     const emptyFields = requiredFields.filter(field => !field.value);
     if (emptyFields.length > 0) {
@@ -196,7 +199,7 @@ const RollInspection: React.FC = () => {
       );
       
       if (existingInspection) {
-        toast.error('Error', `An inspection record already exists for this roll (ID: ${existingInspection.id}).`);
+        toast.error('Error', `An inspection record already exists for this roll (Roll No: ${existingInspection.rollNo}).`);
         return;
       }
       
@@ -496,7 +499,7 @@ const RollInspection: React.FC = () => {
                   </div>
                   
                   <div className="space-y-1 md:col-span-2">
-                    <Label htmlFor="remarks" className="text-xs font-medium">Remarks *</Label>
+                    <Label htmlFor="remarks" className="text-xs font-medium">Remarks </Label>
                     <Textarea
                       id="remarks"
                       name="remarks"
