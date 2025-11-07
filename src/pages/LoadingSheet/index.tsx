@@ -157,6 +157,8 @@ const LoadingSheet = () => {
       // Fetch transport or courier details if needed
       let transportDetails: TransportResponseDto | null = null;
       let courierDetails: CourierResponseDto | null = null;
+      // Check for manual transport details
+      let manualTransportDetails = null;
       
       if (firstSheet.isTransport && firstSheet.transportId) {
         try {
@@ -172,6 +174,14 @@ const LoadingSheet = () => {
         } catch (error) {
           console.error('Error fetching courier details:', error);
         }
+      } else if (firstSheet.transportName) {
+        // Use manual transport details from the first sheet
+        manualTransportDetails = {
+          transportName: firstSheet.transportName,
+          contactPerson: firstSheet.contactPerson || undefined,
+          phone: firstSheet.phone || undefined,
+          maximumCapacityKgs: firstSheet.maximumCapacityKgs
+        };
       }
       
       // Generate QR code for the dispatch order ID
@@ -185,6 +195,7 @@ const LoadingSheet = () => {
           qrCodeDataUrl={qrCodeDataUrl || ''} 
           transportDetails={transportDetails}
           courierDetails={courierDetails}
+          manualTransportDetails={manualTransportDetails}
         />
       );
       

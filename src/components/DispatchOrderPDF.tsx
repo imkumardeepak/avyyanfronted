@@ -264,9 +264,18 @@ interface DispatchOrderPDFProps {
   qrCodeDataUrl: string; // Single QR code for the dispatch order
   transportDetails?: TransportResponseDto | null;
   courierDetails?: CourierResponseDto | null;
+  manualTransportDetails?: ManualTransportDetails | null; // Add this line
 }
 
-const DispatchOrderPDF: React.FC<DispatchOrderPDFProps> = ({ dispatchOrderId, sheets, qrCodeDataUrl, transportDetails, courierDetails }) => {
+// Add new interface for manual transport details
+interface ManualTransportDetails {
+  transportName?: string;
+  contactPerson?: string;
+  phone?: string;
+  maximumCapacityKgs?: number | null;
+}
+
+const DispatchOrderPDF: React.FC<DispatchOrderPDFProps> = ({ dispatchOrderId, sheets, qrCodeDataUrl, transportDetails, courierDetails, manualTransportDetails }) => {
   // Group sheets by lotment ID (lotNo)
   const groupedByLotment: Record<string, LoadingSheetDto[]> = {};
   
@@ -309,7 +318,7 @@ const DispatchOrderPDF: React.FC<DispatchOrderPDFProps> = ({ dispatchOrderId, sh
                 <Text style={styles.value}>{sheets.length}</Text>
               </View>
               
-              {/* Display either transport or courier information, or fallback to vehicle info */}
+              {/* Display either transport, courier, or manual transport information, or fallback to vehicle info */}
               {transportDetails ? (
                 <>
                   <Text style={[styles.sectionHeader, { marginTop: 6 }]}>TRANSPORT INFORMATION</Text>
@@ -364,6 +373,46 @@ const DispatchOrderPDF: React.FC<DispatchOrderPDFProps> = ({ dispatchOrderId, sh
                   <View style={styles.row}>
                     <Text style={styles.label}>Address:</Text>
                     <Text style={styles.value}>{courierDetails.address || 'N/A'}</Text>
+                  </View>
+                </>
+              ) : manualTransportDetails ? ( // Add this new condition
+                <>
+                  <Text style={[styles.sectionHeader, { marginTop: 6 }]}>MANUAL TRANSPORT INFORMATION</Text>
+                  <View style={styles.row}>
+                    <Text style={styles.label}>Transport Name:</Text>
+                    <Text style={styles.value}>{manualTransportDetails.transportName || firstSheet.transportName || 'N/A'}</Text>
+                  </View>
+                  <View style={styles.row}>
+                    <Text style={styles.label}>Contact Person:</Text>
+                    <Text style={styles.value}>{manualTransportDetails.contactPerson || 'N/A'}</Text>
+                  </View>
+                  <View style={styles.row}>
+                    <Text style={styles.label}>Phone:</Text>
+                    <Text style={styles.value}>{manualTransportDetails.phone || 'N/A'}</Text>
+                  </View>
+                  <View style={styles.row}>
+                    <Text style={styles.label}>Vehicle Number:</Text>
+                    <Text style={styles.value}>{firstSheet.vehicleNo || 'N/A'}</Text>
+                  </View>
+                  <View style={styles.row}>
+                    <Text style={styles.label}>Driver Name:</Text>
+                    <Text style={styles.value}>{firstSheet.driverName || 'N/A'}</Text>
+                  </View>
+                  <View style={styles.row}>
+                    <Text style={styles.label}>License Number:</Text>
+                    <Text style={styles.value}>{firstSheet.license || 'N/A'}</Text>
+                  </View>
+                  <View style={styles.row}>
+                    <Text style={styles.label}>Mobile Number:</Text>
+                    <Text style={styles.value}>{firstSheet.mobileNumber || 'N/A'}</Text>
+                  </View>
+                  <View style={styles.row}>
+                    <Text style={styles.label}>Capacity (kg):</Text>
+                    <Text style={styles.value}>
+                      {manualTransportDetails.maximumCapacityKgs !== null && manualTransportDetails.maximumCapacityKgs !== undefined 
+                        ? manualTransportDetails.maximumCapacityKgs.toString() 
+                        : 'N/A'}
+                    </Text>
                   </View>
                 </>
               ) : (

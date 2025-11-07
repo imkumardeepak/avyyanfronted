@@ -1166,11 +1166,16 @@ export interface DispatchPlanningDto {
   createdAt: string; // ISO 8601 datetime
   updatedAt?: string; // ISO 8601 datetime
   isActive: boolean;
-  // Transport/Courier fields (to be added to backend model)
+  // Transport/Courier fields
   isTransport?: boolean;
   isCourier?: boolean;
   transportId?: number | null;
   courierId?: number | null;
+  // Manual transport details (new fields)
+  transportName?: string;
+  contactPerson?: string;
+  phone?: string;
+  maximumCapacityKgs?: number | null;
 }
 
 export interface CreateDispatchPlanningRequestDto {
@@ -1190,11 +1195,16 @@ export interface CreateDispatchPlanningRequestDto {
   license: string;
   mobileNumber: string;
   remarks: string;
-  // Transport/Courier fields (to be added to backend model)
+  // Transport/Courier fields
   isTransport?: boolean;
   isCourier?: boolean;
   transportId?: number | null;
   courierId?: number | null;
+  // Manual transport details (new fields)
+  transportName?: string;
+  contactPerson?: string;
+  phone?: string;
+  maximumCapacityKgs?: number | null;
   // LoadingNo will be auto-generated
   // DispatchOrderId will be auto-generated
 }
@@ -1218,11 +1228,16 @@ export interface UpdateDispatchPlanningRequestDto {
   remarks: string;
   loadingNo: string;
   dispatchOrderId: string;
-  // Transport/Courier fields (to be added to backend model)
+  // Transport/Courier fields
   isTransport?: boolean;
   isCourier?: boolean;
   transportId?: number | null;
   courierId?: number | null;
+  // Manual transport details (new fields)
+  transportName?: string;
+  contactPerson?: string;
+  phone?: string;
+  maximumCapacityKgs?: number | null;
 }
 
 export interface DispatchedRollDto {
