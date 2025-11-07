@@ -14,6 +14,7 @@ import type {
   LocationResponseDto,
   CreateStorageCaptureRequestDto,
   StorageCaptureRollDataResponseDto,
+  StorageCaptureResponseDto,
 } from '@/types/api-types';
 
 // Define form data types
@@ -36,6 +37,8 @@ const StorageCapture = () => {
   const [scannedLocationCode, setScannedLocationCode] = useState('');
   const [selectedLocation, setSelectedLocation] = useState<LocationResponseDto | null>(null);
   const [rollData, setRollData] = useState<StorageCaptureRollDataResponseDto | null>(null);
+  // Store the lot-to-location mapping
+  const [lotLocationMap, setLotLocationMap] = useState<Record<string, { location: LocationResponseDto; locationCode: string }>>({});
 
   // Handle location code scan
   const handleLocationCodeScan = async (e: React.KeyboardEvent) => {
@@ -50,6 +53,14 @@ const StorageCapture = () => {
           setSelectedLocation(location);
           setValue('locationId', location.id.toString());
           toast.success('Success', `Location found: ${location.location}`);
+          
+          // If we have roll data, store the lot-location mapping
+          if (rollData?.rollConfirmation?.allotId) {
+            setLotLocationMap(prev => ({
+              ...prev,
+              [rollData.rollConfirmation.allotId]: { location, locationCode: scannedLocationCode }
+            }));
+          }
         } else {
           toast.error('Error', 'Location not found. Please check the location code.');
           setSelectedLocation(null);
@@ -93,6 +104,25 @@ const StorageCapture = () => {
         tape: rollData?.productionAllotment?.tapeColor || '',
         customerName: rollData?.productionAllotment.partyName || '',
       };
+
+      // Check if this FG roll has already been captured in this location
+      try {
+        const searchResponse = await storageCaptureApi.searchStorageCaptures({ 
+          fgRollNo: storageCaptureData.fgRollNo,
+          locationCode: storageCaptureData.locationCode
+        });
+        const existingCaptures = apiUtils.extractData(searchResponse) as StorageCaptureResponseDto[];
+        
+        if (existingCaptures && existingCaptures.length > 0) {
+          const existingCapture = existingCaptures[0];
+          throw new Error(`FG Roll ${storageCaptureData.fgRollNo} is already stored in location ${existingCapture.locationCode}`);
+        }
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('already stored')) {
+          throw error;
+        }
+        // Ignore other search errors and proceed with creation
+      }
 
       // Call the actual API endpoint
       const response = await storageCaptureApi.createStorageCapture(storageCaptureData);
@@ -174,6 +204,46 @@ const StorageCapture = () => {
         return;
       }
 
+      // Check if this lot already has an assigned location
+      if (lotLocationMap[allotId]) {
+        // Auto-select the previously assigned location
+        const { location, locationCode } = lotLocationMap[allotId];
+        setSelectedLocation(location);
+        setValue('locationId', location.id.toString());
+        setScannedLocationCode(locationCode);
+        toast.info('Info', `Auto-selected location ${location.location} for Lot ${allotId}`);
+      } else {
+        // Check if there are existing storage captures for this lot in the database
+        try {
+          const searchResponse = await storageCaptureApi.searchStorageCaptures({ lotNo: allotId });
+          const storageCaptures = apiUtils.extractData(searchResponse) as StorageCaptureResponseDto[];
+          
+          if (storageCaptures && storageCaptures.length > 0) {
+            // Get the location from the first storage capture
+            const firstCapture = storageCaptures[0];
+            const locationResponse = await locationApi.searchLocations({ locationcode: firstCapture.locationCode });
+            const locations = locationResponse.data;
+            
+            if (locations && locations.length > 0) {
+              const location = locations[0];
+              setSelectedLocation(location);
+              setValue('locationId', location.id.toString());
+              setScannedLocationCode(firstCapture.locationCode);
+              
+              // Store in our map for future use
+              setLotLocationMap(prev => ({
+                ...prev,
+                [allotId]: { location, locationCode: firstCapture.locationCode }
+              }));
+              
+              toast.info('Info', `Auto-selected location ${location.location} for Lot ${allotId} (from previous captures)`);
+            }
+          }
+        } catch (searchError) {
+          console.warn('Could not search for existing storage captures:', searchError);
+        }
+      }
+
       // Call API to get roll confirmation data by allotId
       console.log('Calling API with AllotId:', allotId);
       const response = await storageCaptureApi.getRollConfirmationsByAllotId(allotId, fgRollNo);
@@ -184,7 +254,7 @@ const StorageCapture = () => {
 
       // Check the structure of the response
       if (!rollDataResponse) {
-        throw new Error('Empty response from server');
+        throw new Error('Empty response from server')
       }
       // Handle the new response structure with single items
       let rollConfirmation;
