@@ -403,12 +403,6 @@ const DispatchDetails = () => {
         }));
       }
 
-      // Get all storage captures for the selected lots where isDispatched = false
-      const storageResponse = await storageCaptureApi.searchStorageCaptures({
-        isDispatched: false
-      });
-      const allStorageCaptures = apiUtils.extractData(storageResponse);
-
       // Prepare dispatch planning data for all lots
       const dispatchPlanningDataList: CreateDispatchPlanningRequestDto[] = [];
       
@@ -452,64 +446,6 @@ const DispatchDetails = () => {
       const dispatchPlanningResult = await dispatchPlanningApi.createBatchDispatchPlanning(dispatchPlanningDataList);
       const createdDispatchPlannings = dispatchPlanningResult.data;
 
-      // For each lot, update only the specified number of rolls
-      const updatePromises: Promise<any>[] = [];
-      const dispatchedRollPromises: Promise<any>[] = []; // New array for dispatched roll promises
-      let dispatchPlanningIndex = 0;
-
-      for (const group of dispatchItems) {
-        for (const item of group.allotments) {
-          const dispatchPlanning = createdDispatchPlannings[dispatchPlanningIndex];
-          dispatchPlanningIndex++;
-          
-          // Get all captures for this lot
-          const lotCaptures = allStorageCaptures.filter(
-            (capture: StorageCaptureResponseDto) => capture.lotNo === item.lotNo
-          );
-
-          // Take only the specified number of rolls (or all if not specified)
-          const rollsToDispatch =
-            item.dispatchRolls !== undefined
-              ? Math.min(item.dispatchRolls, lotCaptures.length)
-              : lotCaptures.length;
-
-          // Update the specified number of rolls and create dispatched roll records
-          const lotPromises = lotCaptures.slice(0, rollsToDispatch).map((capture) => {
-            // Update storage capture to mark as dispatched
-            const updateDto: UpdateStorageCaptureRequestDto = {
-              lotNo: capture.lotNo,
-              fgRollNo: capture.fgRollNo,
-              locationCode: capture.locationCode,
-              tape: capture.tape,
-              customerName: capture.customerName,
-              isDispatched: true, // Set to dispatched
-              isActive: capture.isActive,
-            };
-
-            // Create dispatched roll record
-            const dispatchedRollData: CreateDispatchedRollRequestDto = {
-              dispatchPlanningId: dispatchPlanning.id,
-              lotNo: capture.lotNo,
-              fgRollNo: capture.fgRollNo,
-              isLoaded: false, // Set isLoaded to true when creating dispatch
-              loadedAt: undefined, // Pass undefined value as requested
-              loadedBy: '', // Pass empty string as requested
-            };
-
-            // Add promise to create dispatched roll
-            const dispatchedRollPromise = dispatchPlanningApi.createDispatchedRoll(dispatchedRollData);
-            dispatchedRollPromises.push(dispatchedRollPromise);
-
-            return storageCaptureApi.updateStorageCapture(capture.id, updateDto);
-          });
-
-          updatePromises.push(...lotPromises);
-        }
-      }
-
-      // Wait for all updates and dispatched roll creations to complete
-      await Promise.all([...updatePromises, ...dispatchedRollPromises]);
-
       const totalGroups = dispatchItems.length;
       const totalLots = dispatchItems.reduce((sum, group) => sum + group.allotments.length, 0);
       const totalRolls = dispatchItems.reduce(
@@ -525,15 +461,15 @@ const DispatchDetails = () => {
 
       toast.success(
         'Success',
-        `Successfully dispatched ${totalGroups} sales orders with ${totalLots} lots and ${totalRolls} rolls under dispatch order ${createdDispatchPlannings[0]?.dispatchOrderId || 'N/A'}.`
+        `Successfully created dispatch planning for ${totalGroups} sales orders with ${totalLots} lots and ${totalRolls} rolls under dispatch order ${createdDispatchPlannings[0]?.dispatchOrderId || 'N/A'}.`
       );
 
       // Navigate back to dispatch planning
       navigate('/dispatch-planning');
     } catch (error) {
-      console.error('Error updating dispatch status:', error);
+      console.error('Error creating dispatch planning:', error);
       const errorMessage = apiUtils.handleError(error);
-      toast.error('Error', errorMessage || 'Failed to update dispatch status');
+      toast.error('Error', errorMessage || 'Failed to create dispatch planning');
     } finally {
       setLoading(false);
     }
@@ -1472,7 +1408,7 @@ const DispatchDetails = () => {
                     </div>
                   </div>
                   <div className="bg-yellow-50 border border-yellow-200 rounded-md p-2">
-                    <div className="text-xs text-yellow-600 font-medium">Dispatch Rolls</div>
+                    <div className="text-xs text-yellow-600 font-medium">Planned Rolls</div>
                     <div className="text-lg font-bold text-yellow-800">
                       {dispatchItems.reduce(
                         (sum, group) =>

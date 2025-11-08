@@ -1278,7 +1278,7 @@ export interface TransportResponseDto {
   address?: string;
   vehicleNumber?: string;
   driverName?: string;
-  driverNumber?: string;
+  driverNumber?: string; 
   licenseNumber?: string;
   maximumCapacityKgs?: number;
   createdAt: string;
