@@ -35,7 +35,7 @@ const FGStickerConfirmation: React.FC = () => {
   });
   const [formData, setFormData] = useState({
     rollId: '',
-    ipAddress: '192.168.10.75',
+    ipAddress: '192.168.100.175',
     allotId: '',
     machineName: '',
     rollNo: '',
@@ -376,7 +376,7 @@ const FGStickerConfirmation: React.FC = () => {
 
       setFormData({
         rollId: '',
-        ipAddress: '192.168.10.75',
+        ipAddress: '192.168.100.175',
         allotId: '',
         machineName: '',
         rollNo: '',
