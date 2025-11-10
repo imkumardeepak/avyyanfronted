@@ -7,8 +7,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Save, ArrowLeft, Calendar, Scan, Truck } from 'lucide-react';
 import { toast } from '@/lib/toast';
-import { dispatchPlanningApi, storageCaptureApi, apiUtils } from '@/lib/api-client';
-import type { DispatchPlanningDto, StorageCaptureResponseDto, DispatchedRollDto } from '@/types/api-types';
+import { dispatchPlanningApi, storageCaptureApi, apiUtils, rollConfirmationApi } from '@/lib/api-client';
+import { getUser } from '@/lib/auth'; // Import auth utilities
+import type { DispatchPlanningDto, StorageCaptureResponseDto, DispatchedRollDto, CreateDispatchedRollRequestDto } from '@/types/api-types';
 
 
 const PickingAndLoading = () => {
@@ -22,6 +23,7 @@ const PickingAndLoading = () => {
   const [loadingDate, setLoadingDate] = useState(new Date().toISOString().split('T')[0]);
   const [remarks, setRemarks] = useState('');
   const [scannedRolls, setScannedRolls] = useState<any[]>([]); // Combined rolls for both picking and loading
+  const [lotWeights, setLotWeights] = useState<Record<string, { totalGrossWeight: number; totalNetWeight: number }>>({}); // Track weights per lot
   const [hasError, setHasError] = useState(false);
   const [validating, setValidating] = useState(false);
   const [activeLotIndex, setActiveLotIndex] = useState<number>(0); // Track active lot by sequence
@@ -43,6 +45,16 @@ const PickingAndLoading = () => {
       const matchedOrders = allDispatchPlannings.filter(
         (order: DispatchPlanningDto) => order.dispatchOrderId === dispatchOrderId
       );
+      
+      // Check if any of the orders are already fully dispatched
+      const isAlreadyDispatched = matchedOrders.some(order => order.isFullyDispatched);
+      
+      if (isAlreadyDispatched) {
+        setIsValidDispatchOrder(false);
+        setDispatchOrderDetails(null);
+        toast.error('Error', `Dispatch order ${dispatchOrderId} has already been fully dispatched`);
+        return;
+      }
       
       if (matchedOrders.length > 0) {
         setIsValidDispatchOrder(true);
@@ -172,6 +184,26 @@ const PickingAndLoading = () => {
         // Get the first matching storage capture
         const storageCapture = storageCaptures[0];
         
+        // Fetch weight data from roll confirmation
+        let grossWeight = 0;
+        let netWeight = 0;
+        
+        try {
+          // Get all roll confirmations for this allotId
+          const rollResponse = await rollConfirmationApi.getRollConfirmationsByAllotId(activeLot.lotNo);
+          const rollConfirmations = apiUtils.extractData(rollResponse);
+          
+          // Find the specific roll with matching fgRollNo
+          const matchingRoll = rollConfirmations.find(roll => roll.fgRollNo?.toString() === fgRollNo);
+          
+          if (matchingRoll) {
+            grossWeight = matchingRoll.grossWeight || 0;
+            netWeight = matchingRoll.netWeight || 0;
+          }
+        } catch (weightError) {
+          console.warn('Could not fetch weight data for roll:', fgRollNo, weightError);
+        }
+        
         // Check if this roll has already been scanned in the same lot
         const existingRoll = scannedRolls.find(roll => roll.fgRollNo === fgRollNo && roll.lotNo === activeLot.lotNo);
         if (existingRoll) {
@@ -197,37 +229,6 @@ const PickingAndLoading = () => {
           return;
         }
         
-        // Validate against dispatched rolls table
-        // Check if this roll is valid for the current dispatch order
-        let isValidForDispatch = false;
-        let dispatchedRollData = null;
-        
-        try {
-          // Get dispatched rolls for this planning item
-          const dispatchedResponse = await dispatchPlanningApi.getDispatchedRollsByPlanningId(lotInCurrentDispatchOrder.id);
-          const dispatchedRolls = apiUtils.extractData(dispatchedResponse);
-          
-          console.log('dispatchedRolls', dispatchedRolls);
-          // Check if our roll exists in the dispatched rolls for this planning
-          const matchingRoll = dispatchedRolls.find((roll: DispatchedRollDto) => 
-            roll.fgRollNo === fgRollNo && roll.lotNo === activeLot.lotNo
-          );
-          
-          if (matchingRoll) {
-            isValidForDispatch = true;
-            dispatchedRollData = matchingRoll;
-          }
-        } catch (error) {
-          console.warn(`Failed to check dispatched rolls for order ${lotInCurrentDispatchOrder.id}:`, error);
-        }
-        
-        // If roll is not found in dispatched rolls for this dispatch order, show error
-        if (!isValidForDispatch) {
-          toast.error('Error', `Roll ${fgRollNo} is not valid for dispatch order ${dispatchOrderId}. Roll not found in dispatch planning.`);
-          setRollNumber('');
-          return;
-        }
-        
         // Add new roll as both picked and loaded (single scan does both)
         const newRoll = {
           id: Date.now(),
@@ -244,8 +245,21 @@ const PickingAndLoading = () => {
           isLoaded: true, // Mark as loaded immediately
           loadedAt: new Date().toISOString(),
           loadedBy: 'System',
-          dispatchedRollId: dispatchedRollData?.id || null // Store the dispatched roll ID
+          grossWeight: grossWeight,
+          netWeight: netWeight
         };
+        
+        // Update lot weights
+        setLotWeights(prev => {
+          const currentWeights = prev[activeLot.lotNo] || { totalGrossWeight: 0, totalNetWeight: 0 };
+          return {
+            ...prev,
+            [activeLot.lotNo]: {
+              totalGrossWeight: currentWeights.totalGrossWeight + grossWeight,
+              totalNetWeight: currentWeights.totalNetWeight + netWeight
+            }
+          };
+        });
         
         setScannedRolls([...scannedRolls, newRoll]);
         setRollNumber('');
@@ -269,6 +283,23 @@ const PickingAndLoading = () => {
   };
 
   const removeScannedRoll = (id: number) => {
+    // Find the roll being removed
+    const rollToRemove = scannedRolls.find(roll => roll.id === id);
+    
+    if (rollToRemove) {
+      // Update lot weights
+      setLotWeights(prev => {
+        const currentWeights = prev[rollToRemove.lotNo] || { totalGrossWeight: 0, totalNetWeight: 0 };
+        return {
+          ...prev,
+          [rollToRemove.lotNo]: {
+            totalGrossWeight: Math.max(0, currentWeights.totalGrossWeight - (rollToRemove.grossWeight || 0)),
+            totalNetWeight: Math.max(0, currentWeights.totalNetWeight - (rollToRemove.netWeight || 0))
+          }
+        };
+      });
+    }
+    
     setScannedRolls(scannedRolls.filter(roll => roll.id !== id));
     toast.success('Success', 'Roll removed from list');
   };
@@ -330,35 +361,6 @@ const PickingAndLoading = () => {
           toast.error('Error', `Roll ${fgRollNo} (Lot: ${storageCapture.lotNo}) does not belong to dispatch order ${dispatchOrderId}`);
           return;
         }
-        
-        // Validate that this roll was supposed to be dispatched
-        let isValidForDispatch = false;
-        for (const order of dispatchOrderDetails || []) {
-          if (order.lotNo === storageCapture.lotNo && order.dispatchOrderId === dispatchOrderId) {
-            try {
-              // Get dispatched rolls for this planning item
-              const dispatchedResponse = await dispatchPlanningApi.getDispatchedRollsByPlanningId(order.id);
-              const dispatchedRolls = apiUtils.extractData(dispatchedResponse);
-              
-              // Check if our roll exists in the dispatched rolls for this planning
-              const matchingRoll = dispatchedRolls.find((dr: DispatchedRollDto) => 
-                dr.fgRollNo === fgRollNo && dr.lotNo === storageCapture.lotNo
-              );
-              
-              if (matchingRoll) {
-                isValidForDispatch = true;
-                break;
-              }
-            } catch (error) {
-              console.warn(`Failed to check dispatched rolls for order ${order.id}:`, error);
-            }
-          }
-        }
-        
-        if (!isValidForDispatch) {
-          toast.error('Error', `Roll ${fgRollNo} is not valid for dispatch order ${dispatchOrderId}. Roll not found in dispatch planning.`);
-          return;
-        }
       }
     } catch (error) {
       console.error('Error validating scanned rolls:', error);
@@ -379,8 +381,113 @@ const PickingAndLoading = () => {
     
     // Submit to backend
     try {
-      // For each scanned roll, we just need to ensure it exists in the system
-      // Since we're not updating individual dispatched rolls, we'll just show a success message
+      // For each scanned roll, update the storage capture and create a dispatched roll entry
+      for (const roll of scannedRolls) {
+        try {
+          // Extract fgRollNo from the roll number (4th part of the QR code)
+          const parts = roll.rollNumber.split('#');
+          const fgRollNo = parts[3]; // Get the 4th part as fgRollNo
+          
+          if (!fgRollNo) {
+            toast.error('Error', `Invalid QR code format for roll ${roll.rollNumber}`);
+            continue;
+          }
+          
+          // First, find the storage capture record for this roll
+          const searchResponse = await storageCaptureApi.searchStorageCaptures({
+            fgRollNo: fgRollNo
+          });
+          const storageCaptures = apiUtils.extractData(searchResponse);
+          
+          if (!storageCaptures || storageCaptures.length === 0) {
+            toast.error('Error', `Roll ${fgRollNo} not found in system`);
+            continue;
+          }
+          
+          const storageCapture = storageCaptures[0];
+          
+          // Update the storage capture to mark it as dispatched
+          await storageCaptureApi.updateStorageCapture(storageCapture.id, {
+            lotNo: storageCapture.lotNo,
+            fgRollNo: storageCapture.fgRollNo,
+            locationCode: storageCapture.locationCode,
+            tape: storageCapture.tape,
+            customerName: storageCapture.customerName,
+            isDispatched: true,
+            isActive: storageCapture.isActive
+          });
+          
+          // Find the corresponding dispatch planning record for this lot
+          const dispatchPlanning = dispatchOrderDetails?.find(order => order.lotNo === storageCapture.lotNo);
+          
+          if (dispatchPlanning) {
+            // Get current user information
+            const currentUser = getUser();
+            const loadedBy = currentUser?.firstName && currentUser?.lastName 
+              ? `${currentUser.firstName} ${currentUser.lastName}` 
+              : currentUser?.email || 'System';
+            
+            // Create a dispatched roll entry
+            await dispatchPlanningApi.createDispatchedRoll({
+              dispatchPlanningId: dispatchPlanning.id,
+              lotNo: storageCapture.lotNo,
+              fgRollNo: storageCapture.fgRollNo,
+              isLoaded: true,
+              loadedAt: new Date().toISOString(),
+              loadedBy: loadedBy // Use actual user name instead of 'System'
+            });
+          }
+        } catch (rollError) {
+          console.error('Error processing roll:', rollError);
+          toast.error('Error', `Failed to process roll ${roll.rollNumber}. Please try again.`);
+        }
+      }
+      
+      // Update dispatch planning records with total weights for each lot
+      for (const [lotNo, weights] of Object.entries(lotWeights)) {
+        try {
+          // Find the corresponding dispatch planning record for this lot
+          const dispatchPlanning = dispatchOrderDetails?.find(order => order.lotNo === lotNo);
+          
+          if (dispatchPlanning) {
+            // Update the dispatch planning record with total weights
+            await dispatchPlanningApi.updateDispatchPlanning(dispatchPlanning.id, {
+              lotNo: dispatchPlanning.lotNo,
+              salesOrderId: dispatchPlanning.salesOrderId,
+              salesOrderItemId: dispatchPlanning.salesOrderItemId,
+              customerName: dispatchPlanning.customerName,
+              tape: dispatchPlanning.tape,
+              totalRequiredRolls: dispatchPlanning.totalRequiredRolls,
+              totalReadyRolls: dispatchPlanning.totalReadyRolls,
+              totalDispatchedRolls: dispatchPlanning.totalDispatchedRolls,
+              isFullyDispatched: true, // Mark as fully dispatched since all operations are completed
+              dispatchStartDate: dispatchPlanning.dispatchStartDate,
+              dispatchEndDate: dispatchPlanning.dispatchEndDate,
+              vehicleNo: dispatchPlanning.vehicleNo,
+              driverName: dispatchPlanning.driverName,
+              license: dispatchPlanning.license,
+              mobileNumber: dispatchPlanning.mobileNumber,
+              remarks: dispatchPlanning.remarks,
+              loadingNo: dispatchPlanning.loadingNo,
+              dispatchOrderId: dispatchPlanning.dispatchOrderId,
+              isTransport: dispatchPlanning.isTransport,
+              isCourier: dispatchPlanning.isCourier,
+              transportId: dispatchPlanning.transportId,
+              courierId: dispatchPlanning.courierId,
+              transportName: dispatchPlanning.transportName,
+              contactPerson: dispatchPlanning.contactPerson,
+              phone: dispatchPlanning.phone,
+              maximumCapacityKgs: dispatchPlanning.maximumCapacityKgs,
+              totalGrossWeight: weights.totalGrossWeight,
+              totalNetWeight: weights.totalNetWeight
+            });
+          }
+        } catch (weightError) {
+          console.error('Error updating weights for lot:', lotNo, weightError);
+          toast.error('Error', `Failed to update weights for lot ${lotNo}. Please try again.`);
+        }
+      }
+      
       toast.success('Success', `Submitted ${scannedRolls.length} rolls under dispatch order ${dispatchOrderId}`);
       setScannedRolls([]);
       // Keep the dispatch order ID for potential additional scanning
@@ -394,6 +501,7 @@ const PickingAndLoading = () => {
     setIsValidDispatchOrder(false);
     setDispatchOrderDetails(null);
     setScannedRolls([]);
+    setLotWeights({});
     setActiveLotIndex(0);
   };
 
@@ -436,7 +544,7 @@ const PickingAndLoading = () => {
             <p className="text-xs text-blue-700/80 mb-2">
               Enter and validate the dispatch order ID before performing operations
             </p>
-
+          
             <div className="space-y-2">
               <div className="space-y-1">
                 <Label htmlFor="dispatchOrderId" className="text-xs font-medium text-gray-700">
@@ -640,14 +748,37 @@ const PickingAndLoading = () => {
               <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-md p-3">
                 <div className="flex justify-between items-center mb-2">
                   <h3 className="text-xs font-semibold text-green-800">Scanned Rolls Summary</h3>
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                    {scannedRolls.length} total rolls
-                  </span>
+                  <div className="flex items-center space-x-2">
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                      {scannedRolls.length} total rolls
+                    </span>
+                    {/* Calculate total weights across all lots */}
+                    {(() => {
+                      const totalWeights = Object.values(lotWeights).reduce((acc, weights) => ({
+                        totalGrossWeight: acc.totalGrossWeight + weights.totalGrossWeight,
+                        totalNetWeight: acc.totalNetWeight + weights.totalNetWeight
+                      }), { totalGrossWeight: 0, totalNetWeight: 0 });
+                      
+                      return (
+                        <>
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            Total Gross: {totalWeights.totalGrossWeight.toFixed(2)} kg
+                          </span>
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                            Total Net: {totalWeights.totalNetWeight.toFixed(2)} kg
+                          </span>
+                        </>
+                      );
+                    })()}
+                  </div>
                 </div>
 
                 {/* Lot-wise roll display */}
                 {Object.entries(groupedScannedRolls).map(([lotNo, rolls]) => {
                   const allotmentDetail = dispatchOrderDetails?.find(order => order.lotNo === lotNo);
+                  // Get weight information for this lot
+                  const lotWeightInfo = lotWeights[lotNo] || { totalGrossWeight: 0, totalNetWeight: 0 };
+                  
                   return (
                     <div key={lotNo} className="mb-4 last:mb-0">
                       <div className="flex justify-between items-center mb-2 p-2 bg-green-100 rounded">
@@ -657,9 +788,17 @@ const PickingAndLoading = () => {
                             {allotmentDetail?.tape || 'N/A'} - {allotmentDetail?.lotNo || 'N/A'}
                           </p>
                         </div>
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-200 text-green-800">
-                          {rolls.length} rolls
-                        </span>
+                        <div className="flex items-center space-x-2">
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-200 text-green-800">
+                            {rolls.length} rolls
+                          </span>
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-200 text-blue-800">
+                            Gross: {lotWeightInfo.totalGrossWeight.toFixed(2)} kg
+                          </span>
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-200 text-purple-800">
+                            Net: {lotWeightInfo.totalNetWeight.toFixed(2)} kg
+                          </span>
+                        </div>
                       </div>
                       
                       <div className="border rounded-md">

@@ -1176,6 +1176,9 @@ export interface DispatchPlanningDto {
   contactPerson?: string;
   phone?: string;
   maximumCapacityKgs?: number | null;
+  // Weight fields for dispatch planning
+  totalGrossWeight?: number | null;
+  totalNetWeight?: number | null;
 }
 
 export interface CreateDispatchPlanningRequestDto {
@@ -1205,6 +1208,9 @@ export interface CreateDispatchPlanningRequestDto {
   contactPerson?: string;
   phone?: string;
   maximumCapacityKgs?: number | null;
+  // Weight fields for dispatch planning
+  totalGrossWeight?: number | null;
+  totalNetWeight?: number | null;
   // LoadingNo will be auto-generated
   // DispatchOrderId will be auto-generated
 }
@@ -1238,6 +1244,9 @@ export interface UpdateDispatchPlanningRequestDto {
   contactPerson?: string;
   phone?: string;
   maximumCapacityKgs?: number | null;
+  // Weight fields for dispatch planning
+  totalGrossWeight?: number | null;
+  totalNetWeight?: number | null;
 }
 
 export interface DispatchedRollDto {

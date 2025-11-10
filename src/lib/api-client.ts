@@ -654,7 +654,7 @@ export const storageCaptureApi = {
   // GET /api/StorageCapture/by-allot-id/{allotId} - Get roll confirmations by Allot ID
   getRollConfirmationsByAllotId: (
     allotId: string,
-    fgroll: string
+    fgroll: number
   ): Promise<AxiosResponse<StorageCaptureRollDataResponseDto>> =>
     apiClient.get(`/StorageCapture/by-allot-id/${allotId}?fgroll=${fgroll}`),
 };
@@ -693,7 +693,9 @@ export const dispatchPlanningApi = {
     apiClient.get(`/DispatchPlanning/${id}/dispatched-rolls`),
 
   // POST /api/DispatchPlanning/dispatched-rolls - Create a new dispatched roll
-  createDispatchedRoll: (data: CreateDispatchedRollRequestDto): Promise<AxiosResponse<DispatchedRollDto>> =>
+  createDispatchedRoll: (
+    data: CreateDispatchedRollRequestDto
+  ): Promise<AxiosResponse<DispatchedRollDto>> =>
     apiClient.post('/DispatchPlanning/dispatched-rolls', data),
 };
 
