@@ -15,8 +15,42 @@ import {
 } from '@/components/ui/table';
 import { ArrowLeft, Save, Truck, FileText, CheckCircle, ArrowUp, ArrowDown } from 'lucide-react';
 import { toast } from '@/lib/toast';
-import { storageCaptureApi, apiUtils } from '@/lib/api-client';
-import type { StorageCaptureResponseDto, UpdateStorageCaptureRequestDto } from '@/types/api-types';
+import { storageCaptureApi, dispatchPlanningApi, apiUtils, transportApi, courierApi } from '@/lib/api-client';
+import type { 
+  StorageCaptureResponseDto, 
+  UpdateStorageCaptureRequestDto,
+  CreateDispatchPlanningRequestDto,
+  DispatchPlanningDto,
+  CreateDispatchedRollRequestDto,
+  DispatchedRollDto,
+  TransportResponseDto,
+  CourierResponseDto
+} from '@/types/api-types';
+
+// Define types for transport and courier
+interface TransportMaster {
+  id: number;
+  transportName: string;
+  contactPerson: string;
+  phone: string;
+  email: string;
+  address: string;
+  vehicleNumber: string;
+  driverName: string;
+  driverNumber: string;
+  maximumCapacityKgs: number | null;
+  isActive: boolean;
+}
+
+interface CourierMaster {
+  id: number;
+  courierName: string;
+  contactPerson: string;
+  phone: string;
+  email: string;
+  address: string;
+  isActive: boolean;
+}
 
 // Define types for our dispatch details data
 interface DispatchPlanningItem {
@@ -26,6 +60,7 @@ interface DispatchPlanningItem {
   totalRolls: number;
   totalNetWeight: number;
   totalActualQuantity: number;
+  totalRequiredRolls: number; // Add this field
   dispatchedRolls: number; // Add this new field
   isDispatched: boolean;
   rolls: RollDetail[];
@@ -36,14 +71,14 @@ interface DispatchPlanningItem {
     partyName: string;
   };
   salesOrderItemName?: string;
-  loadingNo?: string; // Add LoadingNo field
+  salesOrderId?: number;
+  salesOrderItemId?: number;
+  // Add loading sheet information
+  loadingSheet?: DispatchPlanningDto;
 }
 
 interface RollDetail {
   fgRollNo: string;
-  netWeight: number;
-  rollNo: string;
-  machineName: string;
 }
 
 // New interface for grouping by sales order
@@ -56,10 +91,13 @@ interface SalesOrderGroup {
   totalRolls: number;
   totalNetWeight: number;
   totalActualQuantity: number;
+  totalRequiredRolls: number; // Add this field
   totalDispatchedRolls: number; // Add this new field
   isFullyDispatched: boolean;
   dispatchRolls?: number; // Number of rolls to dispatch for the entire group
   sequenceNumber?: number; // Add sequenceNumber property
+  // Add loading sheet information
+  loadingSheets?: DispatchPlanningDto[];
 }
 
 // Define types for our dispatch details data
@@ -92,6 +130,7 @@ const DispatchDetails = () => {
           totalRolls: 0,
           totalNetWeight: 0,
           totalActualQuantity: 0,
+          totalRequiredRolls: 0, // Add this field
           totalDispatchedRolls: 0, // Add this new field
           isFullyDispatched: true,
           dispatchRolls: 0,
@@ -106,7 +145,11 @@ const DispatchDetails = () => {
       acc[salesOrderId].totalRolls += item.totalRolls;
       acc[salesOrderId].totalNetWeight += item.totalNetWeight;
       acc[salesOrderId].totalActualQuantity += item.totalActualQuantity;
-      acc[salesOrderId].totalDispatchedRolls += item.dispatchedRolls; // Add this line
+      acc[salesOrderId].totalRequiredRolls += item.totalRequiredRolls; // Add this line
+      // Calculate dispatched rolls as the difference between total captured rolls and ready rolls
+      // Since totalRolls now represents ready rolls (non-dispatched), we need to get total captured rolls differently
+      // For now, we'll assume dispatchedRolls field contains the correct value or calculate it as 0
+      acc[salesOrderId].totalDispatchedRolls += item.dispatchedRolls || 0; // Add this line
       acc[salesOrderId].dispatchRolls =
         (acc[salesOrderId].dispatchRolls || 0) + (item.dispatchRolls || item.totalRolls);
 
@@ -144,6 +187,145 @@ const DispatchDetails = () => {
   // Refs for drag and drop
   const dragItem = useRef<number | null>(null);
   const dragOverItem = useRef<number | null>(null);
+
+  // Transport and Courier states
+  const [transports, setTransports] = useState<TransportMaster[]>([]);
+  const [couriers, setCouriers] = useState<CourierMaster[]>([]);
+  const [isTransport, setIsTransport] = useState(false);
+  const [isCourier, setIsCourier] = useState(false);
+  const [selectedTransport, setSelectedTransport] = useState<number | null>(null);
+  const [selectedCourier, setSelectedCourier] = useState<number | null>(null);
+  const [transportDetails, setTransportDetails] = useState<TransportMaster | null>(null);
+  const [courierDetails, setCourierDetails] = useState<CourierMaster | null>(null);
+  
+  // Manual transport details state
+  const [manualTransportDetails, setManualTransportDetails] = useState({
+    transportName: '',
+    vehicleNumber: '',
+    driverName: '',
+    mobileNumber: '',
+    contactPerson: '',
+    phone: '',
+    maximumCapacityKgs: '',
+    license: ''
+  });
+
+  // Fetch transports and couriers
+  useEffect(() => {
+    const fetchTransportsAndCouriers = async () => {
+      try {
+        // Fetch transports
+        const transportResponse = await transportApi.getAllTransports();
+        const transportData = apiUtils.extractData(transportResponse);
+        setTransports(transportData.map((t: TransportResponseDto) => ({
+          id: t.id,
+          transportName: t.transportName,
+          contactPerson: t.contactPerson || '',
+          phone: t.driverNumber || '', // Use driverNumber as phone
+          email: '',
+          address: t.address || '',
+          vehicleNumber: t.vehicleNumber || '',
+          driverName: t.driverName || '',
+          driverNumber: t.driverNumber || '',
+          maximumCapacityKgs: t.maximumCapacityKgs || null,
+          isActive: t.isActive
+        })));
+
+        // Fetch couriers
+        const courierResponse = await courierApi.getAllCouriers();
+        const courierData = apiUtils.extractData(courierResponse);
+        setCouriers(courierData.map((c: CourierResponseDto) => ({
+          id: c.id,
+          courierName: c.courierName,
+          contactPerson: c.contactPerson || '',
+          phone: c.phone || '',
+          email: c.email || '',
+          address: c.address || '',
+          isActive: c.isActive
+        })));
+      } catch (error) {
+        console.error('Error fetching transports/couriers:', error);
+        toast.error('Error', 'Failed to fetch transport/courier data');
+      }
+    };
+
+    fetchTransportsAndCouriers();
+  }, []);
+
+  // Handle transport selection
+  const handleTransportChange = (transportId: number) => {
+    setSelectedTransport(transportId);
+    const transport = transports.find(t => t.id === transportId) || null;
+    setTransportDetails(transport);
+    
+    // Auto-populate vehicle and driver details if available
+    if (transport) {
+      setDispatchData(prev => ({
+        ...prev,
+        vehicleNo: transport.vehicleNumber || prev.vehicleNo,
+        driverName: transport.driverName || prev.driverName,
+        mobileNumber: transport.phone || prev.mobileNumber // Auto-populate mobile number from driver number
+      }));
+      
+      // Clear manual transport details when selecting from dropdown
+      setManualTransportDetails({
+        transportName: '',
+        vehicleNumber: '',
+        driverName: '',
+        mobileNumber: '',
+        contactPerson: '',
+        phone: '',
+        maximumCapacityKgs: '',
+        license: ''
+      });
+    }
+  };
+
+  // Handle courier selection
+  const handleCourierChange = (courierId: number) => {
+    setSelectedCourier(courierId);
+    const courier = couriers.find(c => c.id === courierId) || null;
+    setCourierDetails(courier);
+    
+    // Auto-populate mobile number if available
+    if (courier) {
+      setDispatchData(prev => ({
+        ...prev,
+        mobileNumber: courier.phone || prev.mobileNumber
+      }));
+      
+      // Clear manual transport details when selecting courier
+      setManualTransportDetails({
+        transportName: '',
+        vehicleNumber: '',
+        driverName: '',
+        mobileNumber: '',
+        contactPerson: '',
+        phone: '',
+        maximumCapacityKgs: '',
+        license: ''
+      });
+    }
+  };
+
+  // Handle manual transport details change
+  const handleManualTransportChange = (field: string, value: string) => {
+    setManualTransportDetails(prev => ({
+      ...prev,
+      [field]: value
+    }));
+    
+    // Also update dispatchData for vehicleNo, driverName, and mobileNumber
+    if (field === 'vehicleNumber') {
+      setDispatchData(prev => ({ ...prev, vehicleNo: value }));
+    } else if (field === 'driverName') {
+      setDispatchData(prev => ({ ...prev, driverName: value }));
+    } else if (field === 'mobileNumber') {
+      setDispatchData(prev => ({ ...prev, mobileNumber: value }));
+    } else if (field === 'license') {
+      setDispatchData(prev => ({ ...prev, license: value }));  // Add license update
+    }
+  };
 
   // Function to handle drag start
   const handleDragStart = (index: number) => {
@@ -196,47 +378,73 @@ const DispatchDetails = () => {
     try {
       setLoading(true);
 
-      // Get all storage captures for the selected lots
-      const storageResponse = await storageCaptureApi.getAllStorageCaptures();
-      const allStorageCaptures = apiUtils.extractData(storageResponse);
+      // Validation
+      if (isTransport && !selectedTransport && !manualTransportDetails.transportName) {
+        toast.error('Error', 'Please select a transport or enter transport details');
+        setLoading(false);
+        return;
+      }
 
-      // For each lot, update only the specified number of rolls
-      const updatePromises = [];
+      if (isCourier && !selectedCourier) {
+        toast.error('Error', 'Please select a courier');
+        setLoading(false);
+        return;
+      }
 
+      // If neither transport nor courier is selected, but manual transport details are entered
+      if (!isTransport && !isCourier && manualTransportDetails.transportName) {
+        // Use manual transport details
+        setDispatchData(prev => ({
+          ...prev,
+          vehicleNo: manualTransportDetails.vehicleNumber || prev.vehicleNo,
+          driverName: manualTransportDetails.driverName || prev.driverName,
+          mobileNumber: manualTransportDetails.mobileNumber || prev.mobileNumber,
+          license: manualTransportDetails.license || prev.license
+        }));
+      }
+
+      // Prepare dispatch planning data for all lots
+      const dispatchPlanningDataList: CreateDispatchPlanningRequestDto[] = [];
+      
       for (const group of dispatchItems) {
         for (const item of group.allotments) {
-          // Get all captures for this lot
-          const lotCaptures = allStorageCaptures.filter(
-            (capture: StorageCaptureResponseDto) => capture.lotNo === item.lotNo
-          );
-
-          // Take only the specified number of rolls (or all if not specified)
-          const rollsToDispatch =
-            item.dispatchRolls !== undefined
-              ? Math.min(item.dispatchRolls, lotCaptures.length)
-              : lotCaptures.length;
-
-          // Update the specified number of rolls
-          const lotPromises = lotCaptures.slice(0, rollsToDispatch).map((capture) => {
-            const updateDto: UpdateStorageCaptureRequestDto = {
-              lotNo: capture.lotNo,
-              fgRollNo: capture.fgRollNo,
-              locationCode: capture.locationCode,
-              tape: capture.tape,
-              customerName: capture.customerName,
-              isDispatched: true, // Set to dispatched
-              isActive: capture.isActive,
-            };
-
-            return storageCaptureApi.updateStorageCapture(capture.id, updateDto);
-          });
-
-          updatePromises.push(...lotPromises);
+          // Create dispatch planning record for this lot
+          const dispatchPlanningData: CreateDispatchPlanningRequestDto = {
+            lotNo: item.lotNo,
+            salesOrderId: item.salesOrder?.id || 0,
+            salesOrderItemId: item.salesOrderItemId || 0,
+            customerName: item.customerName,
+            tape: item.tape,
+            totalRequiredRolls: item.totalRequiredRolls, // Use required rolls
+            totalReadyRolls: item.totalRolls,
+            totalDispatchedRolls: item.dispatchRolls || 0,
+            isFullyDispatched: (item.dispatchRolls || 0) >= item.totalRequiredRolls, // Check if required rolls are fulfilled
+            vehicleNo: dispatchData.vehicleNo,
+            driverName: dispatchData.driverName,
+            license: dispatchData.license,
+            mobileNumber: dispatchData.mobileNumber,
+            remarks: dispatchData.remarks,
+            // Transport/Courier data
+            isTransport: isTransport,
+            isCourier: isCourier,
+            transportId: isTransport ? selectedTransport : null,
+            courierId: isCourier ? selectedCourier : null,
+            // Manual transport details
+            transportName: manualTransportDetails.transportName,
+            contactPerson: manualTransportDetails.contactPerson,
+            phone: manualTransportDetails.phone,
+            maximumCapacityKgs: manualTransportDetails.maximumCapacityKgs ? 
+              parseFloat(manualTransportDetails.maximumCapacityKgs) : null,
+            // LoadingNo and DispatchOrderId will be auto-generated by the backend
+          };
+          
+          dispatchPlanningDataList.push(dispatchPlanningData);
         }
       }
 
-      // Wait for all updates to complete
-      await Promise.all(updatePromises);
+      // Create all dispatch planning records with the same dispatch order ID
+      const dispatchPlanningResult = await dispatchPlanningApi.createBatchDispatchPlanning(dispatchPlanningDataList);
+      const createdDispatchPlannings = dispatchPlanningResult.data;
 
       const totalGroups = dispatchItems.length;
       const totalLots = dispatchItems.reduce((sum, group) => sum + group.allotments.length, 0);
@@ -253,15 +461,15 @@ const DispatchDetails = () => {
 
       toast.success(
         'Success',
-        `Successfully dispatched ${totalGroups} sales orders with ${totalLots} lots and ${totalRolls} rolls`
+        `Successfully created dispatch planning for ${totalGroups} sales orders with ${totalLots} lots and ${totalRolls} rolls under dispatch order ${createdDispatchPlannings[0]?.dispatchOrderId || 'N/A'}.`
       );
 
       // Navigate back to dispatch planning
       navigate('/dispatch-planning');
     } catch (error) {
-      console.error('Error updating dispatch status:', error);
+      console.error('Error creating dispatch planning:', error);
       const errorMessage = apiUtils.handleError(error);
-      toast.error('Error', errorMessage || 'Failed to update dispatch status');
+      toast.error('Error', errorMessage || 'Failed to create dispatch planning');
     } finally {
       setLoading(false);
     }
@@ -300,7 +508,7 @@ const DispatchDetails = () => {
               onClick={() => setActiveTab('details')}
             >
               <FileText className="h-4 w-4 mr-2" />
-              Dispatch Information
+              Dispatch Planning
             </button>
             <button
               className={`py-2 px-4 text-sm font-medium flex items-center ${
@@ -319,103 +527,7 @@ const DispatchDetails = () => {
           {/* Tab Content */}
           {activeTab === 'details' && (
             <div>
-              {/* Dispatch Information Form */}
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-md p-3 mb-4">
-                <h3 className="text-xs font-semibold text-blue-800 mb-2">Dispatch Information</h3>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div className="space-y-1">
-                    <Label htmlFor="dispatchDate" className="text-xs font-medium text-gray-700">
-                      Dispatch Date
-                    </Label>
-                    <Input
-                      id="dispatchDate"
-                      type="date"
-                      value={dispatchData.dispatchDate}
-                      onChange={(e) =>
-                        setDispatchData({ ...dispatchData, dispatchDate: e.target.value })
-                      }
-                      className="text-xs h-8"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label htmlFor="vehicleNo" className="text-xs font-medium text-gray-700">
-                      Vehicle Number
-                    </Label>
-                    <Input
-                      id="vehicleNo"
-                      placeholder="Enter vehicle number"
-                      value={dispatchData.vehicleNo}
-                      onChange={(e) =>
-                        setDispatchData({ ...dispatchData, vehicleNo: e.target.value })
-                      }
-                      className="text-xs h-8"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label htmlFor="driverName" className="text-xs font-medium text-gray-700">
-                      Driver Name
-                    </Label>
-                    <Input
-                      id="driverName"
-                      placeholder="Enter driver name"
-                      value={dispatchData.driverName}
-                      onChange={(e) =>
-                        setDispatchData({ ...dispatchData, driverName: e.target.value })
-                      }
-                      className="text-xs h-8"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label htmlFor="license" className="text-xs font-medium text-gray-700">
-                      License
-                    </Label>
-                    <Input
-                      id="license"
-                      placeholder="Enter license number"
-                      value={dispatchData.license}
-                      onChange={(e) =>
-                        setDispatchData({ ...dispatchData, license: e.target.value })
-                      }
-                      className="text-xs h-8"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label htmlFor="mobileNumber" className="text-xs font-medium text-gray-700">
-                      Mobile Number
-                    </Label>
-                    <Input
-                      id="mobileNumber"
-                      placeholder="Enter mobile number"
-                      value={dispatchData.mobileNumber}
-                      onChange={(e) =>
-                        setDispatchData({ ...dispatchData, mobileNumber: e.target.value })
-                      }
-                      className="text-xs h-8"
-                    />
-                  </div>
-
-                  <div className="md:col-span-3 space-y-1">
-                    <Label htmlFor="remarks" className="text-xs font-medium text-gray-700">
-                      Remarks
-                    </Label>
-                    <Input
-                      id="remarks"
-                      placeholder="Any additional remarks"
-                      value={dispatchData.remarks}
-                      onChange={(e) =>
-                        setDispatchData({ ...dispatchData, remarks: e.target.value })
-                      }
-                      className="text-xs h-8"
-                    />
-                  </div>
-                </div>
-              </div>
-
+          
               {/* Selected Lots Summary */}
               <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-md p-3 mb-4">
                 <h3 className="text-xs font-semibold text-green-800 mb-2">
@@ -459,11 +571,12 @@ const DispatchDetails = () => {
                       <TableHead className="text-xs font-medium text-gray-700">SO Number</TableHead>
                       <TableHead className="text-xs font-medium text-gray-700">Party</TableHead>
                       <TableHead className="text-xs font-medium text-gray-700">Customer</TableHead>
-                      <TableHead className="text-xs font-medium text-gray-700">Allotments</TableHead>
+                      <TableHead className="text-xs font-medium text-gray-700">Lots</TableHead>
                       <TableHead className="text-xs font-medium text-gray-700">Ready Rolls</TableHead>
+                      <TableHead className="text-xs font-medium text-gray-700">Required Rolls</TableHead>
                       <TableHead className="text-xs font-medium text-gray-700">Dispatch Rolls</TableHead>
                       <TableHead className="text-xs font-medium text-gray-700">Dispatched Rolls</TableHead>
-                      <TableHead className="text-xs font-medium text-gray-700">Loading No</TableHead>
+                      <TableHead className="text-xs font-medium text-gray-700">Loading Sheets</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -497,14 +610,16 @@ const DispatchDetails = () => {
                               </div>
                             </TableCell>
                             <TableCell className="py-3 font-medium">{group.totalRolls}</TableCell>
+                            <TableCell className="py-3 font-medium">{group.totalRequiredRolls}</TableCell>
                             <TableCell className="py-3">
                               <Input
                                 type="number"
                                 min="0"
                                 max={group.totalRolls}
-                                value={group.dispatchRolls || 0}
+                                value={group.dispatchRolls || ''}
                                 onChange={(e) => {
-                                  const newDispatchRolls = parseInt(e.target.value) || 0;
+                                  const value = e.target.value === '' ? NaN : parseInt(e.target.value);
+                                  const newDispatchRolls = isNaN(value) ? 0 : value;
                                   const updatedItems = [...dispatchItems];
                                   const groupIndex = updatedItems.findIndex(
                                     (g) => g.salesOrderId === group.salesOrderId
@@ -579,8 +694,13 @@ const DispatchDetails = () => {
                               {group.totalDispatchedRolls}
                             </TableCell>
                             <TableCell className="py-3 font-medium">
-                              {/* We'll display the LoadingNo here once we have the data */}
-                              N/A
+                              {group.loadingSheets && group.loadingSheets.length > 0 ? (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                  {group.loadingSheets.length} sheet{group.loadingSheets.length !== 1 ? 's' : ''}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-gray-500">Will be created</span>
+                              )}
                             </TableCell>
                           </TableRow>
                           {/* Expanded view for allotments in this group */}
@@ -602,14 +722,16 @@ const DispatchDetails = () => {
                                 </div>
                               </TableCell>
                               <TableCell className="py-2">{allotment.totalRolls}</TableCell>
+                              <TableCell className="py-2">{allotment.totalRequiredRolls}</TableCell>
                               <TableCell className="py-2">
                                 <Input
                                   type="number"
                                   min="0"
                                   max={allotment.totalRolls}
-                                  value={allotment.dispatchRolls || 0}
+                                  value={allotment.dispatchRolls || ''}
                                   onChange={(e) => {
-                                    const newDispatchRolls = parseInt(e.target.value) || 0;
+                                    const value = e.target.value === '' ? NaN : parseInt(e.target.value);
+                                    const newDispatchRolls = isNaN(value) ? 0 : value;
                                     const updatedItems = [...dispatchItems];
                                     const groupIndex = updatedItems.findIndex(
                                       (g) => g.salesOrderId === group.salesOrderId
@@ -652,7 +774,13 @@ const DispatchDetails = () => {
                                 {allotment.dispatchedRolls}
                               </TableCell>
                               <TableCell className="py-2">
-                                {allotment.loadingNo || 'N/A'}
+                                {allotment.loadingSheet ? (
+                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                    {allotment.loadingSheet.loadingNo}
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-gray-500">Will be created</span>
+                                )}
                               </TableCell>
                             </TableRow>
                           ))}
@@ -662,60 +790,6 @@ const DispatchDetails = () => {
                   </TableBody>
                 </Table>
               </div>
-
-              {/* Navigation Button */}
-              <div className="flex justify-end">
-                <Button
-                  onClick={() => setActiveTab('confirm')}
-                  disabled={dispatchItems.length === 0}
-                  className="bg-blue-600 hover:bg-blue-700 text-white h-8 px-4 text-xs"
-                >
-                  Review & Confirm Dispatch
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'confirm' && (
-            <div>
-              {/* Confirmation Summary */}
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-md p-3 mb-4">
-                <h3 className="text-xs font-semibold text-blue-800 mb-2">Dispatch Confirmation</h3>
-                <p className="text-xs text-gray-600 mb-3">
-                  Please review the details below before confirming the dispatch. You can reorder
-                  the sales orders as needed.
-                </p>
-
-                {/* Dispatch Information Review */}
-                <div className="bg-white border border-gray-200 rounded-md p-3 mb-4">
-                  <h4 className="text-xs font-semibold text-gray-700 mb-2">Dispatch Information</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                    <div>
-                      <Label className="text-xs text-gray-500">Dispatch Date</Label>
-                      <div className="text-sm">{dispatchData.dispatchDate || 'N/A'}</div>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-gray-500">Vehicle Number</Label>
-                      <div className="text-sm">{dispatchData.vehicleNo || 'N/A'}</div>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-gray-500">Driver Name</Label>
-                      <div className="text-sm">{dispatchData.driverName || 'N/A'}</div>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-gray-500">License</Label>
-                      <div className="text-sm">{dispatchData.license || 'N/A'}</div>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-gray-500">Mobile Number</Label>
-                      <div className="text-sm">{dispatchData.mobileNumber || 'N/A'}</div>
-                    </div>
-                    <div className="md:col-span-3">
-                      <Label className="text-xs text-gray-500">Remarks</Label>
-                      <div className="text-sm">{dispatchData.remarks || 'N/A'}</div>
-                    </div>
-                  </div>
-                </div>
 
                 {/* Sequence Reordering Instructions */}
                 <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-4">
@@ -744,21 +818,26 @@ const DispatchDetails = () => {
                           Customer
                         </TableHead>
                         <TableHead className="text-xs font-medium text-gray-700">
-                          Allotments
+                         LOTS
                         </TableHead>
                         <TableHead className="text-xs font-medium text-gray-700">
                           Total Rolls
                         </TableHead>
                         <TableHead className="text-xs font-medium text-gray-700">
+                          Required Rolls
+                        </TableHead>
+                        <TableHead className="text-xs font-medium text-gray-700">
                           Dispatch Rolls
                         </TableHead>
+                        <TableHead className="text-xs font-medium text-gray-700">Loading Sheets</TableHead>
+                        <TableHead className="text-xs font-medium text-gray-700">Dispatch Order ID</TableHead>
                         <TableHead className="text-xs font-medium text-gray-700">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {dispatchItems.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                          <TableCell colSpan={11} className="text-center py-8 text-gray-500">
                             No sales orders found
                           </TableCell>
                         </TableRow>
@@ -790,6 +869,7 @@ const DispatchDetails = () => {
                               </div>
                             </TableCell>
                             <TableCell className="py-3">{group.totalRolls}</TableCell>
+                            <TableCell className="py-3">{group.totalRequiredRolls}</TableCell>
                             <TableCell className="py-3">
                               {group.allotments.reduce(
                                 (sum, item) =>
@@ -798,6 +878,24 @@ const DispatchDetails = () => {
                                     ? item.dispatchRolls
                                     : item.totalRolls),
                                 0
+                              )}
+                            </TableCell>
+                            <TableCell className="py-3">
+                              {group.loadingSheets && group.loadingSheets.length > 0 ? (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                  {group.loadingSheets.length} sheet{group.loadingSheets.length !== 1 ? 's' : ''}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-gray-500">Will be created</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="py-3">
+                              {group.loadingSheets && group.loadingSheets.length > 0 ? (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                  {group.loadingSheets[0]?.dispatchOrderId || 'N/A'}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-gray-500">Will be created</span>
                               )}
                             </TableCell>
                             <TableCell className="py-3">
@@ -827,44 +925,535 @@ const DispatchDetails = () => {
                       )}
                     </TableBody>
                   </Table>
+                </div>  
+              {/* Navigation Button */}
+              <div className="flex  py-4 justify-end">
+                <Button
+                  onClick={() => setActiveTab('confirm')}
+                  disabled={dispatchItems.length === 0}
+                  className="bg-blue-600 hover:bg-blue-700 text-white h-8 px-4 text-xs"
+                >
+                  Review & Confirm Dispatch
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'confirm' && (
+            <div>
+              {/* Confirmation Summary */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-md p-3 mb-4">
+                <h3 className="text-xs font-semibold text-blue-800 mb-2">Dispatch Confirmation</h3>
+                <p className="text-xs text-gray-600 mb-3">
+                  Please review the details below before confirming the dispatch. You can reorder
+                  the sales orders as needed.
+                </p>
+                    {/* Dispatch Information Form */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-md p-3 mb-4">
+                <h3 className="text-xs font-semibold text-blue-800 mb-2">Dispatch Information</h3>
+
+                {/* Transport/Courier Selection */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="transportCheckbox"
+                      checked={isTransport}
+                      onChange={(e) => {
+                        const isChecked = e.target.checked;
+                        setIsTransport(isChecked);
+                        if (isChecked) {
+                          setIsCourier(false);
+                          setSelectedCourier(null);
+                          setCourierDetails(null);
+                          // Clear manual transport details when switching to courier
+                          setManualTransportDetails({
+                            transportName: '',
+                            vehicleNumber: '',
+                            driverName: '',
+                            mobileNumber: '',
+                            contactPerson: '',
+                            phone: '',
+                            maximumCapacityKgs: '',
+                            license: ''
+                          });
+                        } else {
+                          setSelectedTransport(null);
+                          setTransportDetails(null);
+                        }
+                      }}
+                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <Label htmlFor="transportCheckbox" className="text-xs font-medium text-gray-700">
+                      Transport
+                    </Label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="courierCheckbox"
+                      checked={isCourier}
+                      onChange={(e) => {
+                        const isChecked = e.target.checked;
+                        setIsCourier(isChecked);
+                        if (isChecked) {
+                          setIsTransport(false);
+                          setSelectedTransport(null);
+                          setTransportDetails(null);
+                          // Clear manual transport details when switching to courier
+                          setManualTransportDetails({
+                            transportName: '',
+                            vehicleNumber: '',
+                            driverName: '',
+                            mobileNumber: '',
+                            contactPerson: '',
+                            phone: '',
+                            maximumCapacityKgs: '',
+                            license: ''
+                          });
+                        } else {
+                          setSelectedCourier(null);
+                          setCourierDetails(null);
+                        }
+                      }}
+                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <Label htmlFor="courierCheckbox" className="text-xs font-medium text-gray-700">
+                      Courier
+                    </Label>
+                  </div>
                 </div>
 
-                {/* Dispatch Summary */}
-                <div className="bg-white border border-gray-200 rounded-md p-3 mt-4">
-                  <h4 className="text-xs font-semibold text-gray-700 mb-2">Dispatch Summary</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
-                    <div className="bg-blue-50 border border-blue-200 rounded-md p-2">
-                      <div className="text-xs text-blue-600 font-medium">Sales Orders</div>
-                      <div className="text-lg font-bold text-blue-800">{dispatchItems.length}</div>
+                {/* Transport Dropdown */}
+                {isTransport && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                    <div className="space-y-1">
+                      <Label htmlFor="transportSelect" className="text-xs font-medium text-gray-700">
+                        Select Transport
+                      </Label>
+                      <select
+                        id="transportSelect"
+                        value={selectedTransport || ''}
+                        onChange={(e) => handleTransportChange(Number(e.target.value))}
+                        className="w-full rounded-md border border-gray-300 bg-white py-1.5 px-3 text-xs shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      >
+                        <option value="">Select a transport</option>
+                        {transports
+                          .filter(t => t.isActive)
+                          .map((transport) => (
+                            <option key={transport.id} value={transport.id}>
+                              {transport.transportName}
+                            </option>
+                          ))}
+                      </select>
                     </div>
+
+                    {transportDetails && (
+                      <div className="bg-white border border-gray-200 rounded-md p-3">
+                        <h4 className="text-xs font-semibold text-gray-700 mb-2">Transport Details</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                          <div>
+                            <span className="font-medium">Name:</span> {transportDetails.transportName}
+                          </div>
+                          <div>
+                            <span className="font-medium">Contact Person:</span> {transportDetails.contactPerson}
+                          </div>
+                          <div>
+                            <span className="font-medium">Phone:</span> {transportDetails.phone}
+                          </div>
+                          <div>
+                            <span className="font-medium">Email:</span> {transportDetails.email}
+                          </div>
+                          <div className="md:col-span-2">
+                            <span className="font-medium">Address:</span> {transportDetails.address}
+                          </div>
+                          {transportDetails.vehicleNumber && (
+                            <div>
+                              <span className="font-medium">Vehicle No:</span> {transportDetails.vehicleNumber}
+                            </div>
+                          )}
+                          {transportDetails.driverName && (
+                            <div>
+                              <span className="font-medium">Driver:</span> {transportDetails.driverName}
+                            </div>
+                          )}
+                          {transportDetails.driverNumber && (
+                            <div>
+                              <span className="font-medium">Driver Number:</span> {transportDetails.driverNumber}
+                            </div>
+                          )}
+                          {transportDetails.maximumCapacityKgs && (
+                            <div>
+                              <span className="font-medium">Capacity:</span> {transportDetails.maximumCapacityKgs} kgs
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Manual Transport Details Entry */}
+                    {!selectedTransport && (
+                      <div className="bg-white border border-gray-200 rounded-md p-3">
+                        <h4 className="text-xs font-semibold text-gray-700 mb-2">Enter Transport Details</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <Label htmlFor="manualTransportName" className="text-xs font-medium text-gray-700">
+                              Transport Name *
+                            </Label>
+                            <Input
+                              id="manualTransportName"
+                              placeholder="Enter transport name"
+                              value={manualTransportDetails.transportName}
+                              onChange={(e) => handleManualTransportChange('transportName', e.target.value)}
+                              className="text-xs h-8"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label htmlFor="manualContactPerson" className="text-xs font-medium text-gray-700">
+                              Contact Person
+                            </Label>
+                            <Input
+                              id="manualContactPerson"
+                              placeholder="Enter contact person"
+                              value={manualTransportDetails.contactPerson}
+                              onChange={(e) => handleManualTransportChange('contactPerson', e.target.value)}
+                              className="text-xs h-8"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label htmlFor="manualVehicleNumber" className="text-xs font-medium text-gray-700">
+                              Vehicle Number
+                            </Label>
+                            <Input
+                              id="manualVehicleNumber"
+                              placeholder="Enter vehicle number"
+                              value={manualTransportDetails.vehicleNumber}
+                              onChange={(e) => handleManualTransportChange('vehicleNumber', e.target.value)}
+                              className="text-xs h-8"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label htmlFor="manualPhone" className="text-xs font-medium text-gray-700">
+                              Phone
+                            </Label>
+                            <Input
+                              id="manualPhone"
+                              placeholder="Enter phone number"
+                              value={manualTransportDetails.phone}
+                              onChange={(e) => handleManualTransportChange('phone', e.target.value)}
+                              className="text-xs h-8"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label htmlFor="manualDriverName" className="text-xs font-medium text-gray-700">
+                              Driver Name
+                            </Label>
+                            <Input
+                              id="manualDriverName"
+                              placeholder="Enter driver name"
+                              value={manualTransportDetails.driverName}
+                              onChange={(e) => handleManualTransportChange('driverName', e.target.value)}
+                              className="text-xs h-8"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label htmlFor="manualMobileNumber" className="text-xs font-medium text-gray-700">
+                              Mobile Number
+                            </Label>
+                            <Input
+                              id="manualMobileNumber"
+                              placeholder="Enter mobile number"
+                              value={manualTransportDetails.mobileNumber}
+                              onChange={(e) => handleManualTransportChange('mobileNumber', e.target.value)}
+                              className="text-xs h-8"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label htmlFor="manualLicense" className="text-xs font-medium text-gray-700">
+                              License
+                            </Label>
+                            <Input
+                              id="manualLicense"
+                              placeholder="Enter license"
+                              value={manualTransportDetails.license}
+                              onChange={(e) => handleManualTransportChange('license', e.target.value)}
+                              className="text-xs h-8"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label htmlFor="manualCapacity" className="text-xs font-medium text-gray-700">
+                              Vehicle Capacity (kg)
+                            </Label>
+                            <Input
+                              id="manualCapacity"
+                              type="number"
+                              placeholder="Enter capacity in kg"
+                              value={manualTransportDetails.maximumCapacityKgs}
+                              onChange={(e) => handleManualTransportChange('maximumCapacityKgs', e.target.value)}
+                              className="text-xs h-8"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Courier Dropdown */}
+                {isCourier && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                    <div className="space-y-1">
+                      <Label htmlFor="courierSelect" className="text-xs font-medium text-gray-700">
+                        Select Courier
+                      </Label>
+                      <select
+                        id="courierSelect"
+                        value={selectedCourier || ''}
+                        onChange={(e) => handleCourierChange(Number(e.target.value))}
+                        className="w-full rounded-md border border-gray-300 bg-white py-1.5 px-3 text-xs shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      >
+                        <option value="">Select a courier</option>
+                        {couriers
+                          .filter(c => c.isActive)
+                          .map((courier) => (
+                            <option key={courier.id} value={courier.id}>
+                              {courier.courierName}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+
+                    {courierDetails && (
+                      <div className="bg-white border border-gray-200 rounded-md p-3">
+                        <h4 className="text-xs font-semibold text-gray-700 mb-2">Courier Details</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                          <div>
+                            <span className="font-medium">Name:</span> {courierDetails.courierName}
+                          </div>
+                          <div>
+                            <span className="font-medium">Contact Person:</span> {courierDetails.contactPerson}
+                          </div>
+                          <div>
+                            <span className="font-medium">Phone:</span> {courierDetails.phone}
+                          </div>
+                          <div>
+                            <span className="font-medium">Email:</span> {courierDetails.email}
+                          </div>
+                          <div className="md:col-span-2">
+                            <span className="font-medium">Address:</span> {courierDetails.address}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Manual Transport Entry when neither transport nor courier is selected */}
+                {!isTransport && !isCourier && (
+                  <div className="bg-white border border-gray-200 rounded-md p-3 mb-3">
+                    <h4 className="text-xs font-semibold text-gray-700 mb-2">Transport Details</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label htmlFor="manualTransportName2" className="text-xs font-medium text-gray-700">
+                          Transport Name *
+                        </Label>
+                        <Input
+                          id="manualTransportName2"
+                          placeholder="Enter transport name"
+                          value={manualTransportDetails.transportName}
+                          onChange={(e) => handleManualTransportChange('transportName', e.target.value)}
+                          className="text-xs h-8"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="manualContactPerson2" className="text-xs font-medium text-gray-700">
+                          Contact Person
+                        </Label>
+                        <Input
+                          id="manualContactPerson2"
+                          placeholder="Enter contact person"
+                          value={manualTransportDetails.contactPerson}
+                          onChange={(e) => handleManualTransportChange('contactPerson', e.target.value)}
+                          className="text-xs h-8"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="manualVehicleNumber2" className="text-xs font-medium text-gray-700">
+                          Vehicle Number
+                        </Label>
+                        <Input
+                          id="manualVehicleNumber2"
+                          placeholder="Enter vehicle number"
+                          value={manualTransportDetails.vehicleNumber}
+                          onChange={(e) => handleManualTransportChange('vehicleNumber', e.target.value)}
+                          className="text-xs h-8"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="manualPhone2" className="text-xs font-medium text-gray-700">
+                          Phone
+                        </Label>
+                        <Input
+                          id="manualPhone2"
+                          placeholder="Enter phone number"
+                          value={manualTransportDetails.phone}
+                          onChange={(e) => handleManualTransportChange('phone', e.target.value)}
+                          className="text-xs h-8"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="manualDriverName2" className="text-xs font-medium text-gray-700">
+                          Driver Name
+                        </Label>
+                        <Input
+                          id="manualDriverName2"
+                          placeholder="Enter driver name"
+                          value={manualTransportDetails.driverName}
+                          onChange={(e) => handleManualTransportChange('driverName', e.target.value)}
+                          className="text-xs h-8"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="manualMobileNumber2" className="text-xs font-medium text-gray-700">
+                          Mobile Number
+                        </Label>
+                        <Input
+                          id="manualMobileNumber2"
+                          placeholder="Enter mobile number"
+                          value={manualTransportDetails.mobileNumber}
+                          onChange={(e) => handleManualTransportChange('mobileNumber', e.target.value)}
+                          className="text-xs h-8"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="manualLicense2" className="text-xs font-medium text-gray-700">
+                          License
+                        </Label>
+                        <Input
+                          id="manualLicense2"
+                          placeholder="Enter license"
+                          value={manualTransportDetails.license}
+                          onChange={(e) => handleManualTransportChange('license', e.target.value)}
+                          className="text-xs h-8"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="manualCapacity2" className="text-xs font-medium text-gray-700">
+                          Vehicle Capacity (kg)
+                        </Label>
+                        <Input
+                          id="manualCapacity2"
+                          type="number"
+                          placeholder="Enter capacity in kg"
+                          value={manualTransportDetails.maximumCapacityKgs}
+                          onChange={(e) => handleManualTransportChange('maximumCapacityKgs', e.target.value)}
+                          className="text-xs h-8"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Grid with dispatch data fields - removing vehicle, driver, license, and mobile number fields */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="dispatchDate" className="text-xs font-medium text-gray-700">
+                      Dispatch Planning Date
+                    </Label>
+                    <Input
+                      id="dispatchDate"
+                      type="date"
+                      value={dispatchData.dispatchDate}
+                      onChange={(e) =>
+                        setDispatchData({ ...dispatchData, dispatchDate: e.target.value })
+                      }
+                      className="text-xs h-8"
+                    />
+                  </div>
+
+                  {/* Removed vehicleNo, driverName, license, and mobileNumber fields as requested */}
+                  
+                  <div className="md:col-span-3 space-y-1">
+                    <Label htmlFor="remarks" className="text-xs font-medium text-gray-700">
+                      Remarks
+                    </Label>
+                    <Input
+                      id="remarks"
+                      placeholder="Any additional remarks"
+                      value={dispatchData.remarks}
+                      onChange={(e) =>
+                        setDispatchData({ ...dispatchData, remarks: e.target.value })
+                      }
+                      className="text-xs h-8"
+                    />
+                  </div>
+                </div>
+              </div>
+
+          
+
+              {/* Dispatch Summary */}
+              <div className="bg-white border border-gray-200 rounded-md p-3 mt-4">
+                <h4 className="text-xs font-semibold text-gray-700 mb-2">Dispatch Summary</h4>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
+                  <div className="bg-blue-50 border border-blue-200 rounded-md p-2">
+                    <div className="text-xs text-blue-600 font-medium">Sales Orders</div>
+                    <div className="text-lg font-bold text-blue-800">{dispatchItems.length}</div>
+                  </div>
+                  <div className="bg-green-50 border border-green-200 rounded-md p-2">
+                    <div className="text-xs text-green-600 font-medium">Total Lots</div>
+                    <div className="text-lg font-bold text-green-800">
+                      {dispatchItems.reduce((sum, group) => sum + group.allotments.length, 0)}
+                    </div>
+                  </div>
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-md p-2">
+                    <div className="text-xs text-yellow-600 font-medium">Planned Rolls</div>
+                    <div className="text-lg font-bold text-yellow-800">
+                      {dispatchItems.reduce(
+                        (sum, group) =>
+                          sum +
+                          group.allotments.reduce(
+                            (itemSum, item) =>
+                              itemSum +
+                              (item.dispatchRolls !== undefined
+                                ? item.dispatchRolls
+                                : item.totalRolls),
+                            0
+                          ),
+                        0
+                      )}
+                    </div>
+                  </div>
+                  <div className="bg-purple-50 border border-purple-200 rounded-md p-2">
+                    <div className="text-xs text-purple-600 font-medium">Dispatched Rolls</div>
+                    <div className="text-lg font-bold text-purple-800">
+                      {dispatchItems.reduce((sum, group) => sum + group.totalDispatchedRolls, 0)}
+                    </div>
+                  </div>
+                </div>
+                  
+                  {/* Status Summary */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div className="bg-green-50 border border-green-200 rounded-md p-2">
-                      <div className="text-xs text-green-600 font-medium">Total Lots</div>
+                      <div className="text-xs text-green-600 font-medium">Fully Dispatched</div>
                       <div className="text-lg font-bold text-green-800">
-                        {dispatchItems.reduce((sum, group) => sum + group.allotments.length, 0)}
+                        {dispatchItems.filter(group => 
+                          group.allotments.every(allotment => 
+                            (allotment.dispatchRolls || 0) >= allotment.totalRequiredRolls
+                          )
+                        ).length} Sales Orders
                       </div>
                     </div>
                     <div className="bg-yellow-50 border border-yellow-200 rounded-md p-2">
-                      <div className="text-xs text-yellow-600 font-medium">Dispatch Rolls</div>
+                      <div className="text-xs text-yellow-600 font-medium">Partially Dispatched</div>
                       <div className="text-lg font-bold text-yellow-800">
-                        {dispatchItems.reduce(
-                          (sum, group) =>
-                            sum +
-                            group.allotments.reduce(
-                              (itemSum, item) =>
-                                itemSum +
-                                (item.dispatchRolls !== undefined
-                                  ? item.dispatchRolls
-                                  : item.totalRolls),
-                              0
-                            ),
-                          0
-                        )}
-                      </div>
-                    </div>
-                    <div className="bg-purple-50 border border-purple-200 rounded-md p-2">
-                      <div className="text-xs text-purple-600 font-medium">Dispatched Rolls</div>
-                      <div className="text-lg font-bold text-purple-800">
-                        {dispatchItems.reduce((sum, group) => sum + group.totalDispatchedRolls, 0)}
+                        {dispatchItems.filter(group => 
+                          group.allotments.some(allotment => 
+                            (allotment.dispatchRolls || 0) < allotment.totalRequiredRolls && 
+                            (allotment.dispatchRolls || 0) > 0
+                          )
+                        ).length} Sales Orders
                       </div>
                     </div>
                   </div>
@@ -877,6 +1466,10 @@ const DispatchDetails = () => {
                     Once you confirm the dispatch, the status of the selected items will be updated
                     and this action cannot be undone. Please ensure all details are correct before
                     proceeding.
+                  </p>
+                  <p className="text-xs text-yellow-700 mt-1">
+                    <strong>Note:</strong> Only lots where dispatched rolls match or exceed required rolls will be marked as fully dispatched.
+                    Loading sheets will be automatically created for each dispatch.
                   </p>
                 </div>
 

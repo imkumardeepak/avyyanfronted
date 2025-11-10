@@ -7,6 +7,8 @@ import AuthLayout from '../components/AuthLayout';
 import { ProtectedRoute, PublicRoute } from '../components/ProtectedRoute';
 import { Loader } from '../components/loader';
 import QualityChecking from '@/pages/QualityChecking';
+import Chat from '@/pages/Chat';
+import Notifications from '@/pages/Notifications';
 
 // Lazy-loaded pages
 const Home = lazy(() => import('../pages/Home'));
@@ -69,12 +71,20 @@ const ProductionConfirmation = lazy(() => import('../pages/ProductionConfirmatio
 const RollInspection = lazy(() => import('../pages/RollInspection'));
 const StorageCapture = lazy(() => import('../pages/StorageCapture'));
 const FGStickerConfirmation = lazy(() => import('../pages/FGStickerConfirmation'));
+const PickRollCapture = lazy(() => import('../pages/PickRollCapture'));
+const LoadCapture = lazy(() => import('../pages/LoadCapture'));
+const PickingAndLoading = lazy(() => import('../pages/PickingAndLoading'));
 const DispatchPlanning = lazy(() => import('../pages/DispatchPlanning'));
 const DispatchDetails = lazy(() => import('../pages/DispatchDetails'));
+const LoadingSheet = lazy(() => import('../pages/LoadingSheet'));
 
-// Chat and Notifications Pages
-const Chat = lazy(() => import('../pages/Chat'));
-const Notifications = lazy(() => import('../pages/Notifications'));
+// Transport Management Pages
+const TransportManagement = lazy(() => import('../pages/TransportManagement'));
+const TransportForm = lazy(() => import('../pages/TransportManagement/TransportForm'));
+
+// Courier Management Pages
+const CourierManagement = lazy(() => import('../pages/CourierManagement'));
+const CourierForm = lazy(() => import('../pages/CourierManagement/CourierForm'));
 
 const Router = () => {
   const { ref, handleStart, handleComplete } = useLoadingBar();
@@ -495,8 +505,36 @@ const Router = () => {
                 </LazyRoute>
               }
             />
-
-    
+            
+            {/* Pick Roll Capture Route */}
+            <Route
+              path="pick-roll-capture"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <PickRollCapture />
+                </LazyRoute>
+              }
+            />
+            
+            {/* Load Capture Route */}
+            <Route
+              path="load-capture"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <LoadCapture />
+                </LazyRoute>
+              }
+            />
+            
+            {/* Picking and Loading Route */}
+            <Route
+              path="picking-loading"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <PickingAndLoading />
+                </LazyRoute>
+              }
+            />
 
             {/* Quality Checking Route */}
             {/* Dispatch Planning Route */}
@@ -518,11 +556,74 @@ const Router = () => {
                 </LazyRoute>
               }
             />
+            
+            {/* Loading Sheet Route */}
+            <Route
+              path="loading-sheets"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <LoadingSheet />
+                </LazyRoute>
+              }
+            />
+            
             <Route
               path="quality-checking"
               element={
                 <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
                   <QualityChecking />
+                </LazyRoute>
+              }
+            />
+
+            {/* Transport Management Routes */}
+            <Route
+              path="transports"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <TransportManagement />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="transports/create"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <TransportForm />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="transports/:id/edit"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <TransportForm />
+                </LazyRoute>
+              }
+            />
+
+            {/* Courier Management Routes */}
+            <Route
+              path="couriers"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <CourierManagement />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="couriers/create"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <CourierForm />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="couriers/:id/edit"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <CourierForm />
                 </LazyRoute>
               }
             />

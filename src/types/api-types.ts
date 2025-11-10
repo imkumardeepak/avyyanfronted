@@ -227,6 +227,7 @@ export interface MachineResponseDto {
   createdAt: string;
   updatedAt?: string;
   isActive: boolean;
+  machineType?: string; // Added machineType field
 }
 
 export interface CreateMachineRequestDto {
@@ -239,6 +240,7 @@ export interface CreateMachineRequestDto {
   constat?: number;       // Optional, >= 0
   efficiency: number;     // Required, 0.01-100
   description?: string;   // Optional, max 500 chars
+  machineType?: string;   // Added machineType field
 }
 
 export interface UpdateMachineRequestDto {
@@ -252,6 +254,7 @@ export interface UpdateMachineRequestDto {
   efficiency: number;     // Required, 0.01-100
   description?: string;   // Optional, max 500 chars
   isActive?: boolean;     // Optional, default: true
+  machineType?: string;   // Added machineType field
 }
 
 export interface MachineSearchRequestDto {
@@ -506,6 +509,7 @@ export interface MachineFormData {
   efficiency: number;
   description?: string;
   isActive: boolean;
+  machineType?: string; // Added machineType field
 }
 
 // ============================================
@@ -1080,6 +1084,7 @@ export interface StorageCaptureSearchRequestDto {
   tape?: string;
   customerName?: string;
   isActive?: boolean;
+  isDispatched?: boolean;
 }
 
 // New DTOs for StorageCapture roll data response
@@ -1139,7 +1144,7 @@ export interface ProductionAllotmentDto {
 // ============================================
 
 // ============================================
-// DISPATCH PLANNING DTOs
+// DISPATCH PLANNING DTOs (AvyyanBackend.DTOs.DispatchPlanning)
 // ============================================
 
 export interface DispatchPlanningDto {
@@ -1153,17 +1158,31 @@ export interface DispatchPlanningDto {
   totalReadyRolls: number;
   totalDispatchedRolls: number;
   isFullyDispatched: boolean;
-  dispatchStartDate: string | null;
-  dispatchEndDate: string | null;
+  dispatchStartDate?: string; // ISO 8601 datetime
+  dispatchEndDate?: string; // ISO 8601 datetime
   vehicleNo: string;
   driverName: string;
   license: string;
   mobileNumber: string;
   remarks: string;
   loadingNo: string;
-  createdAt: string;
-  updatedAt: string | null;
+  dispatchOrderId: string;
+  createdAt: string; // ISO 8601 datetime
+  updatedAt?: string; // ISO 8601 datetime
   isActive: boolean;
+  // Transport/Courier fields
+  isTransport?: boolean;
+  isCourier?: boolean;
+  transportId?: number | null;
+  courierId?: number | null;
+  // Manual transport details (new fields)
+  transportName?: string;
+  contactPerson?: string;
+  phone?: string;
+  maximumCapacityKgs?: number | null;
+  // Weight fields for dispatch planning
+  totalGrossWeight?: number | null;
+  totalNetWeight?: number | null;
 }
 
 export interface CreateDispatchPlanningRequestDto {
@@ -1176,14 +1195,28 @@ export interface CreateDispatchPlanningRequestDto {
   totalReadyRolls: number;
   totalDispatchedRolls: number;
   isFullyDispatched: boolean;
-  dispatchStartDate: string | null;
-  dispatchEndDate: string | null;
+  dispatchStartDate?: string; // ISO 8601 datetime
+  dispatchEndDate?: string; // ISO 8601 datetime
   vehicleNo: string;
   driverName: string;
   license: string;
   mobileNumber: string;
   remarks: string;
-
+  // Transport/Courier fields
+  isTransport?: boolean;
+  isCourier?: boolean;
+  transportId?: number | null;
+  courierId?: number | null;
+  // Manual transport details (new fields)
+  transportName?: string;
+  contactPerson?: string;
+  phone?: string;
+  maximumCapacityKgs?: number | null;
+  // Weight fields for dispatch planning
+  totalGrossWeight?: number | null;
+  totalNetWeight?: number | null;
+  // LoadingNo will be auto-generated
+  // DispatchOrderId will be auto-generated
 }
 
 export interface UpdateDispatchPlanningRequestDto {
@@ -1196,14 +1229,28 @@ export interface UpdateDispatchPlanningRequestDto {
   totalReadyRolls: number;
   totalDispatchedRolls: number;
   isFullyDispatched: boolean;
-  dispatchStartDate: string | null;
-  dispatchEndDate: string | null;
+  dispatchStartDate?: string; // ISO 8601 datetime
+  dispatchEndDate?: string; // ISO 8601 datetime
   vehicleNo: string;
   driverName: string;
   license: string;
   mobileNumber: string;
   remarks: string;
   loadingNo: string;
+  dispatchOrderId: string;
+  // Transport/Courier fields
+  isTransport?: boolean;
+  isCourier?: boolean;
+  transportId?: number | null;
+  courierId?: number | null;
+  // Manual transport details (new fields)
+  transportName?: string;
+  contactPerson?: string;
+  phone?: string;
+  maximumCapacityKgs?: number | null;
+  // Weight fields for dispatch planning
+  totalGrossWeight?: number | null;
+  totalNetWeight?: number | null;
 }
 
 export interface DispatchedRollDto {
@@ -1211,15 +1258,11 @@ export interface DispatchedRollDto {
   dispatchPlanningId: number;
   lotNo: string;
   fgRollNo: string;
-  locationCode: string;
-  netWeight: number;
-  machineName: string;
-  rollNo: string;
   isLoaded: boolean;
-  loadedAt: string | null;
+  loadedAt?: string; // ISO 8601 datetime
   loadedBy: string;
-  createdAt: string;
-  updatedAt: string | null;
+  createdAt: string; // ISO 8601 datetime
+  updatedAt?: string; // ISO 8601 datetime
   isActive: boolean;
 }
 
@@ -1227,15 +1270,109 @@ export interface CreateDispatchedRollRequestDto {
   dispatchPlanningId: number;
   lotNo: string;
   fgRollNo: string;
-  locationCode: string;
-  netWeight: number;
-  machineName: string;
-  rollNo: string;
   isLoaded: boolean;
-  loadedAt: string | null;
+  loadedAt?: string; // ISO 8601 datetime
   loadedBy: string;
 }
 
+// Loading Sheet DTO (extension of DispatchPlanningDto with sequence number)
+export interface LoadingSheetDto extends DispatchPlanningDto {
+  sequenceNumber: number;
+}
+
 // ============================================
-// SHIFT DTOs (AvyyanBackend.DTOs.Shift)
+// TRANSPORT DTOs (AvyyanBackend.DTOs.Transport)
 // ============================================
+
+export interface TransportResponseDto {
+  id: number;
+  transportName: string;
+  contactPerson?: string;
+  address?: string;
+  vehicleNumber?: string;
+  driverName?: string;
+  driverNumber?: string;
+  licenseNumber?: string;
+  maximumCapacityKgs?: number;
+  createdAt: string;
+  updatedAt?: string;
+  isActive: boolean;
+}
+
+export interface CreateTransportRequestDto {
+  transportName: string;
+  contactPerson?: string;
+  address?: string;
+  vehicleNumber?: string;
+  driverName?: string;
+  driverNumber?: string;
+  licenseNumber?: string;
+  maximumCapacityKgs?: number;
+}
+
+export interface UpdateTransportRequestDto {
+  transportName: string;
+  contactPerson?: string;
+  address?: string;
+  vehicleNumber?: string;
+  driverName?: string;
+  driverNumber?: string;
+  licenseNumber?: string;
+  maximumCapacityKgs?: number;
+  isActive: boolean;
+}
+
+export interface TransportSearchRequestDto {
+  transportName?: string;
+  contactPerson?: string;
+  vehicleNumber?: string;
+  driverName?: string;
+  driverNumber?: string;
+  licenseNumber?: string;
+  isActive?: boolean;
+}
+
+// ============================================
+// COURIER DTOs (AvyyanBackend.DTOs.Courier)
+// ============================================
+
+export interface CourierResponseDto {
+  id: number;
+  courierName: string;
+  contactPerson?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  gstNo?: string;
+  trackingUrl?: string;
+  createdAt: string;
+  updatedAt?: string;
+  isActive: boolean;
+}
+
+export interface CreateCourierRequestDto {
+  courierName: string;
+  contactPerson?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  gstNo?: string;
+  trackingUrl?: string;
+}
+
+export interface UpdateCourierRequestDto {
+  courierName: string;
+  contactPerson?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  gstNo?: string;
+  trackingUrl?: string;
+  isActive: boolean;
+}
+
+export interface CourierSearchRequestDto {
+  courierName?: string;
+  contactPerson?: string;
+  isActive?: boolean;
+}

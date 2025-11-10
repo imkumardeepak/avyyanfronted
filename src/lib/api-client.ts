@@ -67,6 +67,14 @@ import type {
   UpdateDispatchPlanningRequestDto,
   DispatchedRollDto,
   CreateDispatchedRollRequestDto,
+  TransportResponseDto,
+  CreateTransportRequestDto,
+  UpdateTransportRequestDto,
+  TransportSearchRequestDto,
+  CourierResponseDto,
+  CreateCourierRequestDto,
+  UpdateCourierRequestDto,
+  CourierSearchRequestDto,
 } from '@/types/api-types';
 
 // API Configuration
@@ -646,7 +654,7 @@ export const storageCaptureApi = {
   // GET /api/StorageCapture/by-allot-id/{allotId} - Get roll confirmations by Allot ID
   getRollConfirmationsByAllotId: (
     allotId: string,
-    fgroll: string
+    fgroll: number
   ): Promise<AxiosResponse<StorageCaptureRollDataResponseDto>> =>
     apiClient.get(`/StorageCapture/by-allot-id/${allotId}?fgroll=${fgroll}`),
 };
@@ -668,6 +676,10 @@ export const dispatchPlanningApi = {
   createDispatchPlanning: (data: CreateDispatchPlanningRequestDto): Promise<AxiosResponse<DispatchPlanningDto>> =>
     apiClient.post('/DispatchPlanning', data),
 
+  // POST /api/DispatchPlanning/batch - Create multiple dispatch planning records with the same dispatch order ID
+  createBatchDispatchPlanning: (data: CreateDispatchPlanningRequestDto[]): Promise<AxiosResponse<DispatchPlanningDto[]>> =>
+    apiClient.post('/DispatchPlanning/batch', data),
+
   // PUT /api/DispatchPlanning/{id} - Update a dispatch planning
   updateDispatchPlanning: (id: number, data: UpdateDispatchPlanningRequestDto): Promise<AxiosResponse<DispatchPlanningDto>> =>
     apiClient.put(`/DispatchPlanning/${id}`, data),
@@ -681,10 +693,71 @@ export const dispatchPlanningApi = {
     apiClient.get(`/DispatchPlanning/${id}/dispatched-rolls`),
 
   // POST /api/DispatchPlanning/dispatched-rolls - Create a new dispatched roll
-  createDispatchedRoll: (data: CreateDispatchedRollRequestDto): Promise<AxiosResponse<DispatchedRollDto>> =>
+  createDispatchedRoll: (
+    data: CreateDispatchedRollRequestDto
+  ): Promise<AxiosResponse<DispatchedRollDto>> =>
     apiClient.post('/DispatchPlanning/dispatched-rolls', data),
 };
 
+// ============================================
+// TRANSPORT API (/api/Transport)
+// ============================================
+
+export const transportApi = {
+  // GET /api/Transport - Get all transports
+  getAllTransports: (): Promise<AxiosResponse<TransportResponseDto[]>> =>
+    apiClient.get('/Transport'),
+
+  // GET /api/Transport/{id} - Get transport by ID
+  getTransport: (id: number): Promise<AxiosResponse<TransportResponseDto>> =>
+    apiClient.get(`/Transport/${id}`),
+
+  // GET /api/Transport/search - Search transports
+  searchTransports: (params: TransportSearchRequestDto): Promise<AxiosResponse<TransportResponseDto[]>> =>
+    apiClient.get('/Transport/search', { params }),
+
+  // POST /api/Transport - Create new transport
+  createTransport: (data: CreateTransportRequestDto): Promise<AxiosResponse<TransportResponseDto>> =>
+    apiClient.post('/Transport', data),
+
+  // PUT /api/Transport/{id} - Update transport
+  updateTransport: (id: number, data: UpdateTransportRequestDto): Promise<AxiosResponse<TransportResponseDto>> =>
+    apiClient.put(`/Transport/${id}`, data),
+
+  // DELETE /api/Transport/{id} - Delete transport
+  deleteTransport: (id: number): Promise<AxiosResponse<void>> =>
+    apiClient.delete(`/Transport/${id}`),
+};
+
+// ============================================
+// COURIER API (/api/Courier)
+// ============================================
+
+export const courierApi = {
+  // GET /api/Courier - Get all couriers
+  getAllCouriers: (): Promise<AxiosResponse<CourierResponseDto[]>> =>
+    apiClient.get('/Courier'),
+
+  // GET /api/Courier/{id} - Get courier by ID
+  getCourier: (id: number): Promise<AxiosResponse<CourierResponseDto>> =>
+    apiClient.get(`/Courier/${id}`),
+
+  // GET /api/Courier/search - Search couriers
+  searchCouriers: (params: CourierSearchRequestDto): Promise<AxiosResponse<CourierResponseDto[]>> =>
+    apiClient.get('/Courier/search', { params }),
+
+  // POST /api/Courier - Create new courier
+  createCourier: (data: CreateCourierRequestDto): Promise<AxiosResponse<CourierResponseDto>> =>
+    apiClient.post('/Courier', data),
+
+  // PUT /api/Courier/{id} - Update courier
+  updateCourier: (id: number, data: UpdateCourierRequestDto): Promise<AxiosResponse<CourierResponseDto>> =>
+    apiClient.put(`/Courier/${id}`, data),
+
+  // DELETE /api/Courier/{id} - Delete courier
+  deleteCourier: (id: number): Promise<AxiosResponse<void>> =>
+    apiClient.delete(`/Courier/${id}`),
+};
 
 // Export all APIs grouped by functionality
 export const api = {

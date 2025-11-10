@@ -52,10 +52,11 @@ export function RollCalculation({
                 id="actual-quantity"
                 type="number"
                 step="0.01"
-                value={rollInput.actualQuantity}
-                onChange={(e) =>
-                  onRollInputChange('actualQuantity', parseFloat(e.target.value) || 0)
-                }
+                value={rollInput.actualQuantity || ''}
+                onChange={(e) => {
+                  const value = e.target.value === '' ? NaN : parseFloat(e.target.value);
+                  onRollInputChange('actualQuantity', isNaN(value) ? 0 : value);
+                }}
                 className="text-center font-mono"
               />
               <div className="text-xs text-muted-foreground">
@@ -72,10 +73,11 @@ export function RollCalculation({
                 id="roll-per-kg"
                 type="number"
                 step="0.01"
-                value={rollInput.rollPerKg}
-                onChange={(e) =>
-                  onRollInputChange('rollPerKg', parseFloat(e.target.value) || 0)
-                }
+                value={rollInput.rollPerKg || ''}
+                onChange={(e) => {
+                  const value = e.target.value === '' ? NaN : parseFloat(e.target.value);
+                  onRollInputChange('rollPerKg', isNaN(value) ? 0 : value);
+                }}
                 className="text-center font-mono"
               />
               <div className="text-xs text-muted-foreground">

@@ -14,7 +14,7 @@ export const PAGE_NAMES = {
     SALES_ORDERS: 'Sales Orders',
     CHAT: 'Chat',
     NOTIFICATIONS: 'Notifications',
-    PRODUCTION_ALLOTMENT: 'Production Allotment',
+    PRODUCTION_ALLOTMENT: 'Production Lotment',
     STORAGE_CAPTURE: 'Storage Capture',
     TAPE_COLOR_MASTER: 'Tape Color',
     SHIFT_MASTER: 'Shift Master',
@@ -23,6 +23,11 @@ export const PAGE_NAMES = {
     QUALITY_CHECKING: 'Quality Checking',
     ROLL_INSPECTION: 'Roll Inspection',
     FG_ROLL_CAPTURE: 'FG Roll Capture',
+    PICK_ROLL_CAPTURE: 'Pick Roll Capture',
+    LOAD_CAPTURE: 'Load Capture',
+    PICKING_AND_LOADING: 'Picking and Loading',
+    TRANSPORT_MASTER: 'Transport Master',
+    COURIER_MASTER: 'Courier Master'
 } as const;
 
 // Array of all page names for role management

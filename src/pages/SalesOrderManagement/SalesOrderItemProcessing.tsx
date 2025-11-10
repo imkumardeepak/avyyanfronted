@@ -488,8 +488,10 @@ const SalesOrderItemProcessingRefactored = () => {
                 efficiencyDecimal) /
               productionCalc.count;
             const productionKgPerHour = (productionGramsPerMinute / 1000) * 60;
-            if (productionKgPerHour > 0)
-              estimatedTime = machine.allocatedWeight / productionKgPerHour;
+            if (productionKgPerHour > 0) {
+              const hours = machine.allocatedWeight / productionKgPerHour;
+              estimatedTime = hours / 24; // Convert to days
+            }
           }
 
           return { ...machine, isEditing: false, estimatedProductionTime: estimatedTime };
@@ -529,7 +531,10 @@ const SalesOrderItemProcessingRefactored = () => {
                   efficiencyDecimal) /
                 productionCalc.count;
               const productionKgPerHour = (productionGramsPerMinute / 1000) * 60;
-              if (productionKgPerHour > 0) estimatedTime = allocatedWeight / productionKgPerHour;
+              if (productionKgPerHour > 0) {
+                const hours = allocatedWeight / productionKgPerHour;
+                estimatedTime = hours / 24; // Convert to days
+              }
             } else {
               const selectedMachineData = machines?.find((m) => m.id === machineId);
               if (
@@ -564,7 +569,10 @@ const SalesOrderItemProcessingRefactored = () => {
                     efficiencyDecimal) /
                   productionCalc.count;
                 const productionKgPerHour = (productionGramsPerMinute / 1000) * 60;
-                if (productionKgPerHour > 0) estimatedTime = allocatedWeight / productionKgPerHour;
+                if (productionKgPerHour > 0) {
+                  const hours = allocatedWeight / productionKgPerHour;
+                  estimatedTime = hours / 24; // Convert to days
+                }
               }
             }
           }
@@ -656,7 +664,10 @@ const SalesOrderItemProcessingRefactored = () => {
             efficiencyDecimal) /
           productionCalc.count;
         const productionKgPerHour = (productionGramsPerMinute / 1000) * 60;
-        if (productionKgPerHour > 0) estimatedTime = machine.allocatedWeight / productionKgPerHour;
+        if (productionKgPerHour > 0) {
+          const hours = machine.allocatedWeight / productionKgPerHour;
+          estimatedTime = hours / 24; // Convert to days
+        }
       }
 
       return { ...machine, estimatedProductionTime: estimatedTime };
@@ -1254,6 +1265,8 @@ const SalesOrderItemProcessingRefactored = () => {
             onClearAllMachines={() => setSelectedMachines([])}
             machineDiameter={parsedDescriptionValues.diameter || undefined}
             machineGauge={parsedDescriptionValues.gauge || undefined}
+            stitchLength={productionCalc.stichLength || undefined}
+            count={productionCalc.count || undefined}
           />
         </>
       )}

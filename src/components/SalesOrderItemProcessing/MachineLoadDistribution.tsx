@@ -10,7 +10,7 @@ interface MachineLoadDistribution {
   machineName: string;
   allocatedRolls: number;
   allocatedWeight: number;
-  estimatedProductionTime: number;
+  estimatedProductionTime?: number; // Make this optional since we calculate it dynamically
   isEditing?: boolean;
   customParameters?: {
     needle: number;
@@ -51,6 +51,9 @@ interface MachineLoadDistributionProps {
   // New props for filtering machines by diameter and gauge
   machineDiameter?: number;
   machineGauge?: number;
+  // New props for time estimation calculation
+  stitchLength?: number;
+  count?: number;
 }
 
 export function MachineLoadDistribution({
@@ -70,7 +73,65 @@ export function MachineLoadDistribution({
   onClearAllMachines,
   machineDiameter,
   machineGauge,
+  stitchLength,
+  count,
 }: MachineLoadDistributionProps) {
+  // Calculate estimated production time using the same formula as in ProductionTimingCalculation
+  const calculateEstimatedProductionTime = (
+    allocatedWeight: number,
+    params: {
+      needle: number;
+      feeder: number;
+      rpm: number;
+      efficiency: number;
+      constant: number;
+    }
+  ): number => {
+    // Check if we have all required parameters
+    if (
+      allocatedWeight <= 0 ||
+      !stitchLength ||
+      stitchLength <= 0 ||
+      !count ||
+      count <= 0 ||
+      params.needle <= 0 ||
+      params.feeder <= 0 ||
+      params.rpm <= 0
+    ) {
+      return 0;
+    }
+
+    try {
+      // Convert efficiency percentage to decimal
+      const efficiencyDecimal = params.efficiency / 100;
+      
+      // Calculate production rate in grams per minute
+      const productionGramsPerMinute =
+        (params.needle *
+          params.feeder *
+          params.rpm *
+          stitchLength *
+          params.constant *
+          efficiencyDecimal) /
+        count;
+      
+      // Convert to kg per hour
+      const productionKgPerHour = (productionGramsPerMinute / 1000) * 60;
+      
+      // Calculate estimated time in hours and then convert to days
+      if (productionKgPerHour > 0) {
+        const hours = allocatedWeight / productionKgPerHour;
+        return hours / 24; // Return time in days
+      }
+      
+      return 0;
+    } catch (error) {
+      console.error('Error calculating estimated production time:', error);
+      return 0;
+    }
+  };
+
+  // Update the part where we display the machine information to use the new calculation
   return (
     <Card>
       <CardHeader>
@@ -247,6 +308,38 @@ export function MachineLoadDistribution({
                               </div>
                             </div>
 
+                            {/* Time Estimate Calculation Display */}
+                            <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded text-xs">
+                              <h5 className="font-medium text-blue-800 mb-2">
+                                Time Estimate Calculation
+                              </h5>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                <div>
+                                  <p className="font-medium">Parameters:</p>
+                                  <p>Needles: {params.needle}</p>
+                                  <p>Feeders: {params.feeder}</p>
+                                  <p>RPM: {params.rpm}</p>
+                                  <p>Constant: {params.constant}</p>
+                                  <p>Efficiency: {params.efficiency}%</p>
+                                  {stitchLength !== undefined && <p>Stitch Length: {stitchLength}</p>}
+                                  {count !== undefined && <p>Count: {count}</p>}
+                                </div>
+                                <div>
+                                  <p className="font-medium">Formula:</p>
+                                  <p className="break-words">
+                                    Production Rate = (N × F × RPM × SL × C × E) / Count
+                                  </p>
+                                  <p>Time = Weight / (Rate / 1000 × 60)</p>
+                                  <p className="mt-1 font-medium">
+                                    Est. Time: {(() => {
+                                      const days = calculateEstimatedProductionTime(machine.allocatedWeight, params);
+                                      return `${days.toFixed(2)} days`;
+                                    })()}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+
                             {/* Machine Parameters - Editable when in edit mode */}
                             {machine.isEditing && (
                               <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded">
@@ -258,12 +351,13 @@ export function MachineLoadDistribution({
                                     <Label className="text-xs">Needles</Label>
                                     <Input
                                       type="number"
-                                      value={params.needle}
-                                      onChange={(e) =>
+                                      value={params.needle || ''}
+                                      onChange={(e) => {
+                                        const value = e.target.value === '' ? NaN : Number(e.target.value);
                                         onUpdateMachineParameters(machine.machineId, {
-                                          needle: Number(e.target.value),
-                                        })
-                                      }
+                                          needle: isNaN(value) ? 0 : value,
+                                        });
+                                      }}
                                       className="text-center text-xs h-7"
                                     />
                                   </div>
@@ -271,12 +365,13 @@ export function MachineLoadDistribution({
                                     <Label className="text-xs">Feeders</Label>
                                     <Input
                                       type="number"
-                                      value={params.feeder}
-                                      onChange={(e) =>
+                                      value={params.feeder || ''}
+                                      onChange={(e) => {
+                                        const value = e.target.value === '' ? NaN : Number(e.target.value);
                                         onUpdateMachineParameters(machine.machineId, {
-                                          feeder: Number(e.target.value),
-                                        })
-                                      }
+                                          feeder: isNaN(value) ? 0 : value,
+                                        });
+                                      }}
                                       className="text-center text-xs h-7"
                                     />
                                   </div>
@@ -284,12 +379,13 @@ export function MachineLoadDistribution({
                                     <Label className="text-xs">RPM</Label>
                                     <Input
                                       type="number"
-                                      value={params.rpm}
-                                      onChange={(e) =>
+                                      value={params.rpm || ''}
+                                      onChange={(e) => {
+                                        const value = e.target.value === '' ? NaN : Number(e.target.value);
                                         onUpdateMachineParameters(machine.machineId, {
-                                          rpm: Number(e.target.value),
-                                        })
-                                      }
+                                          rpm: isNaN(value) ? 0 : value,
+                                        });
+                                      }}
                                       className="text-center text-xs h-7"
                                     />
                                   </div>
@@ -298,12 +394,13 @@ export function MachineLoadDistribution({
                                     <Input
                                       type="number"
                                       step="0.1"
-                                      value={params.efficiency}
-                                      onChange={(e) =>
+                                      value={params.efficiency || ''}
+                                      onChange={(e) => {
+                                        const value = e.target.value === '' ? NaN : Number(e.target.value);
                                         onUpdateMachineParameters(machine.machineId, {
-                                          efficiency: Number(e.target.value),
-                                        })
-                                      }
+                                          efficiency: isNaN(value) ? 0 : value,
+                                        });
+                                      }}
                                       className="text-center text-xs h-7"
                                     />
                                   </div>
@@ -312,12 +409,13 @@ export function MachineLoadDistribution({
                                     <Input
                                       type="number"
                                       step="0.00001"
-                                      value={params.constant}
-                                      onChange={(e) =>
+                                      value={params.constant || ''}
+                                      onChange={(e) => {
+                                        const value = e.target.value === '' ? NaN : Number(e.target.value);
                                         onUpdateMachineParameters(machine.machineId, {
-                                          constant: Number(e.target.value),
-                                        })
-                                      }
+                                          constant: isNaN(value) ? 0 : value,
+                                        });
+                                      }}
                                       className="text-center text-xs h-7"
                                     />
                                   </div>
@@ -328,14 +426,14 @@ export function MachineLoadDistribution({
                             {/* Load Allocation */}
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-center">
                               <div className="space-y-1">
-                                <Label className="text-xs">Weight (kg)</Label>
+                                <Label className="text-xs">Order Quantity</Label>
                                 <Input
                                   type="number"
                                   step="0.5"
-                                  value={machine.allocatedWeight}
+                                  value={machine.allocatedWeight || ''}
                                   onChange={(e) => {
-                                    const weight = Number(e.target.value);
-                                    onUpdateMachineAllocation(machine.machineId, weight);
+                                    const weight = e.target.value === '' ? NaN : Number(e.target.value);
+                                    onUpdateMachineAllocation(machine.machineId, isNaN(weight) ? 0 : weight);
                                   }}
                                   className={`text-center text-xs h-8 ${(() => {
                                     // Check if this allocation would cause over-allocation
@@ -366,8 +464,11 @@ export function MachineLoadDistribution({
                               <div className="text-center">
                                 <p className="text-xs text-gray-600">Est. Time</p>
                                 <p className="font-medium text-sm">
-                                  {machine.estimatedProductionTime > 0
-                                    ? `${machine.estimatedProductionTime.toFixed(1)}h`
+                                  {machine.allocatedWeight > 0 && stitchLength && count
+                                    ? (() => {
+                                        const days = calculateEstimatedProductionTime(machine.allocatedWeight, params);
+                                        return `${days.toFixed(1)} days`;
+                                      })()
                                     : '-'}
                                 </p>
                               </div>
@@ -409,6 +510,19 @@ export function MachineLoadDistribution({
                         const actualQuantity = Number(rollInput.actualQuantity || 0);
                         const remaining = actualQuantity - totalAllocated;
                         const isOverAllocated = totalAllocated > actualQuantity;
+
+                        // Calculate total estimated production time using the new method
+                        const totalEstimatedTime = selectedMachines.reduce((sum, m) => {
+                          const machineData = machines?.find((md) => md.id === m.machineId);
+                          const params = m.customParameters || {
+                            needle: machineData?.needle || 0,
+                            feeder: machineData?.feeder || 0,
+                            rpm: machineData?.rpm || 0,
+                            efficiency: machineData?.efficiency || 0,
+                            constant: machineData?.constat || 0.00085,
+                          };
+                          return sum + calculateEstimatedProductionTime(m.allocatedWeight, params);
+                        }, 0);
 
                         return (
                           <div
@@ -460,10 +574,10 @@ export function MachineLoadDistribution({
                                 <p
                                   className={`font-bold ${isOverAllocated ? 'text-red-800' : 'text-green-800'}`}
                                 >
-                                  {selectedMachines
-                                    .reduce((sum, m) => sum + m.estimatedProductionTime, 0)
-                                    .toFixed(1)}
-                                  h
+                                  {(() => {
+                                    const days = totalEstimatedTime;
+                                    return `${days.toFixed(1)} days`;
+                                  })()}
                                 </p>
                               </div>
                             </div>
