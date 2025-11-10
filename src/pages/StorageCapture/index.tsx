@@ -246,7 +246,7 @@ const StorageCapture = () => {
 
       // Call API to get roll confirmation data by allotId
       console.log('Calling API with AllotId:', allotId);
-      const response = await storageCaptureApi.getRollConfirmationsByAllotId(allotId, fgRollNo);
+      const response = await storageCaptureApi.getRollConfirmationsByAllotId(allotId, Number(fgRollNo));
 
       // Extract data using apiUtils (this handles the AxiosResponse structure)
       const rollDataResponse = apiUtils.extractData(response);
