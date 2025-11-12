@@ -47,7 +47,7 @@ const StorageCapture = () => {
   // Store the lot-to-location mapping
   const [lotLocationMap, setLotLocationMap] = useState<Record<string, { location: LocationResponseDto; locationCode: string }>>({});
   const [allLocations, setAllLocations] = useState<LocationResponseDto[]>([]);
-  const [isManualSelection, setIsManualSelection] = useState(false);
+  
 
   // Fetch all locations on component mount
   useEffect(() => {
@@ -402,7 +402,7 @@ const StorageCapture = () => {
     });
     setSelectedLocation(null);
     setScannedLocationCode('');
-    setIsManualSelection(false);
+   
     // Clear error state and refocus
     setHasError(false);
     setTimeout(() => {
@@ -551,38 +551,17 @@ const StorageCapture = () => {
                   <Label htmlFor="locationId" className="text-xs font-medium text-gray-700">
                     Storage Location
                   </Label>
-                  {!isManualSelection ? (
-                    <div className="relative">
-                      <Scan className="absolute left-2 top-2 h-3 w-3 text-muted-foreground" />
-                      <Input
-                        id="locationId"
-                        {...register('locationId')}
-                        onKeyPress={handleLocationCodeScan}
-                        onChange={(e) => setScannedLocationCode(e.target.value)}
-                        placeholder="Scan location code or select manually"
-                        className={`pl-7 text-xs h-8 ${hasError ? 'bg-red-50 border-red-300' : 'bg-white'}`}
-                      />
-                    </div>
-                  ) : (
-                    <div className="relative">
-                      <Select onValueChange={handleManualLocationSelect} value={selectedLocation?.id.toString() || ''}>
-                        <SelectTrigger className="text-xs h-8">
-                          <SelectValue placeholder="Select a location" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {allLocations.map((location) => (
-                            <SelectItem 
-                              key={location.id} 
-                              value={location.id.toString()}
-                              className="text-xs"
-                            >
-                              {location.warehousename} - {location.location} ({location.locationcode})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
+                  <div className="relative">
+                    <Scan className="absolute left-2 top-2 h-3 w-3 text-muted-foreground" />
+                    <Input
+                      id="locationId"
+                      {...register('locationId')}
+                      onKeyPress={handleLocationCodeScan}
+                      onChange={(e) => setScannedLocationCode(e.target.value)}
+                      placeholder="Scan location code"
+                      className={`pl-7 text-xs h-8 ${hasError ? 'bg-red-50 border-red-300' : 'bg-white'}`}
+                    />
+                  </div>
                   
                   {selectedLocation && (
                     <div className="mt-1 text-xs text-green-700 flex items-center">
@@ -592,18 +571,6 @@ const StorageCapture = () => {
                       </span>
                     </div>
                   )}
-                  
-                  <div className="flex space-x-2 mt-1">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setIsManualSelection(!isManualSelection)}
-                      className="h-6 px-2 text-xs"
-                    >
-                      {isManualSelection ? 'Scan Code' : 'Manual Select'}
-                    </Button>
-                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">

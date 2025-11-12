@@ -1092,10 +1092,7 @@ const SalesOrderItemProcessingRefactored = () => {
         yarnCount: extractYarnCount(selectedItem.descriptions || ''),
         diameter: parsedDescriptionValues.diameter || productionCalc.needle,
         gauge: parsedDescriptionValues.gauge || productionCalc.feeder,
-        fabricType: selectedItem?.descriptions
-          ? extractFabricTypeFromDescription(selectedItem.descriptions) ||
-            extractFabricType(selectedItem.stockItemName)
-          : extractFabricType(selectedItem.stockItemName),
+        fabricType:  extractFabricTypeFromDescription(selectedItem.descriptions),
         slitLine: selectedItem?.descriptions
           ? extractSlitLineFromDescription(selectedItem.descriptions)
           : 'N/A',
