@@ -151,12 +151,12 @@ const ProductionAllotmentPDFDocument: React.FC<{
           <Text style={styles.label}>YARN COUNT</Text>
           <Text style={styles.value}>{allotment.yarnCount || 'N/A'}</Text>
           <Text style={styles.label}>PARTY NAME</Text>
-          <Text style={styles.value}>{'N/A'}</Text>
+          <Text style={styles.value}>{allotment.partyName || 'N/A'}</Text>
         </View>
 
         <View style={styles.row}>
           <Text style={styles.label}>YARN LOT NO</Text>
-          <Text style={styles.value}>{'N/A'}</Text>
+          <Text style={styles.value}>{allotment.yarnLotNo || 'N/A'}</Text>
           <Text style={styles.label}>MIC RPM</Text>
           <Text style={styles.value}>{machine.rpm || 'N/A'}</Text>
         </View>
@@ -165,7 +165,7 @@ const ProductionAllotmentPDFDocument: React.FC<{
           <Text style={styles.label}>S. LINE</Text>
           <Text style={styles.value}>{allotment.slitLine || 'N/A'}</Text>
           <Text style={styles.label}>COUNTER</Text>
-          <Text style={styles.value}>{'N/A'}</Text>
+          <Text style={styles.value}>{allotment.counter || 'N/A'}</Text>
         </View>
 
         <View style={styles.row}>

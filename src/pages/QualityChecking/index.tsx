@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from '@/lib/toast';
 import { RollConfirmationService } from '@/services/rollConfirmationService';
 import { ProductionAllotmentService } from '@/services/productionAllotmentService';
-import type { RollConfirmationResponseDto, RollConfirmationUpdateDto, ProductionAllotmentResponseDto } from '@/types/api-types';
+import type { RollConfirmationUpdateDto, ProductionAllotmentResponseDto } from '@/types/api-types';
 
 const QualityChecking: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -25,13 +25,19 @@ const QualityChecking: React.FC = () => {
   const [allotmentData, setAllotmentData] = useState<ProductionAllotmentResponseDto | null>(null);
   const [rollDescription, setRollDescription] = useState<string>('');
 
-  const scanBuffer = useRef<string>('');
-  const isScanning = useRef<boolean>(false);
-  const lastKeyTime = useRef<number>(Date.now());
+  // Ref for the Lot ID input field
+  const lotIdRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    // Set focus on the Lot ID field when component mounts
+    if (lotIdRef.current) {
+      lotIdRef.current.focus();
+    }
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    const { value } = e.target;
+    handleBarcodeScan(value);
   };
 
   const fetchAllotmentData = async (allotId: string) => {
@@ -93,41 +99,7 @@ const QualityChecking: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Skip if typing in an input field
-      if (e.target instanceof HTMLInputElement) {
-        scanBuffer.current = '';
-        isScanning.current = false;
-        return;
-      }
 
-      const currentTime = Date.now();
-      const timeSinceLastKey = currentTime - lastKeyTime.current;
-      
-      // Reset buffer if more than 100ms has passed since last key (not a scan)
-      if (timeSinceLastKey > 100) {
-        scanBuffer.current = '';
-        isScanning.current = true;
-      }
-      
-      lastKeyTime.current = currentTime;
-      
-      // Process scan when Enter is pressed and we have data
-      if (e.key === 'Enter' && scanBuffer.current.length > 0 && isScanning.current) {
-        handleBarcodeScan(scanBuffer.current);
-        scanBuffer.current = '';
-        isScanning.current = false;
-        e.preventDefault();
-      } else if (e.key.length === 1 && isScanning.current) {
-        // Add character to buffer
-        scanBuffer.current += e.key;
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -241,6 +213,8 @@ const QualityChecking: React.FC = () => {
                     required
                     disabled={field.disabled}
                     className="text-xs h-8 bg-white"
+                    // Set ref for Lot ID field
+                    ref={field.id === 'allotId' ? lotIdRef : undefined}
                   />
                 </div>
               ))}

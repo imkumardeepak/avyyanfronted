@@ -303,6 +303,7 @@ const MachineForm = () => {
                 <Input
                   id="rpm"
                   type="number"
+                  step="0.01"
                   {...form.register('rpm', { valueAsNumber: true })}
                   placeholder="Enter RPM"
                 />
