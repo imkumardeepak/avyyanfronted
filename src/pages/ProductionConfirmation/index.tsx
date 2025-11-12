@@ -19,14 +19,16 @@ const ProductionConfirmation: React.FC = () => {
   const [salesOrderData, setSalesOrderData] = useState<SalesOrderDto | null>(null);
   const [selectedMachine, setSelectedMachine] = useState<MachineAllocationResponseDto | null>(null);
 
-  const scanBuffer = useRef<string>('');
-  const isScanning = useRef<boolean>(false);
-  const lastKeyTime = useRef<number>(Date.now());
+  // Ref for the Lot ID input field
+  const lotIdRef = useRef<HTMLInputElement>(null);
+
+
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    handleBarcodeScan(value);
   };
+
 
   const fetchAllotmentData = async (allotId: string, machineNameFromBarcode?: string) => {
     if (!allotId) return;
@@ -93,36 +95,12 @@ const ProductionConfirmation: React.FC = () => {
   };
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement) {
-        scanBuffer.current = '';
-        isScanning.current = false;
-        return;
-      }
-
-      const currentTime = Date.now();
-      const timeSinceLastKey = currentTime - lastKeyTime.current;
-      
-      if (timeSinceLastKey > 100) {
-        scanBuffer.current = '';
-        isScanning.current = true;
-      }
-      
-      lastKeyTime.current = currentTime;
-      
-      if (e.key === 'Enter' && scanBuffer.current.length > 0 && isScanning.current) {
-        handleBarcodeScan(scanBuffer.current);
-        scanBuffer.current = '';
-        isScanning.current = false;
-        e.preventDefault();
-      } else if (e.key.length === 1 && isScanning.current) {
-        scanBuffer.current += e.key;
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    // Set focus on the Lot ID field when component mounts
+    if (lotIdRef.current) {
+      lotIdRef.current.focus();
+    }
   }, []);
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -168,8 +146,15 @@ const ProductionConfirmation: React.FC = () => {
     } catch (err) {
       console.error('Error saving roll confirmation:', err);
       toast.error('Error', 'This roll has already been captured. Please scanned next roll.');
+      setAllotmentData(null);
+      setSalesOrderData(null);
+      setSelectedMachine(null);
+      
     } finally {
       setIsLoading(false);
+      if (lotIdRef.current) {
+        lotIdRef.current.focus();
+      }
     }
   };
 
@@ -201,8 +186,23 @@ const ProductionConfirmation: React.FC = () => {
                     onChange={handleChange} 
                     placeholder={`Enter ${field.label.replace(' *', '')}`} 
                     required={field.label.includes('*')} 
-                    disabled={field.disabled} 
                     className="text-xs h-8 bg-white" 
+                    ref={field.id === 'allotId' ? lotIdRef : undefined}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        // Move focus to next field or submit if last field
+                        if (field.id === 'allotId') {
+                          const machineInput = document.getElementById('machineName');
+                          if (machineInput) machineInput.focus();
+                        } else if (field.id === 'machineName') {
+                          const rollInput = document.getElementById('rollNo');
+                          if (rollInput) rollInput.focus();
+                        } else if (field.id === 'rollNo') {
+                          const form = e.currentTarget.closest('form');
+                          if (form) form.requestSubmit();
+                        }
+                      }
+                    }}
                   />
                 </div>
               ))}

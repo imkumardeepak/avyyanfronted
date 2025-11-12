@@ -47,13 +47,19 @@ const FGStickerConfirmation: React.FC = () => {
   const [isFGStickerGenerated, setIsFGStickerGenerated] = useState<boolean | null>(null);
   const [, setRollConfirmationData] = useState<RollConfirmationResponseDto | null>(null);
 
-  const scanBuffer = useRef<string>('');
-  const isScanning = useRef<boolean>(false);
-  const lastKeyTime = useRef<number>(Date.now());
+  // Ref for the Lot ID input field
+  const lotIdRef = useRef<HTMLInputElement>(null);
+
+  // Focus on the Lot ID input field when the page loads
+  useEffect(() => {
+    if (lotIdRef.current) {
+      lotIdRef.current.focus();
+    }
+  })
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+   handleRollBarcodeScan(value);
 
     if (name === 'tareWeight') {
       const tareWeight = value === '' ? NaN : parseFloat(value);
@@ -232,40 +238,6 @@ const FGStickerConfirmation: React.FC = () => {
       toast.error('Error', 'Failed to process barcode data');
     }
   };
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement) {
-        scanBuffer.current = '';
-        isScanning.current = false;
-        return;
-      }
-
-      const currentTime = Date.now();
-      const timeSinceLastKey = currentTime - lastKeyTime.current;
-
-      if (timeSinceLastKey > 100) {
-        scanBuffer.current = '';
-        isScanning.current = true;
-      }
-
-      lastKeyTime.current = currentTime;
-
-      if (e.key === 'Enter' && scanBuffer.current.length > 0 && isScanning.current) {
-        handleRollBarcodeScan(scanBuffer.current);
-        scanBuffer.current = '';
-        isScanning.current = false;
-        e.preventDefault();
-      } else if (e.key.length === 1 && isScanning.current) {
-        scanBuffer.current += e.key;
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, []);
 
   useEffect(() => {
     const fetchRollConfirmationData = async () => {

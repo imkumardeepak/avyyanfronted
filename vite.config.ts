@@ -104,6 +104,8 @@ export default defineConfig({
     force: true
   },
   server: {
+    host: '0.0.0.0',     // allow access from local network
+    port: 5173,
     fs: {
       strict: false
     }

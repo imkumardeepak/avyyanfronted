@@ -9,62 +9,62 @@
 // ============================================
 
 export interface LoginRequestDto {
-    email: string;          // Required, email format
-    password: string;       // Required
-    rememberMe?: boolean;   // Optional, default: false
+  email: string;          // Required, email format
+  password: string;       // Required
+  rememberMe?: boolean;   // Optional, default: false
 }
 
 export interface LoginResponseDto {
-    token: string;          // JWT token
-    refreshToken: string;
-    expiresAt: string;      // ISO 8601 datetime
-    user: AuthUserDto;
-    roles: string[];
-    pageAccesses: AuthPageAccessDto[];
+  token: string;          // JWT token
+  refreshToken: string;
+  expiresAt: string;      // ISO 8601 datetime
+  user: AuthUserDto;
+  roles: string[];
+  pageAccesses: AuthPageAccessDto[];
 }
 
 export interface RefreshTokenRequestDto {
-    refreshToken: string;
+  refreshToken: string;
 }
 
 export interface RegisterRequestDto {
-    firstName: string;      // Required, max 100 chars
-    lastName: string;       // Required, max 100 chars
-    email: string;          // Required, email format, max 255 chars
-    password: string;       // Required, min 6 chars
-    confirmPassword: string;// Required, must match password
-    phoneNumber?: string;   // Optional, max 20 chars
+  firstName: string;      // Required, max 100 chars
+  lastName: string;       // Required, max 100 chars
+  email: string;          // Required, email format, max 255 chars
+  password: string;       // Required, min 6 chars
+  confirmPassword: string;// Required, must match password
+  phoneNumber?: string;   // Optional, max 20 chars
 }
 
 export interface ChangePasswordRequestDto {
-    currentPassword: string;  // Required
-    newPassword: string;      // Required, min 6 chars
-    confirmPassword: string;  // Required, must match newPassword
+  currentPassword: string;  // Required
+  newPassword: string;      // Required, min 6 chars
+  confirmPassword: string;  // Required, must match newPassword
 }
 
 export interface ResetPasswordRequestDto {
-    email: string;           // Required, email format
+  email: string;           // Required, email format
 }
 
 export interface AuthUserDto {
-    id: number;
-    firstName: string;
-    lastName: string;
-    email: string;
-    phoneNumber?: string;
-    lastLoginAt?: string;    // Optional datetime
-    createdAt: string;       // ISO 8601 datetime
-    roleName: string;
+  id: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneNumber?: string;
+  lastLoginAt?: string;    // Optional datetime
+  createdAt: string;       // ISO 8601 datetime
+  roleName: string;
 }
 
 export interface AuthPageAccessDto {
-    id: number;
-    roleId: number;
-    pageName: string;
-    isView: boolean;
-    isAdd: boolean;
-    isEdit: boolean;
-    isDelete: boolean;
+  id: number;
+  roleId: number;
+  pageName: string;
+  isView: boolean;
+  isAdd: boolean;
+  isEdit: boolean;
+  isDelete: boolean;
 }
 
 // ============================================
@@ -72,71 +72,71 @@ export interface AuthPageAccessDto {
 // ============================================
 
 export interface UserProfileResponseDto {
-    id: number;
-    firstName: string;
-    lastName: string;
-    email: string;
-    phoneNumber?: string;
-    lastLoginAt?: string;
-    createdAt: string;
-    updatedAt?: string;
-    roleName: string;
-    isActive: boolean;
+  id: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneNumber?: string;
+  lastLoginAt?: string;
+  createdAt: string;
+  updatedAt?: string;
+  roleName: string;
+  isActive: boolean;
 }
 
 export interface UpdateUserProfileRequestDto {
-    firstName: string;      // Required, max 100 chars
-    lastName: string;       // Required, max 100 chars
-    email: string;          // Required, email format, max 255 chars
-    phoneNumber?: string;   // Optional, max 20 chars
+  firstName: string;      // Required, max 100 chars
+  lastName: string;       // Required, max 100 chars
+  email: string;          // Required, email format, max 255 chars
+  phoneNumber?: string;   // Optional, max 20 chars
 }
 
 export interface AdminUserResponseDto {
-    id: number;
-    firstName: string;
-    lastName: string;
-    email: string;
-    phoneNumber?: string;
-    lastLoginAt?: string;
-    createdAt: string;
-    updatedAt?: string;
-    roleName: string;
-    isActive: boolean;
+  id: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneNumber?: string;
+  lastLoginAt?: string;
+  createdAt: string;
+  updatedAt?: string;
+  roleName: string;
+  isActive: boolean;
 }
 
 export interface CreateUserRequestDto {
-    firstName: string;      // Required, max 100 chars
-    lastName: string;       // Required, max 100 chars
-    email: string;          // Required, email format, max 255 chars
-    password: string;       // Required, min 6 chars
-    phoneNumber?: string;   // Optional, max 20 chars
-    roleName: string;       // Required
-    isActive?: boolean;     // Optional, default: true
+  firstName: string;      // Required, max 100 chars
+  lastName: string;       // Required, max 100 chars
+  email: string;          // Required, email format, max 255 chars
+  password: string;       // Required, min 6 chars
+  phoneNumber?: string;   // Optional, max 20 chars
+  roleName: string;       // Required
+  isActive?: boolean;     // Optional, default: true
 }
 
 export interface UpdateUserRequestDto {
-    firstName: string;      // Required, max 100 chars
-    lastName: string;       // Required, max 100 chars
-    email: string;          // Required, email format, max 255 chars
-    phoneNumber?: string;   // Optional, max 20 chars
-    roleName: string;       // Required
-    isActive?: boolean;     // Optional, default: true
+  firstName: string;      // Required, max 100 chars
+  lastName: string;       // Required, max 100 chars
+  email: string;          // Required, email format, max 255 chars
+  phoneNumber?: string;   // Optional, max 20 chars
+  roleName: string;       // Required
+  isActive?: boolean;     // Optional, default: true
 }
 
 export interface UserPermissionsResponseDto {
-    userId: number;
-    roleName: string;
-    pageAccesses: UserPageAccessDto[];
+  userId: number;
+  roleName: string;
+  pageAccesses: UserPageAccessDto[];
 }
 
 export interface UserPageAccessDto {
-    id: number;
-    roleId: number;
-    pageName: string;
-    isView: boolean;
-    isAdd: boolean;
-    isEdit: boolean;
-    isDelete: boolean;
+  id: number;
+  roleId: number;
+  pageName: string;
+  isView: boolean;
+  isAdd: boolean;
+  isEdit: boolean;
+  isDelete: boolean;
 }
 
 // ============================================
@@ -144,69 +144,69 @@ export interface UserPageAccessDto {
 // ============================================
 
 export interface RoleResponseDto {
-    id: number;
-    roleName: string;
-    description?: string;
-    isActive: boolean;
-    createdAt: string;
-    updatedAt?: string;
-    pageAccesses: RolePageAccessDto[];
+  id: number;
+  roleName: string;
+  description?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt?: string;
+  pageAccesses: RolePageAccessDto[];
 }
 
 export interface CreateRoleRequestDto {
-    name: string;           // Required, max 100 chars
-    description?: string;   // Optional, max 500 chars
-    isActive?: boolean;     // Optional, default: true
-    pageAccesses?: CreatePageAccessRequestDto[]; // Optional, page access permissions
+  name: string;           // Required, max 100 chars
+  description?: string;   // Optional, max 500 chars
+  isActive?: boolean;     // Optional, default: true
+  pageAccesses?: CreatePageAccessRequestDto[]; // Optional, page access permissions
 }
 
 export interface UpdateRoleRequestDto {
-    name: string;           // Required, max 100 chars
-    description?: string;   // Optional, max 500 chars
-    isActive?: boolean;     // Optional, default: true
-    pageAccesses?: UpdatePageAccessRequestDto[]; // Optional, page access permissions
+  name: string;           // Required, max 100 chars
+  description?: string;   // Optional, max 500 chars
+  isActive?: boolean;     // Optional, default: true
+  pageAccesses?: UpdatePageAccessRequestDto[]; // Optional, page access permissions
 }
 
 // Add this interface for page access creation
 export interface CreatePageAccessRequestDto {
-    roleId: number;
-    pageName: string;
-    isView: boolean;
-    isAdd: boolean;
-    isEdit: boolean;
-    isDelete: boolean;
+  roleId: number;
+  pageName: string;
+  isView: boolean;
+  isAdd: boolean;
+  isEdit: boolean;
+  isDelete: boolean;
 }
 
 // Add this interface for page access updates
 export interface UpdatePageAccessRequestDto {
-    roleId: number;
-    pageName: string;
-    isView: boolean;
-    isAdd: boolean;
-    isEdit: boolean;
-    isDelete: boolean;
+  roleId: number;
+  pageName: string;
+  isView: boolean;
+  isAdd: boolean;
+  isEdit: boolean;
+  isDelete: boolean;
 }
 
 export interface RolePageAccessDto {
-    id: number;
-    pageName: string;
-    isView: boolean;
-    isAdd: boolean;
-    isEdit: boolean;
-    isDelete: boolean;
+  id: number;
+  pageName: string;
+  isView: boolean;
+  isAdd: boolean;
+  isEdit: boolean;
+  isDelete: boolean;
 }
 
 export interface PageAccessResponseDto {
-    id: number;
-    roleId: number;
-    roleName: string;
-    pageName: string;
-    isView: boolean;
-    isAdd: boolean;
-    isEdit: boolean;
-    isDelete: boolean;
-    createdAt: string;
-    updatedAt?: string;
+  id: number;
+  roleId: number;
+  roleName: string;
+  pageName: string;
+  isView: boolean;
+  isAdd: boolean;
+  isEdit: boolean;
+  isDelete: boolean;
+  createdAt: string;
+  updatedAt?: string;
 }
 
 // ============================================
@@ -214,57 +214,57 @@ export interface PageAccessResponseDto {
 // ============================================
 
 export interface MachineResponseDto {
-    id: number;
-    machineName: string;
-    dia: number;
-    gg: number;
-    needle: number;
-    feeder: number;
-    rpm: number;
-    constat?: number;
-    efficiency: number;
-    description?: string;
-    createdAt: string;
-    updatedAt?: string;
-    isActive: boolean;
-    machineType?: string; // Added machineType field
+  id: number;
+  machineName: string;
+  dia: number;
+  gg: number;
+  needle: number;
+  feeder: number;
+  rpm: number;
+  constat?: number;
+  efficiency: number;
+  description?: string;
+  createdAt: string;
+  updatedAt?: string;
+  isActive: boolean;
+  machineType?: string; // Added machineType field
 }
 
 export interface CreateMachineRequestDto {
-    machineName: string;    // Required, max 200 chars
-    dia: number;            // Required, > 0
-    gg: number;             // Required, > 0
-    needle: number;         // Required, > 0
-    feeder: number;         // Required, > 0
-    rpm: number;            // Required, > 0
-    constat?: number;       // Optional, >= 0
-    efficiency: number;     // Required, 0.01-100
-    description?: string;   // Optional, max 500 chars
-    machineType?: string;   // Added machineType field
+  machineName: string;    // Required, max 200 chars
+  dia: number;            // Required, > 0
+  gg: number;             // Required, > 0
+  needle: number;         // Required, > 0
+  feeder: number;         // Required, > 0
+  rpm: number;            // Required, > 0
+  constat?: number;       // Optional, >= 0
+  efficiency: number;     // Required, 0.01-100
+  description?: string;   // Optional, max 500 chars
+  machineType?: string;   // Added machineType field
 }
 
 export interface UpdateMachineRequestDto {
-    machineName: string;    // Required, max 200 chars
-    dia: number;            // Required, > 0
-    gg: number;             // Required, > 0
-    needle: number;         // Required, > 0
-    feeder: number;         // Required, > 0
-    rpm: number;            // Required, > 0
-    constat?: number;       // Optional, >= 0
-    efficiency: number;     // Required, 0.01-100
-    description?: string;   // Optional, max 500 chars
-    isActive?: boolean;     // Optional, default: true
-    machineType?: string;   // Added machineType field
+  machineName: string;    // Required, max 200 chars
+  dia: number;            // Required, > 0
+  gg: number;             // Required, > 0
+  needle: number;         // Required, > 0
+  feeder: number;         // Required, > 0
+  rpm: number;            // Required, > 0
+  constat?: number;       // Optional, >= 0
+  efficiency: number;     // Required, 0.01-100
+  description?: string;   // Optional, max 500 chars
+  isActive?: boolean;     // Optional, default: true
+  machineType?: string;   // Added machineType field
 }
 
 export interface MachineSearchRequestDto {
-    machineName?: string;   // Optional, max 200 chars
-    dia?: number;          // Optional, > 0
-    isActive?: boolean;    // Optional
+  machineName?: string;   // Optional, max 200 chars
+  dia?: number;          // Optional, > 0
+  isActive?: boolean;    // Optional
 }
 
 export interface BulkCreateMachineRequestDto {
-    machines: CreateMachineRequestDto[]; // Required, min 1 item
+  machines: CreateMachineRequestDto[]; // Required, min 1 item
 }
 
 // ============================================
@@ -272,35 +272,35 @@ export interface BulkCreateMachineRequestDto {
 // ============================================
 
 export interface WebSocketConnectionRequestDto {
-    employeeId: string;     // Required
-    connectionId?: string;  // Optional
-    timestamp?: string;     // Optional, default: current UTC
+  employeeId: string;     // Required
+  connectionId?: string;  // Optional
+  timestamp?: string;     // Optional, default: current UTC
 }
 
 export interface ChatMessageDto {
-    id: string;
-    senderId: string;
-    receiverId: string;
-    message: string;
-    timestamp: string;      // Default: current UTC
-    isRead: boolean;        // Default: false
+  id: string;
+  senderId: string;
+  receiverId: string;
+  message: string;
+  timestamp: string;      // Default: current UTC
+  isRead: boolean;        // Default: false
 }
 
 export interface NotificationDto {
-    id: string;
-    userId: string;
-    title: string;
-    message: string;
-    type: string;
-    timestamp: string;      // Default: current UTC
-    isRead: boolean;        // Default: false
+  id: string;
+  userId: string;
+  title: string;
+  message: string;
+  type: string;
+  timestamp: string;      // Default: current UTC
+  isRead: boolean;        // Default: false
 }
 
 export interface WebSocketResponseDto {
-    type: string;
-    data: unknown;              // Generic object
-    timestamp: string;      // Default: current UTC
-    success: boolean;       // Default: true
+  type: string;
+  data: unknown;              // Generic object
+  timestamp: string;      // Default: current UTC
+  success: boolean;       // Default: true
 }
 
 // ============================================
@@ -308,48 +308,48 @@ export interface WebSocketResponseDto {
 // ============================================
 
 export interface ApiResponseDto<T> {
-    success: boolean;       // Default: true
-    message: string;
-    data?: T;              // Generic type
-    timestamp: string;     // Default: current UTC
-    errors: string[];
+  success: boolean;       // Default: true
+  message: string;
+  data?: T;              // Generic type
+  timestamp: string;     // Default: current UTC
+  errors: string[];
 }
 
 export interface PaginatedResponseDto<T> {
-    items: T[];
-    totalCount: number;
-    pageSize: number;
-    currentPage: number;
-    totalPages: number;
-    hasNextPage: boolean;  // Computed
-    hasPreviousPage: boolean; // Computed
+  items: T[];
+  totalCount: number;
+  pageSize: number;
+  currentPage: number;
+  totalPages: number;
+  hasNextPage: boolean;  // Computed
+  hasPreviousPage: boolean; // Computed
 }
 
 export interface MessageResponseDto {
-    message: string;
-    timestamp: string;     // Default: current UTC
-    success: boolean;      // Default: true
+  message: string;
+  timestamp: string;     // Default: current UTC
+  success: boolean;      // Default: true
 }
 
 export interface ErrorResponseDto {
-    error: string;
-    details?: string;      // Optional
-    timestamp: string;     // Default: current UTC
-    statusCode: number;
+  error: string;
+  details?: string;      // Optional
+  timestamp: string;     // Default: current UTC
+  statusCode: number;
 }
 
 export interface BaseAuditDto {
-    createdAt: string;
-    updatedAt?: string;    // Optional
-    isActive: boolean;     // Default: true
+  createdAt: string;
+  updatedAt?: string;    // Optional
+  isActive: boolean;     // Default: true
 }
 
 export interface ValidationErrorResponse {
-    success: false;
-    message: "Validation failed";
-    data: null;
-    timestamp: string;
-    errors: string[];
+  success: false;
+  message: "Validation failed";
+  data: null;
+  timestamp: string;
+  errors: string[];
 }
 
 // ============================================
@@ -357,32 +357,32 @@ export interface ValidationErrorResponse {
 // ============================================
 
 export interface FabricStructureResponseDto {
-    id: number;
-    fabricstr: string;
-    standardeffencny: number;
-    fabricCode?: string; // Added new optional FabricCode property
-    createdAt: string;
-    updatedAt?: string;
-    isActive: boolean;
+  id: number;
+  fabricstr: string;
+  standardeffencny: number;
+  fabricCode?: string; // Added new optional FabricCode property
+  createdAt: string;
+  updatedAt?: string;
+  isActive: boolean;
 }
 
 export interface CreateFabricStructureRequestDto {
-    fabricstr: string;
-    standardeffencny: number;
-    fabricCode?: string; // Added new optional FabricCode property
+  fabricstr: string;
+  standardeffencny: number;
+  fabricCode?: string; // Added new optional FabricCode property
 }
 
 export interface UpdateFabricStructureRequestDto {
-    fabricstr: string;
-    standardeffencny: number;
-    fabricCode?: string; // Added new optional FabricCode property
-    isActive: boolean;
+  fabricstr: string;
+  standardeffencny: number;
+  fabricCode?: string; // Added new optional FabricCode property
+  isActive: boolean;
 }
 
 export interface FabricStructureSearchRequestDto {
-    fabricstr?: string;
-    fabricCode?: string; // Added new optional FabricCode property
-    isActive?: boolean;
+  fabricstr?: string;
+  fabricCode?: string; // Added new optional FabricCode property
+  isActive?: boolean;
 }
 
 // ============================================
@@ -428,32 +428,32 @@ export type UpdateMachine = UpdateMachineRequestDto;
 
 // User Status Values
 export const UserStatus = {
-    ACTIVE: 'active',
-    INACTIVE: 'inactive'
+  ACTIVE: 'active',
+  INACTIVE: 'inactive'
 } as const;
 
 export type UserStatusType = typeof UserStatus[keyof typeof UserStatus];
 
 // Permission Type Values
 export const PermissionType = {
-    VIEW: 'view',
-    ADD: 'add',
-    EDIT: 'edit',
-    DELETE: 'delete'
+  VIEW: 'view',
+  ADD: 'add',
+  EDIT: 'edit',
+  DELETE: 'delete'
 } as const;
 
 export type PermissionTypeType = typeof PermissionType[keyof typeof PermissionType];
 
 export const VALIDATION_RULES = {
-    NAME_MAX_LENGTH: 100,
-    EMAIL_MAX_LENGTH: 255,
-    PASSWORD_MIN_LENGTH: 6,
-    PHONE_MAX_LENGTH: 20,
-    DESCRIPTION_MAX_LENGTH: 500,
-    MACHINE_NAME_MAX_LENGTH: 200,
-    ROLE_NAME_MAX_LENGTH: 100,
-    EFFICIENCY_MIN: 0.01,
-    EFFICIENCY_MAX: 100
+  NAME_MAX_LENGTH: 100,
+  EMAIL_MAX_LENGTH: 255,
+  PASSWORD_MIN_LENGTH: 6,
+  PHONE_MAX_LENGTH: 20,
+  DESCRIPTION_MAX_LENGTH: 500,
+  MACHINE_NAME_MAX_LENGTH: 200,
+  ROLE_NAME_MAX_LENGTH: 100,
+  EFFICIENCY_MIN: 0.01,
+  EFFICIENCY_MAX: 100
 } as const;
 
 // ============================================
@@ -461,55 +461,55 @@ export const VALIDATION_RULES = {
 // ============================================
 
 export interface LoginFormData {
-    email: string;
-    password: string;
-    rememberMe: boolean;
+  email: string;
+  password: string;
+  rememberMe: boolean;
 }
 
 export interface RegisterFormData {
-    firstName: string;
-    lastName: string;
-    email: string;
-    password: string;
-    confirmPassword: string;
-    phoneNumber: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+  phoneNumber: string;
 }
 
 export interface UserFormData {
-    firstName: string;
-    lastName: string;
-    email: string;
-    phoneNumber: string;
-    roleName: string;
-    isActive: boolean;
-    password?: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneNumber: string;
+  roleName: string;
+  isActive: boolean;
+  password?: string;
 }
 
 export interface RoleFormData {
-    name: string;
-    description: string;
-    isActive: boolean;
-    pageAccesses: {
-        pageName: string;
-        isView: boolean;
-        isAdd: boolean;
-        isEdit: boolean;
-        isDelete: boolean;
-    }[];
+  name: string;
+  description: string;
+  isActive: boolean;
+  pageAccesses: {
+    pageName: string;
+    isView: boolean;
+    isAdd: boolean;
+    isEdit: boolean;
+    isDelete: boolean;
+  }[];
 }
 
 export interface MachineFormData {
-    machineName: string;
-    dia: number;
-    gg: number;
-    needle: number;
-    feeder: number;
-    rpm: number;
-    constat?: number;
-    efficiency: number;
-    description?: string;
-    isActive: boolean;
-    machineType?: string; // Added machineType field
+  machineName: string;
+  dia: number;
+  gg: number;
+  needle: number;
+  feeder: number;
+  rpm: number;
+  constat?: number;
+  efficiency: number;
+  description?: string;
+  isActive: boolean;
+  machineType?: string; // Added machineType field
 }
 
 // ============================================
@@ -517,37 +517,37 @@ export interface MachineFormData {
 // ============================================
 
 export interface LocationResponseDto {
-    id: number;
-    warehousename: string;
-    location: string;
-    sublocation: string;
-    locationcode: string;
-    createdAt: string;
-    updatedAt?: string;
-    isActive: boolean;
+  id: number;
+  warehousename: string;
+  location: string;
+  sublocation: string;
+  locationcode: string;
+  createdAt: string;
+  updatedAt?: string;
+  isActive: boolean;
 }
 
 export interface CreateLocationRequestDto {
-    warehousename: string;
-    location: string;
-    sublocation: string;
-    locationcode: string;
+  warehousename: string;
+  location: string;
+  sublocation: string;
+  locationcode: string;
 }
 
 export interface UpdateLocationRequestDto {
-    warehousename: string;
-    location: string;
-    sublocation: string;
-    locationcode: string;
-    isActive: boolean;
+  warehousename: string;
+  location: string;
+  sublocation: string;
+  locationcode: string;
+  isActive: boolean;
 }
 
 export interface LocationSearchRequestDto {
-    warehousename?: string;
-    location?: string;
-    sublocation?: string;
-    locationcode?: string;
-    isActive?: boolean;
+  warehousename?: string;
+  location?: string;
+  sublocation?: string;
+  locationcode?: string;
+  isActive?: boolean;
 }
 
 // ============================================
@@ -555,33 +555,33 @@ export interface LocationSearchRequestDto {
 // ============================================
 
 export interface YarnTypeResponseDto {
-    id: number;
-    yarnType: string;
-    yarnCode: string;
-    shortCode: string;
-    createdAt: string;
-    updatedAt?: string;
-    isActive: boolean;
+  id: number;
+  yarnType: string;
+  yarnCode: string;
+  shortCode: string;
+  createdAt: string;
+  updatedAt?: string;
+  isActive: boolean;
 }
 
 export interface CreateYarnTypeRequestDto {
-    yarnType: string;
-    yarnCode: string;
-    shortCode: string;
+  yarnType: string;
+  yarnCode: string;
+  shortCode: string;
 }
 
 export interface UpdateYarnTypeRequestDto {
-    yarnType: string;
-    yarnCode: string;
-    shortCode: string;
-    isActive: boolean;
+  yarnType: string;
+  yarnCode: string;
+  shortCode: string;
+  isActive: boolean;
 }
 
 export interface YarnTypeSearchRequestDto {
-    yarnType?: string;
-    yarnCode?: string;
-    shortCode?: string;
-    isActive?: boolean;
+  yarnType?: string;
+  yarnCode?: string;
+  shortCode?: string;
+  isActive?: boolean;
 }
 
 // ============================================
@@ -642,7 +642,7 @@ export interface SalesOrderItemDto {
   batchName: string;
   orderNo: string;
   orderDueDate: string;
-   processFlag: number;
+  processFlag: number;
   processDate: string; // ISO 8601 datetime
 }
 
@@ -675,69 +675,69 @@ export interface SalesOrderDto {
 // ============================================
 
 export interface CreateProductionAllotmentRequest {
-    allotmentId: string;
-    voucherNumber: string;
-    itemName: string;
-    salesOrderId: number;
-    salesOrderItemId: number;
-    actualQuantity: number;
-    yarnCount: string;
-    diameter: number;
-    gauge: number;
-    fabricType: string;
-    slitLine: string;
-    stitchLength: number;
-    efficiency: number;
-    composition: string;
-    yarnLotNo: string;
-    counter: string;
-    colourCode: string;
-    reqGreyGsm: number | null;
-    reqGreyWidth: number | null;
-    reqFinishGsm: number | null;
-    reqFinishWidth: number | null;
-    partyName: string;
-    // Packaging Details
-    tubeWeight: number;
-    shrinkRapWeight?: number;
-    totalWeight?: number;
-    tapeColor: string;
-    machineAllocations: MachineAllocationRequest[];
+  allotmentId: string;
+  voucherNumber: string;
+  itemName: string;
+  salesOrderId: number;
+  salesOrderItemId: number;
+  actualQuantity: number;
+  yarnCount: string;
+  diameter: number;
+  gauge: number;
+  fabricType: string;
+  slitLine: string;
+  stitchLength: number;
+  efficiency: number;
+  composition: string;
+  yarnLotNo: string;
+  counter: string;
+  colourCode: string;
+  reqGreyGsm: number | null;
+  reqGreyWidth: number | null;
+  reqFinishGsm: number | null;
+  reqFinishWidth: number | null;
+  partyName: string;
+  // Packaging Details
+  tubeWeight: number;
+  shrinkRapWeight?: number;
+  totalWeight?: number;
+  tapeColor: string;
+  machineAllocations: MachineAllocationRequest[];
 }
 
 export interface ProductionAllotmentResponseDto {
-    id: number;
-    allotmentId: string;
-    voucherNumber: string;
-    itemName: string;
-    salesOrderId: number;
-    salesOrderItemId: number;
-    actualQuantity: number;
-    yarnCount: string;
-    diameter: number;
-    gauge: number;
-    fabricType: string;
-    slitLine: string;
-    stitchLength: number;
-    efficiency: number;
-    composition: string;
-    totalProductionTime: number;
-    createdDate: string;
-    yarnLotNo: string;
-    counter: string;
-    colourCode: string;
-    reqGreyGsm: number | null;
-    reqGreyWidth: number | null;
-    reqFinishGsm: number | null;
-    reqFinishWidth: number | null;
-    partyName: string;
-    // Packaging Details
-    tubeWeight: number;
-    shrinkRapWeight?: number;
-    totalWeight?: number;
-    tapeColor: string;
-    serialNo: string;
-    machineAllocations: MachineAllocationResponseDto[];
+  id: number;
+  allotmentId: string;
+  voucherNumber: string;
+  itemName: string;
+  salesOrderId: number;
+  salesOrderItemId: number;
+  actualQuantity: number;
+  yarnCount: string;
+  diameter: number;
+  gauge: number;
+  fabricType: string;
+  slitLine: string;
+  stitchLength: number;
+  efficiency: number;
+  composition: string;
+  totalProductionTime: number;
+  createdDate: string;
+  yarnLotNo: string;
+  counter: string;
+  colourCode: string;
+  reqGreyGsm: number | null;
+  reqGreyWidth: number | null;
+  reqFinishGsm: number | null;
+  reqFinishWidth: number | null;
+  partyName: string;
+  // Packaging Details
+  tubeWeight: number;
+  shrinkRapWeight?: number;
+  totalWeight?: number;
+  tapeColor: string;
+  serialNo: string;
+  machineAllocations: MachineAllocationResponseDto[];
 }
 
 export interface MachineAllocationResponseDto {
@@ -781,18 +781,22 @@ export interface RollBreakdown {
 }
 
 // ============================================
+// PRODUCTION ALLOTMENT API (/api/ProductionAllotment)
+// ============================================
+
+// ============================================
 // PRODUCTION CONFIRMATION DTOs (AvyyanBackend.DTOs.ProductionConfirmation)
 // ============================================
 
 export interface WeightDataRequestDto {
-    ipAddress: string;
-    port?: number; // Optional, default: 23
+  ipAddress: string;
+  port?: number; // Optional, default: 23
 }
 
 export interface WeightDataResponseDto {
-    grossWeight: string;
-    tareWeight: string;
-    netWeight: string;
+  grossWeight: string;
+  tareWeight: string;
+  netWeight: string;
 }
 
 // ============================================
@@ -1287,7 +1291,7 @@ export interface TransportResponseDto {
   address?: string;
   vehicleNumber?: string;
   driverName?: string;
-  driverNumber?: string; 
+  driverNumber?: string;
   licenseNumber?: string;
   maximumCapacityKgs?: number;
   createdAt: string;
