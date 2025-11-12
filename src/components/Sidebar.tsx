@@ -195,6 +195,12 @@ const navConfig: NavItem[] = [
         icon: ArrowRight,
         description: 'Manage both picking and loading operations',
       },
+      {
+        title: PAGE_NAMES.INVOICE_GENERATION,
+        href: '/invoice',
+        icon: FileText,
+        description: 'Generate invoices for fully dispatched orders',
+      },
     ],
   },
   {

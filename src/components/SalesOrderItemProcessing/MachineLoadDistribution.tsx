@@ -167,10 +167,10 @@ export function MachineLoadDistribution({
                       {/* Filter machines by diameter and gauge if provided */}
                       {machines
                         ?.filter((machine) => {
-                          // If diameter and gauge are not provided, show all machines
-                          if (!machineDiameter || !machineGauge) return true;
-                          // Otherwise, only show machines with matching diameter and gauge
-                          return machine.dia === machineDiameter && machine.gg === machineGauge;
+                          // Only filter by diameter if provided, ignore gauge for filtering
+                          if (!machineDiameter) return true;
+                          // Show machines with matching diameter regardless of gauge
+                          return machine.dia === machineDiameter;
                         })
                         .map((machine) => {
                           const isSelected = selectedMachines.some(

@@ -7,6 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Save, ArrowLeft, Calendar, Scan } from 'lucide-react';
 import { toast } from '@/lib/toast';
 import { locationApi, apiUtils, storageCaptureApi } from '@/lib/api-client';
@@ -39,6 +46,24 @@ const StorageCapture = () => {
   const [rollData, setRollData] = useState<StorageCaptureRollDataResponseDto | null>(null);
   // Store the lot-to-location mapping
   const [lotLocationMap, setLotLocationMap] = useState<Record<string, { location: LocationResponseDto; locationCode: string }>>({});
+  const [allLocations, setAllLocations] = useState<LocationResponseDto[]>([]);
+  const [isManualSelection, setIsManualSelection] = useState(false);
+
+  // Fetch all locations on component mount
+  useEffect(() => {
+    const fetchAllLocations = async () => {
+      try {
+        const response = await locationApi.getAllLocations();
+        const locations = apiUtils.extractData(response);
+        setAllLocations(locations || []);
+      } catch (error) {
+        console.error('Error fetching locations:', error);
+        toast.error('Error', 'Failed to load locations');
+      }
+    };
+
+    fetchAllLocations();
+  }, []);
 
   // Handle location code scan
   const handleLocationCodeScan = async (e: React.KeyboardEvent) => {
@@ -72,6 +97,27 @@ const StorageCapture = () => {
         setSelectedLocation(null);
         setValue('locationId', '');
       }
+    }
+  };
+
+  // Handle manual location selection
+  const handleManualLocationSelect = (locationId: string) => {
+    const location = allLocations.find(loc => loc.id.toString() === locationId);
+    if (location) {
+      setSelectedLocation(location);
+      setValue('locationId', locationId);
+      setScannedLocationCode(location.locationcode || '');
+      setIsManualSelection(true);
+      
+      // If we have roll data, store the lot-location mapping
+      if (rollData?.rollConfirmation?.allotId) {
+        setLotLocationMap(prev => ({
+          ...prev,
+          [rollData.rollConfirmation.allotId]: { location, locationCode: location.locationcode || '' }
+        }));
+      }
+      
+      toast.success('Success', `Location selected: ${location.location}`);
     }
   };
 
@@ -342,6 +388,30 @@ const StorageCapture = () => {
     allocateRollMutation.mutate(data);
   };
 
+  // Reset form function
+  const resetForm = () => {
+    reset({
+      rollNumber: '',
+      locationId: '',
+      remarks: '',
+      date: new Date().toISOString().split('T')[0],
+      lotNumber: '',
+      product: '',
+      quantity: 0,
+      quality: '',
+    });
+    setSelectedLocation(null);
+    setScannedLocationCode('');
+    setIsManualSelection(false);
+    // Clear error state and refocus
+    setHasError(false);
+    setTimeout(() => {
+      if (rollNumberInputRef.current) {
+        rollNumberInputRef.current.focus();
+      }
+    }, 100);
+  };
+
   return (
     <div className="p-2 max-w-4xl mx-auto">
       <Card className="shadow-md border-0">
@@ -479,19 +549,41 @@ const StorageCapture = () => {
               <div className="space-y-2">
                 <div className="space-y-1">
                   <Label htmlFor="locationId" className="text-xs font-medium text-gray-700">
-                    Storage Location (Scan Location Code)
+                    Storage Location
                   </Label>
-                  <div className="relative">
-                    <Scan className="absolute left-2 top-2 h-3 w-3 text-muted-foreground" />
-                    <Input
-                      id="locationId"
-                      {...register('locationId')}
-                      onKeyPress={handleLocationCodeScan}
-                      onChange={(e) => setScannedLocationCode(e.target.value)}
-                      placeholder="Scan location code or enter location ID"
-                      className={`pl-7 text-xs h-8 ${hasError ? 'bg-red-50 border-red-300' : 'bg-white'}`}
-                    />
-                  </div>
+                  {!isManualSelection ? (
+                    <div className="relative">
+                      <Scan className="absolute left-2 top-2 h-3 w-3 text-muted-foreground" />
+                      <Input
+                        id="locationId"
+                        {...register('locationId')}
+                        onKeyPress={handleLocationCodeScan}
+                        onChange={(e) => setScannedLocationCode(e.target.value)}
+                        placeholder="Scan location code or select manually"
+                        className={`pl-7 text-xs h-8 ${hasError ? 'bg-red-50 border-red-300' : 'bg-white'}`}
+                      />
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <Select onValueChange={handleManualLocationSelect} value={selectedLocation?.id.toString() || ''}>
+                        <SelectTrigger className="text-xs h-8">
+                          <SelectValue placeholder="Select a location" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {allLocations.map((location) => (
+                            <SelectItem 
+                              key={location.id} 
+                              value={location.id.toString()}
+                              className="text-xs"
+                            >
+                              {location.warehousename} - {location.location} ({location.locationcode})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  
                   {selectedLocation && (
                     <div className="mt-1 text-xs text-green-700 flex items-center">
                       <span className="font-medium">Selected:</span>
@@ -500,6 +592,18 @@ const StorageCapture = () => {
                       </span>
                     </div>
                   )}
+                  
+                  <div className="flex space-x-2 mt-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsManualSelection(!isManualSelection)}
+                      className="h-6 px-2 text-xs"
+                    >
+                      {isManualSelection ? 'Scan Code' : 'Manual Select'}
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -538,27 +642,7 @@ const StorageCapture = () => {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => {
-                  reset({
-                    rollNumber: '',
-                    locationId: '',
-                    remarks: '',
-                    date: new Date().toISOString().split('T')[0],
-                    lotNumber: '',
-                    product: '',
-                    quantity: 0,
-                    quality: '',
-                  });
-                  setSelectedLocation(null);
-                  setScannedLocationCode('');
-                  // Clear error state and refocus
-                  setHasError(false);
-                  setTimeout(() => {
-                    if (rollNumberInputRef.current) {
-                      rollNumberInputRef.current.focus();
-                    }
-                  }, 100);
-                }}
+                onClick={resetForm}
                 className="h-8 px-3 text-xs"
               >
                 Reset
