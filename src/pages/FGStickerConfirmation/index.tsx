@@ -55,7 +55,7 @@ const FGStickerConfirmation: React.FC = () => {
     if (lotIdRef.current) {
       lotIdRef.current.focus();
     }
-  })
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -441,6 +441,22 @@ const FGStickerConfirmation: React.FC = () => {
                       placeholder={`Scan barcode or enter ${field.label}`}
                       disabled={field.disabled}
                       className="text-xs h-8 bg-white"
+                      ref={field.id === 'allotId' ? lotIdRef : undefined}
+                      onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        // Move focus to next field or submit if last field
+                        if (field.id === 'allotId') {
+                          const machineInput = document.getElementById('machineName');
+                          if (machineInput) machineInput.focus();
+                        } else if (field.id === 'machineName') {
+                          const rollInput = document.getElementById('rollNo');
+                          if (rollInput) rollInput.focus();
+                        } else if (field.id === 'rollNo') {
+                          const form = e.currentTarget.closest('form');
+                          if (form) form.requestSubmit();
+                        }
+                      }
+                    }}
                     />
                   </div>
                 ))}
