@@ -107,7 +107,7 @@ const StorageCapture = () => {
       setSelectedLocation(location);
       setValue('locationId', locationId);
       setScannedLocationCode(location.locationcode || '');
-      setIsManualSelection(true);
+     
       
       // If we have roll data, store the lot-location mapping
       if (rollData?.rollConfirmation?.allotId) {
