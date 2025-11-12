@@ -16,6 +16,7 @@ const Dashboard = lazy(() => import('../pages/Dashboard'));
 const Login = lazy(() => import('../pages/Login'));
 const Register = lazy(() => import('../pages/Register'));
 const PasswordReset = lazy(() => import('../pages/PasswordReset'));
+const Invoice = lazy(() => import('../pages/Invoice'));
 
 // User Management Pages
 const UserManagement = lazy(() => import('../pages/UserManagement'));
@@ -624,6 +625,16 @@ const Router = () => {
               element={
                 <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
                   <CourierForm />
+                </LazyRoute>
+              }
+            />
+
+            {/* Invoice Route */}
+            <Route
+              path="invoice"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <Invoice />
                 </LazyRoute>
               }
             />

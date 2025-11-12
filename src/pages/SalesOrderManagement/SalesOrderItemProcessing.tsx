@@ -1101,7 +1101,7 @@ const SalesOrderItemProcessingRefactored = () => {
           : 'N/A',
         stitchLength: productionCalc.stichLength,
         efficiency: productionCalc.efficiency,
-        composition: extractComposition(selectedItem.descriptions || ''),
+        composition: extractComposition(selectedItem.descriptions),
         yarnLotNo: additionalFields.yarnLotNo,
         counter: additionalFields.counter,
         colourCode: additionalFields.colourCode,

@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { SalesOrderDto } from '@/types/api-types';
+import { useEffect } from 'react';
 
 interface AdditionalFields {
   yarnLotNo: string;
@@ -42,6 +43,13 @@ export function AdditionalInformation({
   const calculatedCounter = needle && feeder && stichLength ? 
     (169300 * count * rollPerKg / needle / feeder / stichLength).toFixed(2) : 
     '0.00';
+
+  // Automatically update the counter field in additionalFields when it's calculated
+  useEffect(() => {
+    if (calculatedCounter !== additionalFields.counter) {
+      onAdditionalFieldChange('counter', calculatedCounter);
+    }
+  }, [calculatedCounter, additionalFields.counter, onAdditionalFieldChange]);
 
   return (
     <Card>
