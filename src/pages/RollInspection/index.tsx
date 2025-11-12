@@ -33,17 +33,23 @@ const RollInspection: React.FC = () => {
   const [salesOrderData, setSalesOrderData] = useState<SalesOrderDto | null>(null);
   const [selectedMachine, setSelectedMachine] = useState<MachineAllocationResponseDto | null>(null);
 
-  const scanBuffer = useRef<string>('');
-  const isScanning = useRef<boolean>(false);
-  const lastKeyTime = useRef<number>(Date.now());
+  // Ref for the Lot ID input field
+  const lotIdRef = useRef<HTMLInputElement>(null);
+  
+  // Focus on the Lot ID input field when the page loads
+  useEffect(() => {
+    if (lotIdRef.current) {
+      lotIdRef.current.focus();
+    }
+  }, []);
 
   const isAxiosError = (error: unknown): error is { response?: { status: number } } => {
     return typeof error === 'object' && error !== null && 'response' in error;
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    const { value } = e.target;
+    handleBarcodeScan(value);
   };
 
   const handleSelectChange = (name: string, value: string) => {
@@ -129,41 +135,6 @@ const RollInspection: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-        scanBuffer.current = '';
-        isScanning.current = false;
-        return;
-      }
-
-      const currentTime = Date.now();
-      const timeSinceLastKey = currentTime - lastKeyTime.current;
-      
-      if (timeSinceLastKey > 100) {
-        scanBuffer.current = '';
-        isScanning.current = true;
-      }
-      
-      lastKeyTime.current = currentTime;
-      
-      if (e.key === 'Enter') {
-        if (scanBuffer.current.length > 0 && isScanning.current) {
-          handleBarcodeScan(scanBuffer.current);
-          scanBuffer.current = '';
-          isScanning.current = false;
-          e.preventDefault();
-        }
-      } else if (e.key.length === 1) {
-        if (isScanning.current) {
-          scanBuffer.current += e.key;
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
 
   const submitInspection = async (flag: boolean, actionType: 'approve' | 'hold' | 'reject') => {
     const requiredFields = [
@@ -378,6 +349,7 @@ const RollInspection: React.FC = () => {
                       required
                       disabled={!!allotmentData}
                       className="h-8 text-sm"
+                      ref={lotIdRef}
                     />
                   </div>
                   
