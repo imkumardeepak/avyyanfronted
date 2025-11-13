@@ -697,6 +697,10 @@ export const dispatchPlanningApi = {
     data: CreateDispatchedRollRequestDto
   ): Promise<AxiosResponse<DispatchedRollDto>> =>
     apiClient.post('/DispatchPlanning/dispatched-rolls', data),
+
+  // GET /api/DispatchPlanning/ordered-dispatched-rolls/{dispatchOrderId} - Get ordered dispatched rolls by dispatch order ID
+  getOrderedDispatchedRollsByDispatchOrderId: (dispatchOrderId: string): Promise<AxiosResponse<DispatchedRollDto[]>> =>
+    apiClient.get(`/DispatchPlanning/ordered-dispatched-rolls/${dispatchOrderId}`),
 };
 
 // ============================================
