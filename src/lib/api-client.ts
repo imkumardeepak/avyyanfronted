@@ -581,6 +581,10 @@ export const rollConfirmationApi = {
   // GET /api/RollConfirmation/weight-data - Get weight data from TCP client
   getWeightData: (params: WeightDataRequestDto): Promise<AxiosResponse<WeightDataResponseDto>> =>
     apiClient.get('/RollConfirmation/weight-data', { params }),
+
+  // GET /api/RollConfirmation - Get all roll confirmations
+  getAllRollConfirmations: (): Promise<AxiosResponse<RollConfirmationResponseDto[]>> =>
+    apiClient.get('/RollConfirmation'),
 };
 
 // ============================================

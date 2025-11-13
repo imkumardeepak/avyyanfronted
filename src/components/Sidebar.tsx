@@ -245,6 +245,12 @@ const navConfig: NavItem[] = [
       },
     ],
   },
+  {
+    title: PAGE_NAMES.REPORTS,
+    href: '/reports',
+    icon: FileText,
+    description: 'View and generate reports',
+  },
 ];
 
 // Helper function to get expanded items from localStorage
