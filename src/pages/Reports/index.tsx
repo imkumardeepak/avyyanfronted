@@ -21,8 +21,8 @@ import {
 import { Calendar, Download, Filter, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from '@/lib/toast';
-import { rollConfirmationApi } from '@/lib/api-client';
-import type { RollConfirmationResponseDto } from '@/types/api-types';
+import { rollConfirmationApi, salesOrderApi, productionAllotmentApi } from '@/lib/api-client';
+import type { RollConfirmationResponseDto, SalesOrderDto, ProductionAllotmentResponseDto } from '@/types/api-types';
 import { DatePicker } from '@/components/ui/date-picker';
 
 // Define types
@@ -43,10 +43,16 @@ interface GroupedReportData {
   machineName: string;
   lotNo: string;
   customerName: string;
+  salesOrder: string;
   rollCount: number;
   totalWeight: number;
   avgGsm: number;
   avgWidth: number;
+}
+
+interface ExtendedRollConfirmation extends RollConfirmationResponseDto {
+  customerName?: string;
+  salesOrder?: string;
 }
 
 const Reports: React.FC = () => {
@@ -62,8 +68,8 @@ const Reports: React.FC = () => {
   });
 
   // State for data
-  const [rollConfirmations, setRollConfirmations] = useState<RollConfirmationResponseDto[]>([]);
-  const [filteredRollConfirmations, setFilteredRollConfirmations] = useState<RollConfirmationResponseDto[]>([]);
+  const [rollConfirmations, setRollConfirmations] = useState<ExtendedRollConfirmation[]>([]);
+  const [filteredRollConfirmations, setFilteredRollConfirmations] = useState<ExtendedRollConfirmation[]>([]);
   const [groupedData, setGroupedData] = useState<GroupedReportData[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<GroupedReportData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -71,10 +77,12 @@ const Reports: React.FC = () => {
   const [uniqueMachines, setUniqueMachines] = useState<string[]>([]);
   const [uniqueCustomers, setUniqueCustomers] = useState<string[]>([]);
   const [uniqueSalesOrders, setUniqueSalesOrders] = useState<string[]>([]);
+  const [allSalesOrders, setAllSalesOrders] = useState<SalesOrderDto[]>([]);
+  const [allProductionAllotments, setAllProductionAllotments] = useState<ProductionAllotmentResponseDto[]>([]);
 
   // Fetch all roll confirmations on component mount
   useEffect(() => {
-    fetchRollConfirmations();
+    fetchAllData();
   }, []);
 
   // Apply filters when data or filters change
@@ -91,8 +99,8 @@ const Reports: React.FC = () => {
   useEffect(() => {
     const lots = Array.from(new Set(rollConfirmations.map(item => item.allotId)));
     const machines = Array.from(new Set(rollConfirmations.map(item => item.machineName)));
-    const customers = Array.from(new Set(rollConfirmations.map(item => 'Customer Name'))); // Placeholder
-    const salesOrders = Array.from(new Set(rollConfirmations.map(item => 'Sales Order'))); // Placeholder
+    const customers = Array.from(new Set(rollConfirmations.map(item => item.customerName || 'Unknown Customer')));
+    const salesOrders = Array.from(new Set(rollConfirmations.map(item => item.salesOrder || 'Unknown Sales Order')));
     
     setUniqueLots(lots);
     setUniqueMachines(machines);
@@ -100,14 +108,50 @@ const Reports: React.FC = () => {
     setUniqueSalesOrders(salesOrders);
   }, [rollConfirmations]);
 
-  const fetchRollConfirmations = async () => {
+  const fetchAllData = async () => {
     try {
       setLoading(true);
-      const response = await rollConfirmationApi.getAllRollConfirmations();
-      setRollConfirmations(response.data);
+      
+      // Fetch all required data in parallel
+      const [rollConfirmationsResponse, salesOrdersResponse, productionAllotmentsResponse] = await Promise.all([
+        rollConfirmationApi.getAllRollConfirmations(),
+        salesOrderApi.getAllSalesOrders(),
+        productionAllotmentApi.getAllProductionAllotments()
+      ]);
+      
+      setAllSalesOrders(salesOrdersResponse.data);
+      setAllProductionAllotments(productionAllotmentsResponse.data);
+      
+      // Enrich roll confirmations with customer and sales order data
+      const enrichedRollConfirmations = rollConfirmationsResponse.data.map(roll => {
+        // Find the production allotment for this roll
+        const productionAllotment = productionAllotmentsResponse.data.find(pa => pa.allotmentId === roll.allotId);
+        
+        if (productionAllotment) {
+          // Find the sales order for this production allotment
+          const salesOrder = salesOrdersResponse.data.find(so => so.id === productionAllotment.salesOrderId);
+          
+          if (salesOrder) {
+            return {
+              ...roll,
+              customerName: salesOrder.partyName,
+              salesOrder: salesOrder.voucherNumber
+            };
+          }
+        }
+        
+        // Return roll with default values if no matching data found
+        return {
+          ...roll,
+          customerName: 'Unknown Customer',
+          salesOrder: 'Unknown Sales Order'
+        };
+      });
+      
+      setRollConfirmations(enrichedRollConfirmations);
     } catch (error) {
-      console.error('Error fetching roll confirmations:', error);
-      toast.error('Error', 'Failed to fetch roll confirmations');
+      console.error('Error fetching data:', error);
+      toast.error('Error', 'Failed to fetch data');
     } finally {
       setLoading(false);
     }
@@ -131,27 +175,34 @@ const Reports: React.FC = () => {
 
     // Apply lot filter (ignore if "All Lots" is selected)
     if (filters.lotNo && filters.lotNo !== '__all_lots__') {
-      result = result.filter(item => item.allotId.includes(filters.lotNo));
+      // For search-based filtering, check if the lotNo is included in the allotId
+      if (filters.lotNo !== '__search__') {
+        result = result.filter(item => item.allotId.includes(filters.lotNo));
+      }
     }
 
     // Apply machine filter (ignore if "All Machines" is selected)
     if (filters.machineName && filters.machineName !== '__all_machines__') {
-      result = result.filter(item => item.machineName === filters.machineName);
-    }
-
-    // Apply shift filter (ignore if "All Shifts" is selected)
-    if (filters.shift && filters.shift !== '__all_shifts__') {
-      // Placeholder for shift filter - would need actual shift data
+      // For search-based filtering, check if the machineName is included in the machineName
+      if (filters.machineName !== '__search__') {
+        result = result.filter(item => item.machineName.includes(filters.machineName));
+      }
     }
 
     // Apply customer filter (ignore if "All Customers" is selected)
     if (filters.customerName && filters.customerName !== '__all_customers__') {
-      // Placeholder for customer filter - would need actual customer data
+      // For search-based filtering, check if the customerName is included in the customerName
+      if (filters.customerName !== '__search__') {
+        result = result.filter(item => item.customerName?.includes(filters.customerName));
+      }
     }
 
     // Apply sales order filter (ignore if "All Sales Orders" is selected)
     if (filters.salesOrder && filters.salesOrder !== '__all_sales_orders__') {
-      // Placeholder for sales order filter - would need actual sales order data
+      // For search-based filtering, check if the salesOrder is included in the salesOrder
+      if (filters.salesOrder !== '__search__') {
+        result = result.filter(item => item.salesOrder?.includes(filters.salesOrder));
+      }
     }
 
     setFilteredRollConfirmations(result);
@@ -159,7 +210,7 @@ const Reports: React.FC = () => {
 
   const groupData = () => {
     // Group by date, shift, machine, lot
-    const grouped: Record<string, RollConfirmationResponseDto[]> = {};
+    const grouped: Record<string, ExtendedRollConfirmation[]> = {};
     
     filteredRollConfirmations.forEach(item => {
       const date = format(new Date(item.createdDate), 'yyyy-MM-dd');
@@ -185,7 +236,8 @@ const Reports: React.FC = () => {
         shift,
         machineName,
         lotNo,
-        customerName: 'Customer Name', // Placeholder
+        customerName: items[0]?.customerName || 'Unknown Customer',
+        salesOrder: items[0]?.salesOrder || 'Unknown Sales Order',
         rollCount: items.length,
         totalWeight,
         avgGsm,
@@ -243,6 +295,7 @@ const Reports: React.FC = () => {
           'Machine No',
           'Lot No',
           'Customer Name',
+          'Sales Order',
           'Roll No',
           'Fabric Type',
           'GSM',
@@ -267,7 +320,8 @@ const Reports: React.FC = () => {
           'A', // Placeholder for shift
           item.machineName,
           item.allotId,
-          'Customer Name', // Placeholder for customer name
+          item.customerName || 'Unknown Customer',
+          item.salesOrder || 'Unknown Sales Order',
           item.rollNo,
           'Fabric Type', // Placeholder for fabric type
           item.greyGsm?.toString() || '',
@@ -285,6 +339,7 @@ const Reports: React.FC = () => {
           'Machine No',
           'Lot No',
           'Customer Name',
+          'Sales Order',
           'Roll Count',
           'Total Weight (Kg)',
           'Avg GSM',
@@ -297,6 +352,7 @@ const Reports: React.FC = () => {
           item.machineName,
           item.lotNo,
           item.customerName,
+          item.salesOrder,
           item.rollCount.toString(),
           item.totalWeight.toFixed(2),
           item.avgGsm.toFixed(0),
@@ -375,38 +431,20 @@ const Reports: React.FC = () => {
 
               <div>
                 <Label htmlFor="lotNo">Lot No</Label>
-                <Select
-                  value={filters.lotNo}
-                  onValueChange={(value) => handleFilterChange('lotNo', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Lot" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all_lots__">All Lots</SelectItem>
-                    {uniqueLots.map(lot => (
-                      <SelectItem key={lot} value={lot}>{lot}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Input
+                  placeholder="Search lot..."
+                  value={filters.lotNo === '__all_lots__' || filters.lotNo === '__search__' ? '' : filters.lotNo}
+                  onChange={(e) => handleFilterChange('lotNo', e.target.value || '__all_lots__')}
+                />
               </div>
 
               <div>
                 <Label htmlFor="machineName">Machine</Label>
-                <Select
-                  value={filters.machineName}
-                  onValueChange={(value) => handleFilterChange('machineName', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Machine" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all_machines__">All Machines</SelectItem>
-                    {uniqueMachines.map(machine => (
-                      <SelectItem key={machine} value={machine}>{machine}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Input
+                  placeholder="Search machine..."
+                  value={filters.machineName === '__all_machines__' || filters.machineName === '__search__' ? '' : filters.machineName}
+                  onChange={(e) => handleFilterChange('machineName', e.target.value || '__all_machines__')}
+                />
               </div>
 
               <div>
@@ -429,38 +467,20 @@ const Reports: React.FC = () => {
 
               <div>
                 <Label htmlFor="customerName">Customer</Label>
-                <Select
-                  value={filters.customerName}
-                  onValueChange={(value) => handleFilterChange('customerName', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Customer" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all_customers__">All Customers</SelectItem>
-                    {uniqueCustomers.map(customer => (
-                      <SelectItem key={customer} value={customer}>{customer}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Input
+                  placeholder="Search customer..."
+                  value={filters.customerName === '__all_customers__' || filters.customerName === '__search__' ? '' : filters.customerName}
+                  onChange={(e) => handleFilterChange('customerName', e.target.value || '__all_customers__')}
+                />
               </div>
 
               <div>
                 <Label htmlFor="salesOrder">Sales Order</Label>
-                <Select
-                  value={filters.salesOrder}
-                  onValueChange={(value) => handleFilterChange('salesOrder', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Sales Order" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all_sales_orders__">All Sales Orders</SelectItem>
-                    {uniqueSalesOrders.map(order => (
-                      <SelectItem key={order} value={order}>{order}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Input
+                  placeholder="Search sales order..."
+                  value={filters.salesOrder === '__all_sales_orders__' || filters.salesOrder === '__search__' ? '' : filters.salesOrder}
+                  onChange={(e) => handleFilterChange('salesOrder', e.target.value || '__all_sales_orders__')}
+                />
               </div>
 
               <div className="flex items-end space-x-2">
@@ -519,6 +539,7 @@ const Reports: React.FC = () => {
                         <TableHead>Machine No</TableHead>
                         <TableHead>Lot No</TableHead>
                         <TableHead>Customer Name</TableHead>
+                        <TableHead>Sales Order</TableHead>
                         <TableHead>Roll No</TableHead>
                         <TableHead>Fabric Type</TableHead>
                         <TableHead>GSM</TableHead>
@@ -545,7 +566,8 @@ const Reports: React.FC = () => {
                             <TableCell>A</TableCell>
                             <TableCell>{item.machineName}</TableCell>
                             <TableCell>{item.allotId}</TableCell>
-                            <TableCell>Customer Name</TableCell>
+                            <TableCell>{item.customerName || 'Unknown Customer'}</TableCell>
+                            <TableCell>{item.salesOrder || 'Unknown Sales Order'}</TableCell>
                             <TableCell>{item.rollNo}</TableCell>
                             <TableCell>Fabric Type</TableCell>
                             <TableCell>{item.greyGsm?.toFixed(0) || 'N/A'}</TableCell>
@@ -569,6 +591,7 @@ const Reports: React.FC = () => {
                         <TableHead>Machine No</TableHead>
                         <TableHead>Lot No</TableHead>
                         <TableHead>Customer Name</TableHead>
+                        <TableHead>Sales Order</TableHead>
                         <TableHead>Roll Count</TableHead>
                         <TableHead>Total Weight (Kg)</TableHead>
                         <TableHead>Avg GSM</TableHead>
@@ -585,6 +608,7 @@ const Reports: React.FC = () => {
                             <TableCell>{item.machineName}</TableCell>
                             <TableCell>{item.lotNo}</TableCell>
                             <TableCell>{item.customerName}</TableCell>
+                            <TableCell>{item.salesOrder}</TableCell>
                             <TableCell>{item.rollCount}</TableCell>
                             <TableCell>{item.totalWeight.toFixed(2)}</TableCell>
                             <TableCell>{item.avgGsm.toFixed(0)}</TableCell>
@@ -603,7 +627,7 @@ const Reports: React.FC = () => {
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={10} className="text-center py-8 text-gray-500">
+                          <TableCell colSpan={11} className="text-center py-8 text-gray-500">
                             No data found matching the selected filters
                           </TableCell>
                         </TableRow>
