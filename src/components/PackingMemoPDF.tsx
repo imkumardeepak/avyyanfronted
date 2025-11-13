@@ -122,113 +122,122 @@ const PackingMemoPDF = ({
   totalNetWeight, 
   totalGrossWeight,
   remarks
-}: PackingMemoProps) => (
-  <Document>
-    <Page size="A4" style={styles.page}>
-      <View style={styles.header}>
-        <View>
-          {/* Placeholder for company logo - in a real implementation, you would use a proper logo */}
-          <Image
-            src="https://via.placeholder.com/60x60"
-            style={styles.logo}
-          />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.companyName}>AVYAAN KNITFAB</Text>
-          <Text style={styles.companyAddress}>
-            Sr.No.547-551/1, At.Waigaoon-Deoli State Highway, Waigaon (M), Wardha-442001, Maharashtra
-          </Text>
-          <Text style={styles.companyAddress}>
-            GSTIN: 27ABYFA2736N1ZD
-          </Text>
-        </View>
-        <View style={{ width: 100 }}></View>
-      </View>
+}: PackingMemoProps) => {
+  // Ensure packingDetails is an array
+  const safePackingDetails = Array.isArray(packingDetails) ? packingDetails : [];
+  
+  // Ensure weights are numbers
+  const safeTotalNetWeight = typeof totalNetWeight === 'number' ? totalNetWeight : 0;
+  const safeTotalGrossWeight = typeof totalGrossWeight === 'number' ? totalGrossWeight : 0;
 
-      <Text style={styles.title}>PACKING MEMO</Text>
-      
-      <View style={styles.section}>
-        <View style={styles.row}>
-          <Text style={styles.label}>Dispatch Order ID:</Text>
-          <Text style={styles.value}>{dispatchOrderId}</Text>
-        </View>
-        <View style={styles.row}>
-          <Text style={styles.label}>Lot No.:</Text>
-          <Text style={styles.value}>{lotNumber}</Text>
-        </View>
-        <View style={styles.row}>
-          <Text style={styles.label}>Packing:</Text>
-          <Text style={styles.value}>White Polybag + Cello Tape</Text>
-        </View>
-      </View>
-      
-      <View style={styles.section}>
-        <View style={styles.row}>
-          <Text style={styles.label}>Date:</Text>
-          <Text style={styles.value}>{dispatchDate}</Text>
-        </View>
-        <View style={styles.row}>
-          <Text style={styles.label}>Vehicle No.:</Text>
-          <Text style={styles.value}>{vehicleNumber}</Text>
-        </View>
-        <View style={styles.row}>
-          <Text style={styles.label}>Total Net Wt.:</Text>
-          <Text style={styles.value}>{totalNetWeight.toFixed(2)} kg</Text>
-        </View>
-        <View style={styles.row}>
-          <Text style={styles.label}>Gross Wt.:</Text>
-          <Text style={styles.value}>{totalGrossWeight.toFixed(2)} kg</Text>
-        </View>
-      </View>
-
-      <View style={styles.table}>
-        <View style={[styles.tableRow, styles.tableHeader]}>
-          <Text style={[styles.tableCol, { width: '20%' }]}>Sr No.</Text>
-          <Text style={[styles.tableCol, { width: '20%' }]}>P.S. No.</Text>
-          <Text style={[styles.tableCol, { width: '30%' }]}>Net Wt. (kg)</Text>
-          <Text style={[styles.tableCol, { width: '30%' }]}>Gross Wt. (kg)</Text>
-        </View>
-        
-        {packingDetails.map((item, index) => (
-          <View key={index} style={styles.tableRow}>
-            <Text style={[styles.tableCol, { width: '20%' }]}>{item.srNo}</Text>
-            <Text style={[styles.tableCol, { width: '20%' }]}>{item.psNo}</Text>
-            <Text style={[styles.tableCol, { width: '30%' }]}>{item.netWeight.toFixed(2)}</Text>
-            <Text style={[styles.tableCol, { width: '30%' }]}>{item.grossWeight.toFixed(2)}</Text>
+  return (
+    <Document>
+      <Page size="A4" style={styles.page}>
+        <View style={styles.header}>
+          <View>
+            {/* Placeholder for company logo - in a real implementation, you would use a proper logo */}
+            <Image
+              src="https://via.placeholder.com/60x60"
+              style={styles.logo}
+            />
           </View>
-        ))}
+          <View style={{ flex: 1 }}>
+            <Text style={styles.companyName}>AVYAAN KNITFAB</Text>
+            <Text style={styles.companyAddress}>
+              Sr.No.547-551/1, At.Waigaoon-Deoli State Highway, Waigaon (M), Wardha-442001, Maharashtra
+            </Text>
+            <Text style={styles.companyAddress}>
+              GSTIN: 27ABYFA2736N1ZD
+            </Text>
+          </View>
+          <View style={{ width: 100 }}></View>
+        </View>
+
+        <Text style={styles.title}>PACKING MEMO</Text>
         
-        <View style={[styles.tableRow, { backgroundColor: '#f0f0f0', fontWeight: 'bold' }]}>
-          <Text style={[styles.tableCol, { width: '20%' }]}></Text>
-          <Text style={[styles.tableCol, { width: '20%' }]}>TOTAL</Text>
-          <Text style={[styles.tableCol, { width: '30%' }]}>{totalNetWeight.toFixed(2)}</Text>
-          <Text style={[styles.tableCol, { width: '30%' }]}>{totalGrossWeight.toFixed(2)}</Text>
+        <View style={styles.section}>
+          <View style={styles.row}>
+            <Text style={styles.label}>Dispatch Order ID:</Text>
+            <Text style={styles.value}>{dispatchOrderId}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>Lot No.:</Text>
+            <Text style={styles.value}>{lotNumber}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>Packing:</Text>
+            <Text style={styles.value}>White Polybag + Cello Tape</Text>
+          </View>
         </View>
-      </View>
+        
+        <View style={styles.section}>
+          <View style={styles.row}>
+            <Text style={styles.label}>Date:</Text>
+            <Text style={styles.value}>{dispatchDate}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>Vehicle No.:</Text>
+            <Text style={styles.value}>{vehicleNumber}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>Total Net Wt.:</Text>
+            <Text style={styles.value}>{safeTotalNetWeight.toFixed(2)} kg</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>Gross Wt.:</Text>
+            <Text style={styles.value}>{safeTotalGrossWeight.toFixed(2)} kg</Text>
+          </View>
+        </View>
 
-      {remarks && (
-        <View style={[styles.section, { marginTop: 15 }]}>
-          <Text style={styles.label}>Remarks:</Text>
-          <Text style={styles.value}>{remarks}</Text>
+        <View style={styles.table}>
+          <View style={[styles.tableRow, styles.tableHeader]}>
+            <Text style={[styles.tableCol, { width: '20%' }]}>Sr No.</Text>
+            <Text style={[styles.tableCol, { width: '20%' }]}>P.S. No.</Text>
+            <Text style={[styles.tableCol, { width: '30%' }]}>Net Wt. (kg)</Text>
+            <Text style={[styles.tableCol, { width: '30%' }]}>Gross Wt. (kg)</Text>
+          </View>
+          
+          {safePackingDetails.map((item, index) => (
+            <View key={index} style={styles.tableRow}>
+              <Text style={[styles.tableCol, { width: '20%' }]}>{item.srNo}</Text>
+              <Text style={[styles.tableCol, { width: '20%' }]}>{item.psNo}</Text>
+              <Text style={[styles.tableCol, { width: '30%' }]}>{item.netWeight.toFixed(2)}</Text>
+              <Text style={[styles.tableCol, { width: '30%' }]}>{item.grossWeight.toFixed(2)}</Text>
+            </View>
+          ))}
+          
+          <View style={[styles.tableRow, { backgroundColor: '#f0f0f0', fontWeight: 'bold' }]}>
+            <Text style={[styles.tableCol, { width: '20%' }]}></Text>
+            <Text style={[styles.tableCol, { width: '20%' }]}>TOTAL</Text>
+            <Text style={[styles.tableCol, { width: '30%' }]}>{safeTotalNetWeight.toFixed(2)}</Text>
+            <Text style={[styles.tableCol, { width: '30%' }]}>{safeTotalGrossWeight.toFixed(2)}</Text>
+          </View>
         </View>
-      )}
 
-      <View style={styles.footer}>
-        <View style={styles.signatureSection}>
-          <Text style={styles.label}>Checked By</Text>
-          <View style={styles.signatureLine}></View>
+        {remarks && (
+          <View style={[styles.section, { marginTop: 15 }]}>
+            <Text style={styles.label}>Remarks:</Text>
+            <Text style={styles.value}>{remarks}</Text>
+          </View>
+        )}
+
+        <View style={styles.footer}>
+          <View style={styles.signatureSection}>
+            <Text style={styles.label}>Checked By</Text>
+            <View style={styles.signatureLine}></View>
+          </View>
+          <View style={styles.signatureSection}>
+            <Text style={styles.label}>Packing Manager</Text>
+            <View style={styles.signatureLine}></View>
+          </View>
+          <View style={styles.signatureSection}>
+            <Text style={styles.label}>Authorised Signatory</Text>
+            <View style={styles.signatureLine}></View>
+          </View>
         </View>
-        <View style={styles.signatureSection}>
-          <Text style={styles.label}>Packing Manager</Text>
-          <View style={styles.signatureLine}></View>
-        </View>
-        <View style={styles.signatureSection}>
-          <Text style={styles.label}>Authorised Signatory</Text>
-          <View style={styles.signatureLine}></View>
-        </View>
-      </View>
-    </Page>
-  </Document>
-);
+      </Page>
+    </Document>
+  );
+};
 
 export default PackingMemoPDF;
