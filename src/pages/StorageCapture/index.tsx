@@ -79,12 +79,14 @@ const StorageCapture = () => {
           setValue('locationId', location.id.toString());
           toast.success('Success', `Location found: ${location.location}`);
           
-          // If we have roll data, store the lot-location mapping
+          // If we have roll data, store the lot-location mapping for future rolls of the same lot
           if (rollData?.rollConfirmation?.allotId) {
             setLotLocationMap(prev => ({
               ...prev,
               [rollData.rollConfirmation.allotId]: { location, locationCode: scannedLocationCode }
             }));
+            
+            toast.info('Info', `Location ${location.location} assigned to Lot ${rollData.rollConfirmation.allotId}`);
           }
         } else {
           toast.error('Error', 'Location not found. Please check the location code.');
@@ -107,14 +109,15 @@ const StorageCapture = () => {
       setSelectedLocation(location);
       setValue('locationId', locationId);
       setScannedLocationCode(location.locationcode || '');
-     
-      
-      // If we have roll data, store the lot-location mapping
+   
+      // If we have roll data, store the lot-location mapping for future rolls of the same lot
       if (rollData?.rollConfirmation?.allotId) {
         setLotLocationMap(prev => ({
           ...prev,
           [rollData.rollConfirmation.allotId]: { location, locationCode: location.locationcode || '' }
         }));
+      
+        toast.info('Info', `Location ${location.location} assigned to Lot ${rollData.rollConfirmation.allotId}`);
       }
       
       toast.success('Success', `Location selected: ${location.location}`);
@@ -151,6 +154,11 @@ const StorageCapture = () => {
         customerName: rollData?.productionAllotment.partyName || '',
       };
 
+      // Validate that we have required data
+      if (!storageCaptureData.lotNo || !storageCaptureData.fgRollNo || !storageCaptureData.locationCode) {
+        throw new Error('Missing required data for storage capture');
+      }
+
       // Check if this FG roll has already been captured in this location
       try {
         const searchResponse = await storageCaptureApi.searchStorageCaptures({ 
@@ -158,7 +166,7 @@ const StorageCapture = () => {
           locationCode: storageCaptureData.locationCode
         });
         const existingCaptures = apiUtils.extractData(searchResponse) as StorageCaptureResponseDto[];
-        
+      
         if (existingCaptures && existingCaptures.length > 0) {
           const existingCapture = existingCaptures[0];
           throw new Error(`FG Roll ${storageCaptureData.fgRollNo} is already stored in location ${existingCapture.locationCode}`);
@@ -250,7 +258,7 @@ const StorageCapture = () => {
         return;
       }
 
-      // Check if this lot already has an assigned location
+      // Check if this lot already has an assigned location in memory
       if (lotLocationMap[allotId]) {
         // Auto-select the previously assigned location
         const { location, locationCode } = lotLocationMap[allotId];
@@ -263,25 +271,25 @@ const StorageCapture = () => {
         try {
           const searchResponse = await storageCaptureApi.searchStorageCaptures({ lotNo: allotId });
           const storageCaptures = apiUtils.extractData(searchResponse) as StorageCaptureResponseDto[];
-          
+        
           if (storageCaptures && storageCaptures.length > 0) {
             // Get the location from the first storage capture
             const firstCapture = storageCaptures[0];
             const locationResponse = await locationApi.searchLocations({ locationcode: firstCapture.locationCode });
             const locations = locationResponse.data;
-            
+          
             if (locations && locations.length > 0) {
               const location = locations[0];
               setSelectedLocation(location);
               setValue('locationId', location.id.toString());
               setScannedLocationCode(firstCapture.locationCode);
-              
+            
               // Store in our map for future use
               setLotLocationMap(prev => ({
                 ...prev,
                 [allotId]: { location, locationCode: firstCapture.locationCode }
               }));
-              
+            
               toast.info('Info', `Auto-selected location ${location.location} for Lot ${allotId} (from previous captures)`);
             }
           }
@@ -374,13 +382,22 @@ const StorageCapture = () => {
 
   // Handle form submission
   const onSubmit = (data: StorageCaptureFormData) => {
-    if (!data.rollNumber || !data.locationId) {
-      toast.error('Error', 'Please select both FG Roll and Storage Location');
+    if (!data.rollNumber) {
+      toast.error('Error', 'Please scan an FG Roll first');
       setHasError(true);
       setTimeout(() => {
         if (rollNumberInputRef.current) {
           rollNumberInputRef.current.focus();
         }
+      }, 100);
+      return;
+    }
+
+    if (!data.locationId || !selectedLocation) {
+      toast.error('Error', 'Please select a Storage Location');
+      setHasError(true);
+      setTimeout(() => {
+        document.getElementById('locationId')?.focus();
       }, 100);
       return;
     }
@@ -508,6 +525,14 @@ const StorageCapture = () => {
                           </div>
                         </div>
 
+                        {lotLocationMap[rollData.rollConfirmation?.allotId || ''] && (
+                          <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-xs text-green-700">
+                            <span className="font-medium">Location Auto-Assigned:</span> This lot ({rollData.rollConfirmation?.allotId}) 
+                            has been assigned to location {lotLocationMap[rollData.rollConfirmation?.allotId || '']?.location.warehousename} - 
+                            {lotLocationMap[rollData.rollConfirmation?.allotId || '']?.location.location}
+                          </div>
+                        )}
+
                         {rollData.productionAllotment && (
                           <div className="mt-3 pt-3 border-t border-blue-200">
                             <h4 className="text-xs font-semibold text-blue-700 mb-2">
@@ -545,6 +570,18 @@ const StorageCapture = () => {
             {/* Allocation Details Section */}
             <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-md p-3">
               <h3 className="text-xs font-semibold text-green-800 mb-2">Allocation Details</h3>
+              <p className="text-xs text-green-700/80 mb-2">
+                {rollData 
+                  ? "Scan location code to assign storage location for this lot" 
+                  : "Scan an FG roll first to enable location assignment"}
+              </p>
+              {rollData && lotLocationMap[rollData.rollConfirmation?.allotId || ''] && (
+                <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
+                  <span className="font-medium">Note:</span> Location for Lot {rollData.rollConfirmation?.allotId} 
+                  has been auto-assigned to {lotLocationMap[rollData.rollConfirmation?.allotId || '']?.location.warehousename} - 
+                  {lotLocationMap[rollData.rollConfirmation?.allotId || '']?.location.location}
+                </div>
+              )}
 
               <div className="space-y-2">
                 <div className="space-y-1">
@@ -564,11 +601,16 @@ const StorageCapture = () => {
                   </div>
                   
                   {selectedLocation && (
-                    <div className="mt-1 text-xs text-green-700 flex items-center">
-                      <span className="font-medium">Selected:</span>
-                      <span className="ml-1">
+                    <div className="mt-1 text-xs flex items-center">
+                      <span className="font-medium text-green-700">Selected Location:</span>
+                      <span className="ml-1 text-green-600">
                         {selectedLocation.warehousename} - {selectedLocation.location}
                       </span>
+                      {lotLocationMap[rollData?.rollConfirmation?.allotId || '']?.locationCode === scannedLocationCode && (
+                        <span className="ml-2 bg-green-100 text-green-800 px-2 py-0.5 rounded-full text-xs">
+                          Auto-assigned for this lot
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>

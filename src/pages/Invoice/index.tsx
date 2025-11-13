@@ -2,10 +2,13 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowLeft, FileText } from 'lucide-react';
+import { ArrowLeft, FileText, Package } from 'lucide-react';
 import { toast } from '@/lib/toast';
-import { dispatchPlanningApi, apiUtils } from '@/lib/api-client';
-import type { DispatchPlanningDto } from '@/types/api-types';
+import { dispatchPlanningApi, transportApi, salesOrderApi, rollConfirmationApi, apiUtils } from '@/lib/api-client';
+import { pdf } from '@react-pdf/renderer';
+import InvoicePDF from '@/components/InvoicePDF';
+import PackingMemoPDF from '@/components/PackingMemoPDF';
+import type { DispatchPlanningDto, SalesOrderDto, DispatchedRollDto, TransportResponseDto } from '@/types/api-types';
 
 interface DispatchOrderGroup {
   dispatchOrderId: string;
@@ -19,6 +22,7 @@ interface DispatchOrderGroup {
 const InvoicePage = () => {
   const [dispatchOrders, setDispatchOrders] = useState<DispatchOrderGroup[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
   // Load all fully dispatched orders on component mount
   useEffect(() => {
@@ -85,6 +89,169 @@ const InvoicePage = () => {
     return new Date(dateString).toLocaleDateString();
   };
 
+  // Function to generate and download invoice PDF
+  const handleGenerateInvoicePDF = async (orderGroup: DispatchOrderGroup) => {
+    setIsGeneratingPDF(true);
+    try {
+      // Get unique sales order IDs from the lots
+      const salesOrderIds = [...new Set(orderGroup.lots.map(lot => lot.salesOrderId))];
+      
+      // Fetch sales order details for all sales orders in this dispatch order
+      const salesOrders: Record<number, SalesOrderDto> = {};
+      for (const salesOrderId of salesOrderIds) {
+        try {
+          const response = await salesOrderApi.getSalesOrderById(salesOrderId);
+          const salesOrder = apiUtils.extractData(response);
+          salesOrders[salesOrderId] = salesOrder;
+        } catch (error) {
+          console.error(`Error fetching sales order ${salesOrderId}:`, error);
+          toast.error('Error', `Failed to fetch sales order ${salesOrderId}`);
+        }
+      }
+      
+      // Prepare data for PDF
+      const invoiceData = {
+        dispatchOrderId: orderGroup.dispatchOrderId,
+        customerName: orderGroup.customerName,
+        dispatchDate: orderGroup.dispatchDate,
+        lots: orderGroup.lots,
+        salesOrders,
+        totalGrossWeight: orderGroup.totalGrossWeight,
+        totalNetWeight: orderGroup.totalNetWeight
+      };
+      
+      // Create PDF document
+      const doc = <InvoicePDF invoiceData={invoiceData} />;
+      const asPdf = pdf(doc);
+      const blob = await asPdf.toBlob();
+      
+      // Create download link
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Invoice_${orderGroup.dispatchOrderId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast.success('Success', `Invoice PDF generated for ${orderGroup.dispatchOrderId}`);
+    } catch (error) {
+      console.error('Error generating invoice PDF:', error);
+      toast.error('Error', 'Failed to generate invoice PDF: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
+
+  // Function to generate and download packing memo PDF
+  const handleGeneratePackingMemoPDF = async (orderGroup: DispatchOrderGroup) => {
+    setIsGeneratingPDF(true);
+    try {
+      // Get unique transport IDs from the lots
+      const transportIds = [...new Set(orderGroup.lots.map(lot => lot.transportId).filter(id => id !== undefined))] as number[];
+      
+      // Fetch transport details if available
+      let vehicleNumber = 'N/A';
+      if (transportIds.length > 0) {
+        try {
+          const response = await transportApi.getTransport(transportIds[0]);
+          const transport = apiUtils.extractData(response);
+          vehicleNumber = transport.vehicleNumber || 'N/A';
+        } catch (error) {
+          console.error(`Error fetching transport details:`, error);
+        }
+      }
+      
+      // Get ordered dispatched rolls
+      const rollsResponse = await dispatchPlanningApi.getOrderedDispatchedRollsByDispatchOrderId(orderGroup.dispatchOrderId);
+      const orderedRolls = apiUtils.extractData(rollsResponse);
+      
+      // Fetch weight data for each roll
+      const rollsWithWeights = await Promise.all(orderedRolls.map(async (roll) => {
+        try {
+          // Get roll confirmation data by FgRollNo
+          const rollConfirmationResponse = await rollConfirmationApi.getRollConfirmationByFgRollNo(parseInt(roll.fgRollNo));
+          const rollConfirmation = apiUtils.extractData(rollConfirmationResponse);
+          return {
+            ...roll,
+            grossWeight: rollConfirmation.grossWeight || 0,
+            netWeight: rollConfirmation.netWeight || 0
+          };
+        } catch (error) {
+          console.error(`Error fetching weight data for roll ${roll.fgRollNo}:`, error);
+          // Return roll with default weights if we couldn't fetch the data
+          return {
+            ...roll,
+            grossWeight: 0,
+            netWeight: 0
+          };
+        }
+      }));
+      
+      // Group rolls by lot number and prepare packing details
+      const lotGroups: Record<string, (DispatchedRollDto & { grossWeight?: number; netWeight?: number })[]> = {};
+      rollsWithWeights.forEach(roll => {
+        if (!lotGroups[roll.lotNo]) {
+          lotGroups[roll.lotNo] = [];
+        }
+        lotGroups[roll.lotNo].push(roll);
+      });
+      
+      // Prepare packing details for PDF
+      const packingDetails = Object.entries(lotGroups).flatMap(([lotNo, rolls], lotIndex) => {
+        return rolls.map((roll, rollIndex) => ({
+          srNo: lotIndex * 100 + rollIndex + 1, // Simple serial numbering
+          psNo: parseInt(roll.fgRollNo) || 0,
+          netWeight: roll.netWeight || 0,
+          grossWeight: roll.grossWeight || 0
+        }));
+      });
+      
+      // Calculate totals
+      const totalNetWeight = packingDetails.reduce((sum, item) => sum + item.netWeight, 0);
+      const totalGrossWeight = packingDetails.reduce((sum, item) => sum + item.grossWeight, 0);
+      
+      // Get customer address from the first lot (assuming all lots have the same customer)
+      const firstLot = orderGroup.lots[0];
+      const customerAddress = ''; // We don't have this data in the current model
+      
+      // Prepare data for PDF
+      const packingMemoData = {
+        dispatchOrderId: orderGroup.dispatchOrderId,
+        customerName: orderGroup.customerName,
+        customerAddress,
+        dispatchDate: new Date(orderGroup.dispatchDate).toLocaleDateString(),
+        lotNumber: orderGroup.lots.map(lot => lot.lotNo).join(', '),
+        vehicleNumber,
+        packingDetails,
+        totalNetWeight,
+        totalGrossWeight,
+        remarks: ''
+      };
+      
+      // Create PDF document
+      const doc = <PackingMemoPDF {...packingMemoData} />;
+      const asPdf = pdf(doc);
+      const blob = await asPdf.toBlob();
+      
+      // Create download link
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Packing_Memo_${orderGroup.dispatchOrderId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast.success('Success', `Packing Memo PDF generated for ${orderGroup.dispatchOrderId}`);
+    } catch (error) {
+      console.error('Error generating packing memo PDF:', error);
+      toast.error('Error', 'Failed to generate packing memo PDF: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
+
   return (
     <div className="p-2 max-w-6xl mx-auto">
       <Card className="shadow-md border-0">
@@ -139,17 +306,27 @@ const InvoicePage = () => {
                         <TableCell className="py-2 text-xs text-right">{orderGroup.totalGrossWeight.toFixed(2)}</TableCell>
                         <TableCell className="py-2 text-xs text-right">{orderGroup.totalNetWeight.toFixed(2)}</TableCell>
                         <TableCell className="py-2 text-right">
-                          <Button
-                            size="sm"
-                            className="h-6 px-2 text-xs"
-                            onClick={() => {
-                              // In a full implementation, this would navigate to a detailed invoice view
-                              toast.info('Info', `Would generate invoice for ${orderGroup.dispatchOrderId}`);
-                            }}
-                          >
-                            <FileText className="h-3 w-3 mr-1" />
-                            Generate Invoice
-                          </Button>
+                          <div className="flex gap-2 justify-end">
+                            <Button
+                              size="sm"
+                              className="h-6 px-2 text-xs"
+                              disabled={isGeneratingPDF}
+                              onClick={() => handleGenerateInvoicePDF(orderGroup)}
+                            >
+                              <FileText className="h-3 w-3 mr-1" />
+                              {isGeneratingPDF ? 'Generating...' : 'Generate Invoice'}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-6 px-2 text-xs"
+                              disabled={isGeneratingPDF}
+                              onClick={() => handleGeneratePackingMemoPDF(orderGroup)}
+                            >
+                              <Package className="h-3 w-3 mr-1" />
+                              {isGeneratingPDF ? 'Generating...' : 'Packing Memo'}
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))

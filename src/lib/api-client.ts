@@ -574,6 +574,10 @@ export const rollConfirmationApi = {
   getRollConfirmationsByAllotId: (allotId: string): Promise<AxiosResponse<RollConfirmationResponseDto[]>> =>
     apiClient.get(`/RollConfirmation/by-allot-id/${allotId}`),
 
+  // GET /api/RollConfirmation/by-fg-roll-no/{fgRollNo} - Get roll confirmation by FgRollNo
+  getRollConfirmationByFgRollNo: (fgRollNo: number): Promise<AxiosResponse<RollConfirmationResponseDto>> =>
+    apiClient.get(`/RollConfirmation/by-fg-roll-no/${fgRollNo}`),
+
   // PUT /api/RollConfirmation/{id} - Update roll confirmation with weight data
   updateRollConfirmation: (id: number, data: RollConfirmationUpdateDto): Promise<AxiosResponse<RollConfirmationResponseDto>> =>
     apiClient.put(`/RollConfirmation/${id}`, data),
@@ -697,6 +701,10 @@ export const dispatchPlanningApi = {
     data: CreateDispatchedRollRequestDto
   ): Promise<AxiosResponse<DispatchedRollDto>> =>
     apiClient.post('/DispatchPlanning/dispatched-rolls', data),
+
+  // GET /api/DispatchPlanning/ordered-dispatched-rolls/{dispatchOrderId} - Get dispatched rolls ordered by lotNo and fgRoll sequence
+  getOrderedDispatchedRollsByDispatchOrderId: (dispatchOrderId: string): Promise<AxiosResponse<DispatchedRollDto[]>> =>
+    apiClient.get(`/DispatchPlanning/ordered-dispatched-rolls/${dispatchOrderId}`),
 };
 
 // ============================================
