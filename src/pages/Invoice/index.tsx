@@ -8,7 +8,8 @@ import { dispatchPlanningApi, transportApi, salesOrderApi, rollConfirmationApi, 
 import { pdf } from '@react-pdf/renderer';
 import InvoicePDF from '@/components/InvoicePDF';
 import PackingMemoPDF from '@/components/PackingMemoPDF';
-import type { DispatchPlanningDto, SalesOrderDto, DispatchedRollDto, TransportResponseDto } from '@/types/api-types';
+import GatePassPDF from '@/components/GatePassPDF';
+import type { DispatchPlanningDto, SalesOrderDto, DispatchedRollDto } from '@/types/api-types';
 
 interface DispatchOrderGroup {
   dispatchOrderId: string;
@@ -252,6 +253,43 @@ const InvoicePage = () => {
     }
   };
 
+  // Function to generate and download gate pass PDF
+  const handleGenerateGatePassPDF = async (orderGroup: DispatchOrderGroup) => {
+    setIsGeneratingPDF(true);
+    try {
+      // Prepare data for PDF
+      const gatePassData = {
+        dispatchOrderId: orderGroup.dispatchOrderId,
+        customerName: orderGroup.customerName,
+        dispatchDate: orderGroup.dispatchDate,
+        lots: orderGroup.lots,
+        totalGrossWeight: orderGroup.totalGrossWeight,
+        totalNetWeight: orderGroup.totalNetWeight
+      };
+      
+      // Create PDF document
+      const doc = <GatePassPDF gatePassData={gatePassData} />;
+      const asPdf = pdf(doc);
+      const blob = await asPdf.toBlob();
+      
+      // Create download link
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `GatePass_${orderGroup.dispatchOrderId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast.success('Success', `Gate Pass PDF generated for ${orderGroup.dispatchOrderId}`);
+    } catch (error) {
+      console.error('Error generating gate pass PDF:', error);
+      toast.error('Error', 'Failed to generate gate pass PDF: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
+
   return (
     <div className="p-2 max-w-6xl mx-auto">
       <Card className="shadow-md border-0">
@@ -325,6 +363,17 @@ const InvoicePage = () => {
                             >
                               <Package className="h-3 w-3 mr-1" />
                               {isGeneratingPDF ? 'Generating...' : 'Packing Memo'}
+                            </Button>
+                            {/* Gate Pass Button */}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-6 px-2 text-xs"
+                              disabled={isGeneratingPDF}
+                              onClick={() => handleGenerateGatePassPDF(orderGroup)}
+                            >
+                              <FileText className="h-3 w-3 mr-1" />
+                              Gate Pass
                             </Button>
                           </div>
                         </TableCell>

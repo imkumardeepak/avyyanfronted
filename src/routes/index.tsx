@@ -639,6 +639,16 @@ const Router = () => {
               }
             />
 
+            {/* Gate Pass Route - REMOVED as functionality is now integrated into Invoice page */}
+            {/* <Route
+              path="gate-pass"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <GatePass />
+                </LazyRoute>
+              }
+            /> */}
+
           </Route>
         </Routes>
       </Suspense>
