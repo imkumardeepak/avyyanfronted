@@ -9,6 +9,7 @@ import { Loader } from '../components/loader';
 import QualityChecking from '@/pages/QualityChecking';
 import Chat from '@/pages/Chat';
 import Notifications from '@/pages/Notifications';
+import ProductionReports from '../pages/ProductionReport';
 
 // Lazy-loaded pages
 const Home = lazy(() => import('../pages/Home'));
@@ -88,7 +89,7 @@ const CourierManagement = lazy(() => import('../pages/CourierManagement'));
 const CourierForm = lazy(() => import('../pages/CourierManagement/CourierForm'));
 
 // Reports Page
-const Reports = lazy(() => import('../pages/Reports'));
+const Reports = lazy(() => import('../pages/ProductionReport'));
 
 const Router = () => {
   const { ref, handleStart, handleComplete } = useLoadingBar();
@@ -634,10 +635,10 @@ const Router = () => {
 
             {/* Reports Route */}
             <Route
-              path="reports"
+              path="productionreport"
               element={
                 <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
-                  <Reports />
+                  <ProductionReports />
                 </LazyRoute>
               }
             />

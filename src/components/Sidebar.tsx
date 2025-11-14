@@ -246,10 +246,19 @@ const navConfig: NavItem[] = [
     ],
   },
   {
-    title: PAGE_NAMES.REPORTS,
-    href: '/reports',
+    title: 'Reports',
+    href: '#reports',
     icon: FileText,
     description: 'View and generate reports',
+    isParentOnly: true,
+    children: [
+      {
+        title: PAGE_NAMES.PRODUCTION_REPORT,
+        href: '/productionreport',
+        icon: ArrowRight,
+        description: 'View production reports',
+      },
+    ],
   },
 ];
 

@@ -29,7 +29,8 @@ export const PAGE_NAMES = {
     TRANSPORT_MASTER: 'Transport Master',
     COURIER_MASTER: 'Courier Master',
     INVOICE_GENERATION: 'Invoice Generation',
-    REPORTS: 'Reports'
+    
+    PRODUCTION_REPORT: 'Production Report'
 } as const;
 
 // Array of all page names for role management

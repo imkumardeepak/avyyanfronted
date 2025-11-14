@@ -29,11 +29,8 @@ import { DatePicker } from '@/components/ui/date-picker';
 interface FilterOptions {
   fromDate: Date | null;
   toDate: Date | null;
-  lotNo: string;
   machineName: string;
   shift: string;
-  customerName: string;
-  salesOrder: string;
 }
 
 interface GroupedReportData {
@@ -49,16 +46,14 @@ interface GroupedReportData {
   avgWidth: number;
 }
 
-const Reports: React.FC = () => {
+
+const ProductionReports: React.FC = () => {
   // State for filters
   const [filters, setFilters] = useState<FilterOptions>({
     fromDate: new Date(), // Set default to current date
     toDate: new Date(),
-    lotNo: '__all_lots__',
     machineName: '__all_machines__',
     shift: '__all_shifts__',
-    customerName: '__all_customers__',
-    salesOrder: '__all_sales_orders__',
   });
 
   // State for data
@@ -69,8 +64,6 @@ const Reports: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [uniqueLots, setUniqueLots] = useState<string[]>([]);
   const [uniqueMachines, setUniqueMachines] = useState<string[]>([]);
-  const [uniqueCustomers, setUniqueCustomers] = useState<string[]>([]);
-  const [uniqueSalesOrders, setUniqueSalesOrders] = useState<string[]>([]);
 
   // Fetch all roll confirmations on component mount
   useEffect(() => {
@@ -91,13 +84,9 @@ const Reports: React.FC = () => {
   useEffect(() => {
     const lots = Array.from(new Set(rollConfirmations.map(item => item.allotId)));
     const machines = Array.from(new Set(rollConfirmations.map(item => item.machineName)));
-    const customers = Array.from(new Set(rollConfirmations.map(item => 'Customer Name'))); // Placeholder
-    const salesOrders = Array.from(new Set(rollConfirmations.map(item => 'Sales Order'))); // Placeholder
     
     setUniqueLots(lots);
     setUniqueMachines(machines);
-    setUniqueCustomers(customers);
-    setUniqueSalesOrders(salesOrders);
   }, [rollConfirmations]);
 
   const fetchRollConfirmations = async () => {
@@ -129,11 +118,6 @@ const Reports: React.FC = () => {
       result = result.filter(item => new Date(item.createdDate) <= toDate);
     }
 
-    // Apply lot filter (ignore if "All Lots" is selected)
-    if (filters.lotNo && filters.lotNo !== '__all_lots__') {
-      result = result.filter(item => item.allotId.includes(filters.lotNo));
-    }
-
     // Apply machine filter (ignore if "All Machines" is selected)
     if (filters.machineName && filters.machineName !== '__all_machines__') {
       result = result.filter(item => item.machineName === filters.machineName);
@@ -142,16 +126,6 @@ const Reports: React.FC = () => {
     // Apply shift filter (ignore if "All Shifts" is selected)
     if (filters.shift && filters.shift !== '__all_shifts__') {
       // Placeholder for shift filter - would need actual shift data
-    }
-
-    // Apply customer filter (ignore if "All Customers" is selected)
-    if (filters.customerName && filters.customerName !== '__all_customers__') {
-      // Placeholder for customer filter - would need actual customer data
-    }
-
-    // Apply sales order filter (ignore if "All Sales Orders" is selected)
-    if (filters.salesOrder && filters.salesOrder !== '__all_sales_orders__') {
-      // Placeholder for sales order filter - would need actual sales order data
     }
 
     setFilteredRollConfirmations(result);
@@ -207,11 +181,8 @@ const Reports: React.FC = () => {
     setFilters({
       fromDate: new Date(),
       toDate: new Date(),
-      lotNo: '__all_lots__',
       machineName: '__all_machines__',
       shift: '__all_shifts__',
-      customerName: '__all_customers__',
-      salesOrder: '__all_sales_orders__',
     });
   };
 
@@ -350,7 +321,7 @@ const Reports: React.FC = () => {
         <CardContent>
           {/* Filter Section */}
           <div className="mb-6 p-4 border rounded-lg bg-gray-50">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               <div>
                 <Label htmlFor="fromDate">From Date</Label>
                 <div className="relative">
@@ -371,24 +342,6 @@ const Reports: React.FC = () => {
                   />
                   <Calendar className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
                 </div>
-              </div>
-
-              <div>
-                <Label htmlFor="lotNo">Lot No</Label>
-                <Select
-                  value={filters.lotNo}
-                  onValueChange={(value) => handleFilterChange('lotNo', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Lot" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all_lots__">All Lots</SelectItem>
-                    {uniqueLots.map(lot => (
-                      <SelectItem key={lot} value={lot}>{lot}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
 
               <div>
@@ -423,42 +376,6 @@ const Reports: React.FC = () => {
                     <SelectItem value="A">Shift A</SelectItem>
                     <SelectItem value="B">Shift B</SelectItem>
                     <SelectItem value="C">Shift C</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="customerName">Customer</Label>
-                <Select
-                  value={filters.customerName}
-                  onValueChange={(value) => handleFilterChange('customerName', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Customer" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all_customers__">All Customers</SelectItem>
-                    {uniqueCustomers.map(customer => (
-                      <SelectItem key={customer} value={customer}>{customer}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="salesOrder">Sales Order</Label>
-                <Select
-                  value={filters.salesOrder}
-                  onValueChange={(value) => handleFilterChange('salesOrder', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Sales Order" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all_sales_orders__">All Sales Orders</SelectItem>
-                    {uniqueSalesOrders.map(order => (
-                      <SelectItem key={order} value={order}>{order}</SelectItem>
-                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -518,15 +435,8 @@ const Reports: React.FC = () => {
                         <TableHead>Shift</TableHead>
                         <TableHead>Machine No</TableHead>
                         <TableHead>Lot No</TableHead>
-                        <TableHead>Customer Name</TableHead>
                         <TableHead>Roll No</TableHead>
-                        <TableHead>Fabric Type</TableHead>
-                        <TableHead>GSM</TableHead>
-                        <TableHead>Width (inch)</TableHead>
-                        <TableHead>Roll Length (Meter)</TableHead>
                         <TableHead>Weight (Kg)</TableHead>
-                        <TableHead>Operator Name</TableHead>
-                        <TableHead>Remarks</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -539,24 +449,33 @@ const Reports: React.FC = () => {
                             item.allotId === selectedGroup.lotNo
                           );
                         })
-                        .map((item, index) => (
-                          <TableRow key={index}>
-                            <TableCell>{format(new Date(item.createdDate), 'dd-MM-yyyy')}</TableCell>
-                            <TableCell>A</TableCell>
-                            <TableCell>{item.machineName}</TableCell>
-                            <TableCell>{item.allotId}</TableCell>
-                            <TableCell>Customer Name</TableCell>
-                            <TableCell>{item.rollNo}</TableCell>
-                            <TableCell>Fabric Type</TableCell>
-                            <TableCell>{item.greyGsm?.toFixed(0) || 'N/A'}</TableCell>
-                            <TableCell>{item.greyWidth?.toFixed(0) || 'N/A'}</TableCell>
-                            <TableCell>Roll Length</TableCell>
-                            <TableCell>{item.netWeight?.toFixed(2) || 'N/A'}</TableCell>
-                            <TableCell>Operator Name</TableCell>
-                            <TableCell>Remarks</TableCell>
-                          </TableRow>
-                        ))
-                      }
+                        .length > 0 ? (
+                        filteredRollConfirmations
+                          .filter(item => {
+                            const date = format(new Date(item.createdDate), 'yyyy-MM-dd');
+                            return (
+                              date === selectedGroup.date &&
+                              item.machineName === selectedGroup.machineName &&
+                              item.allotId === selectedGroup.lotNo
+                            );
+                          })
+                          .map((item, index) => (
+                            <TableRow key={index}>
+                              <TableCell>{format(new Date(item.createdDate), 'dd-MM-yyyy')}</TableCell>
+                              <TableCell>A</TableCell>
+                              <TableCell>{item.machineName}</TableCell>
+                              <TableCell>{item.allotId}</TableCell>
+                              <TableCell>{item.rollNo}</TableCell>
+                              <TableCell>{item.netWeight?.toFixed(2) || 'N/A'}</TableCell>
+                            </TableRow>
+                          ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                            No roll details found
+                          </TableCell>
+                        </TableRow>
+                      )}
                     </TableBody>
                   </Table>
                 ) : (
@@ -620,4 +539,4 @@ const Reports: React.FC = () => {
   );
 };
 
-export default Reports;
+export default ProductionReports;
