@@ -198,7 +198,7 @@ const navConfig: NavItem[] = [
       {
         title: PAGE_NAMES.INVOICE_GENERATION,
         href: '/invoice',
-        icon: FileText,
+        icon: ArrowRight,
         description: 'Generate invoices for fully dispatched orders',
       },
     ],
