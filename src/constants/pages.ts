@@ -28,7 +28,8 @@ export const PAGE_NAMES = {
     PICKING_AND_LOADING: 'Picking and Loading',
     TRANSPORT_MASTER: 'Transport Master',
     COURIER_MASTER: 'Courier Master',
-    INVOICE_GENERATION: 'Invoice Generation'
+    INVOICE_GENERATION: 'Invoice Generation',
+    REPORTS: 'Reports'
 } as const;
 
 // Array of all page names for role management

@@ -170,14 +170,25 @@ const InvoicePage = () => {
       // Fetch weight data for each roll
       const rollsWithWeights = await Promise.all(orderedRolls.map(async (roll) => {
         try {
-          // Get roll confirmation data by FgRollNo
-          const rollConfirmationResponse = await rollConfirmationApi.getRollConfirmationByFgRollNo(parseInt(roll.fgRollNo));
-          const rollConfirmation = apiUtils.extractData(rollConfirmationResponse);
-          return {
-            ...roll,
-            grossWeight: rollConfirmation.grossWeight || 0,
-            netWeight: rollConfirmation.netWeight || 0
-          };
+          // Get roll confirmation data by LotNo (which should be the same as AllotmentId)
+          const rollConfirmationsResponse = await rollConfirmationApi.getRollConfirmationsByAllotId(roll.lotNo);
+          const rollConfirmations = apiUtils.extractData(rollConfirmationsResponse);
+          const rollConfirmation = rollConfirmations.find(rc => rc.fgRollNo === parseInt(roll.fgRollNo));
+          
+          if (rollConfirmation) {
+            return {
+              ...roll,
+              grossWeight: rollConfirmation.grossWeight || 0,
+              netWeight: rollConfirmation.netWeight || 0
+            };
+          } else {
+            // Return roll with default weights if we couldn't find the roll confirmation
+            return {
+              ...roll,
+              grossWeight: 0,
+              netWeight: 0
+            };
+          }
         } catch (error) {
           console.error(`Error fetching weight data for roll ${roll.fgRollNo}:`, error);
           // Return roll with default weights if we couldn't fetch the data

@@ -87,6 +87,9 @@ const TransportForm = lazy(() => import('../pages/TransportManagement/TransportF
 const CourierManagement = lazy(() => import('../pages/CourierManagement'));
 const CourierForm = lazy(() => import('../pages/CourierManagement/CourierForm'));
 
+// Reports Page
+const Reports = lazy(() => import('../pages/Reports'));
+
 const Router = () => {
   const { ref, handleStart, handleComplete } = useLoadingBar();
 
@@ -625,6 +628,16 @@ const Router = () => {
               element={
                 <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
                   <CourierForm />
+                </LazyRoute>
+              }
+            />
+
+            {/* Reports Route */}
+            <Route
+              path="reports"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <Reports />
                 </LazyRoute>
               }
             />

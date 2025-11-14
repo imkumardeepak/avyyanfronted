@@ -581,6 +581,10 @@ export const rollConfirmationApi = {
   // GET /api/RollConfirmation/weight-data - Get weight data from TCP client
   getWeightData: (params: WeightDataRequestDto): Promise<AxiosResponse<WeightDataResponseDto>> =>
     apiClient.get('/RollConfirmation/weight-data', { params }),
+
+  // GET /api/RollConfirmation - Get all roll confirmations
+  getAllRollConfirmations: (): Promise<AxiosResponse<RollConfirmationResponseDto[]>> =>
+    apiClient.get('/RollConfirmation'),
 };
 
 // ============================================
@@ -697,6 +701,10 @@ export const dispatchPlanningApi = {
     data: CreateDispatchedRollRequestDto
   ): Promise<AxiosResponse<DispatchedRollDto>> =>
     apiClient.post('/DispatchPlanning/dispatched-rolls', data),
+
+  // GET /api/DispatchPlanning/ordered-dispatched-rolls/{dispatchOrderId} - Get ordered dispatched rolls by dispatch order ID
+  getOrderedDispatchedRollsByDispatchOrderId: (dispatchOrderId: string): Promise<AxiosResponse<DispatchedRollDto[]>> =>
+    apiClient.get(`/DispatchPlanning/ordered-dispatched-rolls/${dispatchOrderId}`),
 };
 
 // ============================================
