@@ -59,6 +59,8 @@ const MachineManagement = () => {
       header: 'Specifications',
       cell: ({ row }: MachineCellProps) => {
         const machine = row.original;
+        const machineType = machine.machineType || 'Single Jersey';
+        
         return (
           <div className="space-y-1">
             <div className="text-sm">
@@ -69,6 +71,12 @@ const MachineManagement = () => {
             </div>
             <div className="text-sm">
               <span className="font-medium">Needles:</span> {machine.needle}
+            </div>
+            <div className="text-sm">
+              <span className="font-medium">Type:</span> {machineType}
+              {machineType === 'Double Jersey' && (
+                <span className="ml-1 text-xs bg-blue-100 text-blue-800 px-1 rounded">DJ</span>
+              )}
             </div>
           </div>
         );
@@ -184,7 +192,7 @@ const MachineManagement = () => {
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Machines</CardTitle>
@@ -232,6 +240,24 @@ const MachineManagement = () => {
               {machines.length > 0 ? `${Math.max(...machines.map((m) => m.feeder))}` : '0'}
             </div>
             <p className="text-xs text-muted-foreground">Max Feeders</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Machine Types</CardTitle>
+            <Settings className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {machines.filter(m => m.machineType === 'Double Jersey').length}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {machines.filter(m => m.machineType === 'Single Jersey').length} Single, {machines.filter(m => m.machineType === 'Double Jersey').length} Double
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Double Jersey machines have 2x needle count
+            </p>
           </CardContent>
         </Card>
       </div>

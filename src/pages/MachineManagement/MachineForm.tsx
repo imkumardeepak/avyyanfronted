@@ -129,7 +129,11 @@ const MachineForm = () => {
       const calculatedNeedles = machineTypeValue === 'Double Jersey' 
         ? Math.round(baseNeedles * 2) 
         : Math.round(baseNeedles);
-      form.setValue('needle', calculatedNeedles);
+      // Only update if significantly different to avoid infinite loops
+      const currentNeedles = form.getValues('needle');
+      if (Math.abs(currentNeedles - calculatedNeedles) > 1) {
+        form.setValue('needle', calculatedNeedles);
+      }
     }
   }, [diaValue, ggValue, machineTypeValue, form]);
 
@@ -145,8 +149,28 @@ const MachineForm = () => {
       // Removed efficiency field as requested
       form.setValue('description', machine.description || '');
       form.setValue('isActive', machine.isActive);
-      // Set machine type from the loaded machine data, default to Single Jersey if not present
-      form.setValue('machineType', (machine.machineType as 'Single Jersey' | 'Double Jersey') || 'Single Jersey');
+      
+      // Auto-detect machine type based on needle count if not explicitly set
+      let detectedMachineType = machine.machineType || 'Single Jersey';
+      if (!machine.machineType && machine.dia > 0 && machine.gg > 0) {
+        const baseNeedles = machine.dia * machine.gg * 3.142;
+        // If needle count is approximately double the base calculation, it's likely a Double Jersey
+        if (Math.abs(machine.needle - (baseNeedles * 2)) < Math.abs(machine.needle - baseNeedles)) {
+          detectedMachineType = 'Double Jersey';
+        }
+      }
+      
+      // Set machine type from the loaded machine data or auto-detected value
+      form.setValue('machineType', detectedMachineType as 'Single Jersey' | 'Double Jersey');
+      
+      // Trigger needle recalculation after setting machine type
+      setTimeout(() => {
+        const baseNeedles = machine.dia * machine.gg * 3.142;
+        const calculatedNeedles = (detectedMachineType === 'Double Jersey') 
+          ? Math.round(baseNeedles * 2) 
+          : Math.round(baseNeedles);
+        form.setValue('needle', calculatedNeedles);
+      }, 0);
     }
   }, [machine, isEditMode, form]);
 
@@ -227,8 +251,12 @@ const MachineForm = () => {
                     <SelectValue placeholder="Select machine type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Single Jersey">Single Jersey</SelectItem>
-                    <SelectItem value="Double Jersey">Double Jersey</SelectItem>
+                    <SelectItem value="Single Jersey">
+                      Single Jersey
+                    </SelectItem>
+                    <SelectItem value="Double Jersey">
+                      Double Jersey
+                    </SelectItem>
                   </SelectContent>
                 </Select>
                 {form.formState.errors.machineType && (
@@ -236,6 +264,11 @@ const MachineForm = () => {
                     {form.formState.errors.machineType.message}
                   </p>
                 )}
+                <p className="text-xs text-muted-foreground">
+                  {form.watch('machineType') === 'Double Jersey' 
+                    ? 'Double Jersey machines have double the needle count' 
+                    : 'Standard single jersey machine'}
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -283,6 +316,11 @@ const MachineForm = () => {
                 <p className="text-xs text-muted-foreground">
                   Calculated as: Dia × GG × 3.142{machineTypeValue === 'Double Jersey' ? ' × 2' : ''} = {diaValue} × {ggValue} × 3.142{machineTypeValue === 'Double Jersey' ? ' × 2' : ''} ≈ {diaValue > 0 && ggValue > 0 ? (machineTypeValue === 'Double Jersey' ? Math.round(diaValue * ggValue * 3.142 * 2) : Math.round(diaValue * ggValue * 3.142)) : '0'}
                 </p>
+                {machineTypeValue === 'Double Jersey' && (
+                  <p className="text-xs text-blue-500 font-medium">
+                    Double Jersey detected - needle count doubled
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
