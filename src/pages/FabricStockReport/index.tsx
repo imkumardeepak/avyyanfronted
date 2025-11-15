@@ -11,14 +11,16 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Download } from 'lucide-react';
-import { format } from 'date-fns';
+import { Calendar, Download } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
 import { toast } from '@/lib/toast';
 import { storageCaptureApi, productionAllotmentApi, rollConfirmationApi } from '@/lib/api-client';
 import type { StorageCaptureResponseDto, ProductionAllotmentResponseDto, RollConfirmationResponseDto } from '@/types/api-types';
+import { DatePicker } from '@/components/ui/date-picker';
 
 // Define types
 interface FilterOptions {
+  date: Date | null;
   lotNo: string | null;
   customerName: string | null;
 }
@@ -39,6 +41,7 @@ interface FabricStockData {
 const FabricStockReport: React.FC = () => {
   // State for filters
   const [filters, setFilters] = useState<FilterOptions>({
+    date: new Date(),
     lotNo: null,
     customerName: null
   });
@@ -60,7 +63,16 @@ const FabricStockReport: React.FC = () => {
       const storageResponse = await storageCaptureApi.getAllStorageCaptures();
       let storageData = storageResponse.data;
       
-      // Apply filters on storage data
+      // Apply date filter if selected
+      if (filters.date) {
+        const selectedDate = format(filters.date, 'yyyy-MM-dd');
+        storageData = storageData.filter(item => {
+          const itemDate = format(parseISO(item.createdAt), 'yyyy-MM-dd');
+          return itemDate === selectedDate;
+        });
+      }
+      
+      // Apply lot number filter
       if (filters.lotNo) {
         storageData = storageData.filter(item => 
           item.lotNo.toLowerCase().includes(filters.lotNo!.toLowerCase())
@@ -103,6 +115,15 @@ const FabricStockReport: React.FC = () => {
         try {
           const rollResponse = await rollConfirmationApi.getRollConfirmationsByAllotId(lotNo);
           rollConfirmationData = rollResponse.data;
+          
+          // Apply date filter to roll confirmations if selected
+          if (filters.date) {
+            const selectedDate = format(filters.date, 'yyyy-MM-dd');
+            rollConfirmationData = rollConfirmationData.filter(roll => {
+              const rollDate = format(parseISO(roll.createdDate), 'yyyy-MM-dd');
+              return rollDate === selectedDate;
+            });
+          }
         } catch (error) {
           console.warn(`No roll confirmation data found for lot ${lotNo}`);
         }
@@ -113,8 +134,9 @@ const FabricStockReport: React.FC = () => {
         const dispatchedRolls = lotStorageData.filter(item => item.isDispatched === true).length;
         const stockRolls = lotStorageData.filter(item => item.isDispatched === false).length;
         
-        // Updated no. of rolls = stored rolls for that lot ID (stock rolls)
-        const updatedNoOfRolls = stockRolls;
+        // Updated no. of rolls = total rolls for that lot ID (both dispatched and non-dispatched)
+        // User wants to check how many rolls were made against that lot ID
+        const updatedNoOfRolls = lotStorageData.length;
         
         // Calculate update quantity (sum of net weights from roll confirmations)
         const updateQuantity = rollConfirmationData.reduce((sum, roll) => sum + (roll.netWeight || 0), 0);
@@ -155,15 +177,16 @@ const FabricStockReport: React.FC = () => {
     }
   };
 
-  const handleFilterChange = (field: keyof FilterOptions, value: string | null) => {
+  const handleFilterChange = (field: keyof FilterOptions, value: any) => {
     setFilters(prev => ({
       ...prev,
-      [field]: value || null
+      [field]: value
     }));
   };
 
   const resetFilters = () => {
     setFilters({
+      date: null,
       lotNo: null,
       customerName: null
     });
@@ -228,7 +251,7 @@ const FabricStockReport: React.FC = () => {
 
       // Create download link
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const fileName = `fabric_stock_report_${format(new Date(), 'dd-MM-yyyy')}.csv`;
+      const fileName = `fabric_stock_report_${filters.date ? format(filters.date, 'dd-MM-yyyy') : 'all'}_${format(new Date(), 'dd-MM-yyyy')}.csv`;
       
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -257,7 +280,18 @@ const FabricStockReport: React.FC = () => {
         <CardContent>
           {/* Filter Section */}
           <div className="mb-6 p-4 border rounded-lg bg-gray-50">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div>
+                <Label htmlFor="date">Date</Label>
+                <div className="relative">
+                  <DatePicker
+                    date={filters.date || undefined}
+                    onDateChange={(date: Date | undefined) => handleFilterChange('date', date || null)}
+                  />
+                  <Calendar className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                </div>
+              </div>
+              
               <div>
                 <Label htmlFor="lotNo">Lot No</Label>
                 <Input
@@ -290,6 +324,9 @@ const FabricStockReport: React.FC = () => {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
             <div className="text-sm text-gray-600">
               Showing fabric stock data
+              {filters.date && (
+                <span> | Date: {format(filters.date, 'dd-MM-yyyy')}</span>
+              )}
               {filters.lotNo && (
                 <span> | Lot: {filters.lotNo}</span>
               )}
@@ -323,10 +360,10 @@ const FabricStockReport: React.FC = () => {
                     <TableHead rowSpan={2}>CUSTOMER NAME</TableHead>
                     <TableHead rowSpan={2}>ORDER QTY</TableHead>
                     <TableHead rowSpan={2}>REQ ROLLS</TableHead>
-                    <TableHead rowSpan={2}>DISPATCHED ROLLS</TableHead>
-                    <TableHead rowSpan={2}>STOCK ROLLS</TableHead>
                     <TableHead colSpan={2} className="text-center">UPDATE</TableHead>
                     <TableHead colSpan={2} className="text-center">BALANCE</TableHead>
+                    <TableHead rowSpan={2}>DISPATCHED ROLLS</TableHead>
+                    <TableHead rowSpan={2}>STOCK ROLLS</TableHead>
                   </TableRow>
                   <TableRow>
                     <TableHead>TOTAL NO. OF ROLLS</TableHead>
@@ -343,12 +380,12 @@ const FabricStockReport: React.FC = () => {
                         <TableCell>{item.customerName}</TableCell>
                         <TableCell>{item.orderQuantity.toFixed(2)}</TableCell>
                         <TableCell>{item.requiredRolls}</TableCell>
-                        <TableCell>{item.dispatchedRolls}</TableCell>
-                        <TableCell>{item.stockRolls}</TableCell>
                         <TableCell>{item.updatedNoOfRolls}</TableCell>
                         <TableCell>{item.updateQuantity.toFixed(2)}</TableCell>
                         <TableCell>{item.balanceNoOfRolls}</TableCell>
                         <TableCell>{item.balanceQuantity.toFixed(2)}</TableCell>
+                        <TableCell>{item.dispatchedRolls}</TableCell>
+                        <TableCell>{item.stockRolls}</TableCell>
                       </TableRow>
                     ))
                   ) : (
