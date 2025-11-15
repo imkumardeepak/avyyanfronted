@@ -203,6 +203,21 @@ const navConfig: NavItem[] = [
       },
     ],
   },
+    {
+    title: 'Reports',
+    href: '#reports',
+    icon: FileText,
+    description: 'View and generate reports',
+    isParentOnly: true,
+    children: [
+      {
+        title: PAGE_NAMES.PRODUCTION_REPORT,
+        href: '/productionreport',
+        icon: ArrowRight,
+        description: 'View production reports',
+      },
+    ],
+  },
   {
     title: 'Communication',
     href: '#communication',
@@ -245,21 +260,7 @@ const navConfig: NavItem[] = [
       },
     ],
   },
-  {
-    title: 'Reports',
-    href: '#reports',
-    icon: FileText,
-    description: 'View and generate reports',
-    isParentOnly: true,
-    children: [
-      {
-        title: PAGE_NAMES.PRODUCTION_REPORT,
-        href: '/productionreport',
-        icon: ArrowRight,
-        description: 'View production reports',
-      },
-    ],
-  },
+
 ];
 
 // Helper function to get expanded items from localStorage
