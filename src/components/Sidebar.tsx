@@ -216,6 +216,12 @@ const navConfig: NavItem[] = [
         icon: ArrowRight,
         description: 'View production reports',
       },
+      {
+        title: PAGE_NAMES.FABRIC_STOCK_REPORT,
+        href: '/fabric-stock-report',
+        icon: ArrowRight,
+        description: 'View fabric stock reports',
+      },
     ],
   },
   {

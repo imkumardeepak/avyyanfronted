@@ -90,6 +90,7 @@ const CourierForm = lazy(() => import('../pages/CourierManagement/CourierForm'))
 
 // Reports Page
 const Reports = lazy(() => import('../pages/ProductionReport'));
+const FabricStockReport = lazy(() => import('../pages/FabricStockReport'));
 
 const Router = () => {
   const { ref, handleStart, handleComplete } = useLoadingBar();
@@ -639,6 +640,16 @@ const Router = () => {
               element={
                 <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
                   <ProductionReports />
+                </LazyRoute>
+              }
+            />
+            
+            {/* Fabric Stock Report Route */}
+            <Route
+              path="fabric-stock-report"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <FabricStockReport />
                 </LazyRoute>
               }
             />

@@ -1,15 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -18,82 +10,132 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Calendar, Download, Filter, Eye } from 'lucide-react';
+import { Calendar, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from '@/lib/toast';
-import { rollConfirmationApi } from '@/lib/api-client';
-import type { RollConfirmationResponseDto } from '@/types/api-types';
+import { rollConfirmationApi, machineApi, shiftApi, productionAllotmentApi } from '@/lib/api-client';
+import type { RollConfirmationResponseDto, MachineResponseDto, ShiftResponseDto, ProductionAllotmentResponseDto } from '@/types/api-types';
 import { DatePicker } from '@/components/ui/date-picker';
 
 // Define types
 interface FilterOptions {
-  fromDate: Date | null;
-  toDate: Date | null;
-  machineName: string;
-  shift: string;
+  date: Date | null;
+  machineName: string | null;
 }
 
-interface GroupedReportData {
-  id: string;
-  date: string;
-  shift: string;
+interface MachineData {
+  id: number;
+  name: string;
+  dia: number;
+  gauge: number;
+}
+
+interface ShiftData {
+  id: number;
+  name: string;
+  startTime: string;
+  endTime: string;
+}
+
+interface ProductionReportData {
   machineName: string;
+  dia: number;
+  gauge: number;
   lotNo: string;
-  customerName: string;
-  rollCount: number;
+  yarnCount: string;
+  shifts: Record<string, {
+    rollCount: number;
+    totalWeight: number;
+  }>;
+  totalRolls: number;
   totalWeight: number;
-  avgGsm: number;
-  avgWidth: number;
 }
-
 
 const ProductionReports: React.FC = () => {
   // State for filters
   const [filters, setFilters] = useState<FilterOptions>({
-    fromDate: new Date(), // Set default to current date
-    toDate: new Date(),
-    machineName: '__all_machines__',
-    shift: '__all_shifts__',
+    date: new Date(),
+    machineName: null
   });
 
   // State for data
+  const [machines, setMachines] = useState<MachineData[]>([]);
+  const [shifts, setShifts] = useState<ShiftData[]>([]);
   const [rollConfirmations, setRollConfirmations] = useState<RollConfirmationResponseDto[]>([]);
-  const [filteredRollConfirmations, setFilteredRollConfirmations] = useState<RollConfirmationResponseDto[]>([]);
-  const [groupedData, setGroupedData] = useState<GroupedReportData[]>([]);
-  const [selectedGroup, setSelectedGroup] = useState<GroupedReportData | null>(null);
+  const [productionData, setProductionData] = useState<ProductionReportData[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [uniqueLots, setUniqueLots] = useState<string[]>([]);
-  const [uniqueMachines, setUniqueMachines] = useState<string[]>([]);
 
-  // Fetch all roll confirmations on component mount
+  // Fetch machine data on component mount
   useEffect(() => {
-    fetchRollConfirmations();
+    fetchMachineData();
+    fetchShiftData();
   }, []);
 
-  // Apply filters when data or filters change
+  // Fetch roll confirmations when date filter changes
   useEffect(() => {
-    applyFilters();
-  }, [rollConfirmations, filters]);
+    if (filters.date) {
+      fetchRollConfirmations();
+    }
+  }, [filters.date]);
 
-  // Group data when filtered data changes
+  // Process production data when roll confirmations, machines, or shifts change
   useEffect(() => {
-    groupData();
-  }, [filteredRollConfirmations]);
+    if (rollConfirmations.length > 0 && machines.length > 0 && shifts.length > 0) {
+      processProductionData();
+    } else if (rollConfirmations.length === 0) {
+      setProductionData([]);
+    }
+  }, [rollConfirmations, machines, shifts, filters.machineName]);
 
-  // Extract unique values for filter dropdowns
-  useEffect(() => {
-    const lots = Array.from(new Set(rollConfirmations.map(item => item.allotId)));
-    const machines = Array.from(new Set(rollConfirmations.map(item => item.machineName)));
-    
-    setUniqueLots(lots);
-    setUniqueMachines(machines);
-  }, [rollConfirmations]);
+  const fetchMachineData = async () => {
+    try {
+      const response = await machineApi.getAllMachines();
+      const machineData = response.data.map((machine: MachineResponseDto) => ({
+        id: machine.id,
+        name: machine.machineName,
+        dia: machine.dia || 0,
+        gauge: machine.gg || 0
+      }));
+      setMachines(machineData);
+    } catch (error) {
+      console.error('Error fetching machine data:', error);
+      toast.error('Error', 'Failed to fetch machine data');
+    }
+  };
+
+  const fetchShiftData = async () => {
+    try {
+      const response = await shiftApi.getAllShifts();
+      const shiftData = response.data.map((shift: ShiftResponseDto) => ({
+        id: shift.id,
+        name: shift.shiftName,
+        startTime: shift.startTime,
+        endTime: shift.endTime
+      }));
+      setShifts(shiftData);
+    } catch (error) {
+      console.error('Error fetching shift data:', error);
+      toast.error('Error', 'Failed to fetch shift data');
+    }
+  };
 
   const fetchRollConfirmations = async () => {
     try {
       setLoading(true);
       const response = await rollConfirmationApi.getAllRollConfirmations();
-      setRollConfirmations(response.data);
+      
+      // Filter by selected date
+      if (filters.date) {
+        const selectedDate = format(filters.date, 'yyyy-MM-dd');
+        const filteredData = response.data.filter(item => {
+          const itemDate = format(new Date(item.createdDate), 'yyyy-MM-dd');
+          const machineMatch = !filters.machineName || item.machineName === filters.machineName;
+          return itemDate === selectedDate && machineMatch;
+        });
+        setRollConfirmations(filteredData);
+      } else {
+        setRollConfirmations(response.data);
+      }
     } catch (error) {
       console.error('Error fetching roll confirmations:', error);
       toast.error('Error', 'Failed to fetch roll confirmations');
@@ -102,72 +144,113 @@ const ProductionReports: React.FC = () => {
     }
   };
 
-  const applyFilters = () => {
-    let result = [...rollConfirmations];
-
-    // Apply date filters
-    if (filters.fromDate) {
-      const fromDate = new Date(filters.fromDate);
-      fromDate.setHours(0, 0, 0, 0);
-      result = result.filter(item => new Date(item.createdDate) >= fromDate);
-    }
-
-    if (filters.toDate) {
-      const toDate = new Date(filters.toDate);
-      toDate.setHours(23, 59, 59, 999);
-      result = result.filter(item => new Date(item.createdDate) <= toDate);
-    }
-
-    // Apply machine filter (ignore if "All Machines" is selected)
-    if (filters.machineName && filters.machineName !== '__all_machines__') {
-      result = result.filter(item => item.machineName === filters.machineName);
-    }
-
-    // Apply shift filter (ignore if "All Shifts" is selected)
-    if (filters.shift && filters.shift !== '__all_shifts__') {
-      // Placeholder for shift filter - would need actual shift data
-    }
-
-    setFilteredRollConfirmations(result);
-  };
-
-  const groupData = () => {
-    // Group by date, shift, machine, lot
-    const grouped: Record<string, RollConfirmationResponseDto[]> = {};
-    
-    filteredRollConfirmations.forEach(item => {
-      const date = format(new Date(item.createdDate), 'yyyy-MM-dd');
-      const key = `${date}__A__${item.machineName}__${item.allotId}`; // Using A as placeholder for shift
+  const processProductionData = async () => {
+    try {
+      setLoading(true);
       
-      if (!grouped[key]) {
-        grouped[key] = [];
+      // Group data by machine and lot
+      const groupedData: Record<string, ProductionReportData> = {};
+      
+      // Get unique lot IDs from roll confirmations
+      const lotIds = [...new Set(rollConfirmations.map(item => item.allotId))];
+      
+      // Fetch production allotment data for all lot IDs
+      const allotmentDataMap: Record<string, ProductionAllotmentResponseDto> = {};
+      
+      for (const lotId of lotIds) {
+        try {
+          const response = await productionAllotmentApi.getProductionAllotmentByAllotId(lotId);
+          allotmentDataMap[lotId] = response.data;
+        } catch (error) {
+          console.error(`Error fetching production allotment for lot ${lotId}:`, error);
+        }
       }
-      grouped[key].push(item);
-    });
-
-    // Convert to GroupedReportData format
-    const groupedArray: GroupedReportData[] = Object.entries(grouped).map(([key, items]) => {
-      const [date, shift, machineName, lotNo] = key.split('__');
       
-      const totalWeight = items.reduce((sum, item) => sum + (item.netWeight || 0), 0);
-      const avgGsm = items.reduce((sum, item) => sum + (item.greyGsm || 0), 0) / items.length;
-      const avgWidth = items.reduce((sum, item) => sum + (item.greyWidth || 0), 0) / items.length;
+      // Process roll confirmations
+      for (const item of rollConfirmations) {
+        const lotId = item.allotId;
+        const machineKey = item.machineName;
+        const lotKey = lotId;
+        
+        const key = `${machineKey}_${lotKey}`;
+        
+        if (!groupedData[key]) {
+          // Find machine details
+          const machine = machines.find(m => m.name === machineKey);
+          const machineDia = machine ? machine.dia : 0;
+          const machineGauge = machine ? machine.gauge : 0;
+          
+          // Get yarn count from production allotment
+          const allotment = allotmentDataMap[lotId];
+          const yarnCount = allotment ? allotment.yarnCount : '';
+          
+          // Initialize shifts object dynamically
+          const shiftsData: Record<string, { rollCount: number; totalWeight: number }> = {};
+          shifts.forEach(shift => {
+            shiftsData[shift.name] = { rollCount: 0, totalWeight: 0 };
+          });
+          
+          groupedData[key] = {
+            machineName: machineKey,
+            dia: machineDia,
+            gauge: machineGauge,
+            lotNo: lotKey,
+            yarnCount: yarnCount,
+            shifts: shiftsData,
+            totalRolls: 0,
+            totalWeight: 0
+          };
+        }
+        
+        // Determine shift based on created time
+        const createdTime = new Date(item.createdDate);
+        const createdTimeString = format(createdTime, 'HH:mm:ss');
+        
+        // Find which shift this time falls into
+        let shiftName = 'Unknown';
+        for (const shift of shifts) {
+          // Convert shift times to comparable format
+          const shiftStart = shift.startTime.substring(0, 8); // Extract HH:mm:ss
+          const shiftEnd = shift.endTime.substring(0, 8);
+          
+          // Handle overnight shifts (end time is next day)
+          if (shiftStart > shiftEnd) {
+            // Overnight shift (e.g., 22:00 to 06:00)
+            if (createdTimeString >= shiftStart || createdTimeString <= shiftEnd) {
+              shiftName = shift.name;
+              break;
+            }
+          } else {
+            // Regular shift (e.g., 06:00 to 14:00)
+            if (createdTimeString >= shiftStart && createdTimeString <= shiftEnd) {
+              shiftName = shift.name;
+              break;
+            }
+          }
+        }
+        
+        // Update shift data
+        if (groupedData[key].shifts[shiftName]) {
+          groupedData[key].shifts[shiftName].rollCount++;
+          groupedData[key].shifts[shiftName].totalWeight += item.netWeight || 0;
+        }
+        
+        // Update totals
+        groupedData[key].totalRolls++;
+        groupedData[key].totalWeight += item.netWeight || 0;
+      }
       
-      return {
-        id: key,
-        date,
-        shift,
-        machineName,
-        lotNo,
-        customerName: 'Customer Name', // Placeholder
-        rollCount: items.length,
-        totalWeight,
-        avgGsm,
-        avgWidth
-      };
-    });
-
-    setGroupedData(groupedArray);
+      // Convert to array and sort by machine name
+      const dataArray = Object.values(groupedData);
+      dataArray.sort((a, b) => a.machineName.localeCompare(b.machineName));
+      
+      setProductionData(dataArray);
+    } catch (error) {
+      console.error('Error processing production data:', error);
+      toast.error('Error', 'Failed to process production data');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleFilterChange = (field: keyof FilterOptions, value: any) => {
@@ -177,104 +260,68 @@ const ProductionReports: React.FC = () => {
     }));
   };
 
-  const handleResetFilters = () => {
+  const resetFilters = () => {
     setFilters({
-      fromDate: new Date(),
-      toDate: new Date(),
-      machineName: '__all_machines__',
-      shift: '__all_shifts__',
+      date: new Date(),
+      machineName: null
     });
-  };
-
-  const viewGroupDetails = (group: GroupedReportData) => {
-    // Filter roll confirmations for this group
-    const groupRolls = filteredRollConfirmations.filter(item => {
-      const date = format(new Date(item.createdDate), 'yyyy-MM-dd');
-      return (
-        date === group.date &&
-        item.machineName === group.machineName &&
-        item.allotId === group.lotNo
-      );
-    });
-    
-    setSelectedGroup({...group, rollCount: groupRolls.length});
   };
 
   const exportToExcel = () => {
     try {
       // Create CSV content
-      let headers: string[];
-      let rows: string[][];
+      let headers: string[] = [
+        'M/C NUMBER',
+        'D"/GG',
+        'YARN COUNT',
+        'FABRIC LOT NO.'
+      ];
       
-      if (selectedGroup) {
-        // Export detailed data for selected group
-        headers = [
-          'Date',
-          'Shift',
-          'Machine No',
-          'Lot No',
-          'Customer Name',
-          'Roll No',
-          'Fabric Type',
-          'GSM',
-          'Width (inch)',
-          'Roll Length (Meter)',
-          'Weight (Kg)',
-          'Operator Name',
-          'Remarks'
+      // Add shift headers dynamically
+      shifts.forEach(shift => {
+        headers.push(`${shift.name} ROLLS`, `${shift.name} KGS`);
+      });
+      
+      // Add total headers
+      headers.push('TOTAL ROLLS', 'TOTAL KGS');
+      
+      // Rows
+      const rows = productionData.map(item => {
+        const row: string[] = [
+          item.machineName,
+          `${item.dia}/${item.gauge}`,
+          item.yarnCount,
+          item.lotNo
         ];
         
-        const groupRolls = filteredRollConfirmations.filter(item => {
-          const date = format(new Date(item.createdDate), 'yyyy-MM-dd');
-          return (
-            date === selectedGroup.date &&
-            item.machineName === selectedGroup.machineName &&
-            item.allotId === selectedGroup.lotNo
-          );
+        // Add shift data dynamically
+        shifts.forEach(shift => {
+          const shiftData = item.shifts[shift.name] || { rollCount: 0, totalWeight: 0 };
+          row.push(shiftData.rollCount.toString());
+          row.push(shiftData.totalWeight.toFixed(2));
         });
         
-        rows = groupRolls.map(item => [
-          format(new Date(item.createdDate), 'dd-MM-yyyy'),
-          'A', // Placeholder for shift
-          item.machineName,
-          item.allotId,
-          'Customer Name', // Placeholder for customer name
-          item.rollNo,
-          'Fabric Type', // Placeholder for fabric type
-          item.greyGsm?.toString() || '',
-          item.greyWidth?.toString() || '',
-          '', // Placeholder for roll length
-          item.netWeight?.toString() || '',
-          'Operator Name', // Placeholder for operator name
-          'Remarks' // Placeholder for remarks
-        ]);
-      } else {
-        // Export grouped data
-        headers = [
-          'Date',
-          'Shift',
-          'Machine No',
-          'Lot No',
-          'Customer Name',
-          'Roll Count',
-          'Total Weight (Kg)',
-          'Avg GSM',
-          'Avg Width (inch)'
-        ];
+        // Add totals
+        row.push(item.totalRolls.toString());
+        row.push(item.totalWeight.toFixed(2));
         
-        rows = groupedData.map(item => [
-          format(new Date(item.date), 'dd-MM-yyyy'),
-          item.shift,
-          item.machineName,
-          item.lotNo,
-          item.customerName,
-          item.rollCount.toString(),
-          item.totalWeight.toFixed(2),
-          item.avgGsm.toFixed(0),
-          item.avgWidth.toFixed(0)
-        ]);
-      }
-
+        return row;
+      });
+      
+      // Add totals row
+      const totalRolls = productionData.reduce((sum, item) => sum + item.totalRolls, 0);
+      const totalWeight = productionData.reduce((sum, item) => sum + item.totalWeight, 0);
+      
+      const totalsRow: string[] = ['TOTAL', '', '', ''];
+      // Add empty cells for shift columns
+      shifts.forEach(() => {
+        totalsRow.push('', '');
+      });
+      // Add total values
+      totalsRow.push(totalRolls.toString(), totalWeight.toFixed(2));
+      
+      rows.push(totalsRow);
+      
       let csvContent = headers.join(',') + '\n';
       rows.forEach(row => {
         csvContent += row.map(field => `"${field}"`).join(',') + '\n';
@@ -282,9 +329,7 @@ const ProductionReports: React.FC = () => {
 
       // Create download link
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const fileName = selectedGroup 
-        ? `roll_details_${selectedGroup.date}_${selectedGroup.machineName}_${selectedGroup.lotNo}_${new Date().toISOString().slice(0, 10)}.csv`
-        : `roll_report_${new Date().toISOString().slice(0, 10)}.csv`;
+      const fileName = `production_report_${filters.date ? format(filters.date, 'dd-MM-yyyy') : 'all'}.csv`;
       
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -302,43 +347,24 @@ const ProductionReports: React.FC = () => {
     }
   };
 
-  const exportToPDF = () => {
-    toast.info('Info', 'PDF export functionality will be implemented in a future update');
-  };
-
-  const backToGroupedView = () => {
-    setSelectedGroup(null);
-  };
-
   return (
     <div className="p-6">
       <Card>
         <CardHeader>
           <CardTitle className="flex justify-between items-center">
-            <span>Roll Confirmation Reports</span>
+            <span>Production Report</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
           {/* Filter Section */}
           <div className="mb-6 p-4 border rounded-lg bg-gray-50">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
-                <Label htmlFor="fromDate">From Date</Label>
+                <Label htmlFor="date">Date</Label>
                 <div className="relative">
                   <DatePicker
-                    date={filters.fromDate || undefined}
-                    onDateChange={(date: Date | undefined) => handleFilterChange('fromDate', date || null)}
-                  />
-                  <Calendar className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="toDate">To Date</Label>
-                <div className="relative">
-                  <DatePicker
-                    date={filters.toDate || undefined}
-                    onDateChange={(date: Date | undefined) => handleFilterChange('toDate', date || null)}
+                    date={filters.date || undefined}
+                    onDateChange={(date: Date | undefined) => handleFilterChange('date', date || null)}
                   />
                   <Calendar className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
                 </div>
@@ -346,70 +372,40 @@ const ProductionReports: React.FC = () => {
 
               <div>
                 <Label htmlFor="machineName">Machine</Label>
-                <Select
-                  value={filters.machineName}
-                  onValueChange={(value) => handleFilterChange('machineName', value)}
+                <select
+                  value={filters.machineName || ''}
+                  onChange={(e) => handleFilterChange('machineName', e.target.value || null)}
+                  className="w-full p-2 border rounded-md"
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Machine" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all_machines__">All Machines</SelectItem>
-                    {uniqueMachines.map(machine => (
-                      <SelectItem key={machine} value={machine}>{machine}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  <option value="">All Machines</option>
+                  {machines.map((machine) => (
+                    <option key={machine.id} value={machine.name}>
+                      {machine.name}
+                    </option>
+                  ))}
+                </select>
               </div>
-
-              <div>
-                <Label htmlFor="shift">Shift</Label>
-                <Select
-                  value={filters.shift}
-                  onValueChange={(value) => handleFilterChange('shift', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Shift" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all_shifts__">All Shifts</SelectItem>
-                    <SelectItem value="A">Shift A</SelectItem>
-                    <SelectItem value="B">Shift B</SelectItem>
-                    <SelectItem value="C">Shift C</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex items-end space-x-2">
-                <Button onClick={handleResetFilters} variant="outline">
-                  <Filter className="h-4 w-4 mr-2" />
-                  Reset
-                </Button>
-              </div>
+            </div>
+            
+            <div className="flex justify-end mt-4 space-x-2">
+              <Button variant="outline" onClick={resetFilters}>
+                Reset Filters
+              </Button>
             </div>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex justify-between items-center mb-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
             <div className="text-sm text-gray-600">
-              {selectedGroup 
-                ? `Showing details for ${selectedGroup.date} - ${selectedGroup.machineName} - ${selectedGroup.lotNo}`
-                : `Showing ${groupedData.length} grouped records`
-              }
+              Showing production data for {filters.date ? format(filters.date, 'dd-MM-yyyy') : 'all dates'}
+              {filters.machineName && (
+                <span> | Machine: {filters.machineName}</span>
+              )}
             </div>
             <div className="space-x-2">
-              {selectedGroup && (
-                <Button onClick={backToGroupedView} variant="outline" className="mr-2">
-                  Back to Grouped View
-                </Button>
-              )}
-              <Button onClick={exportToExcel} disabled={loading || (selectedGroup ? filteredRollConfirmations.length === 0 : groupedData.length === 0)}>
+              <Button onClick={exportToExcel} disabled={loading || productionData.length === 0}>
                 <Download className="h-4 w-4 mr-2" />
                 Export to Excel
-              </Button>
-              <Button onClick={exportToPDF} variant="outline" disabled={loading || (selectedGroup ? filteredRollConfirmations.length === 0 : groupedData.length === 0)}>
-                <Download className="h-4 w-4 mr-2" />
-                Export to PDF
               </Button>
             </div>
           </div>
@@ -424,114 +420,63 @@ const ProductionReports: React.FC = () => {
 
           {/* Results Table */}
           {!loading && (
-            <>
-              <div className="border rounded-lg overflow-hidden">
-                {selectedGroup ? (
-                  // Detailed view for selected group
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Shift</TableHead>
-                        <TableHead>Machine No</TableHead>
-                        <TableHead>Lot No</TableHead>
-                        <TableHead>Roll No</TableHead>
-                        <TableHead>Weight (Kg)</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredRollConfirmations
-                        .filter(item => {
-                          const date = format(new Date(item.createdDate), 'yyyy-MM-dd');
+            <div className="border rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead rowSpan={2}>M/C NUMBER</TableHead>
+                    <TableHead rowSpan={2}>D"/GG</TableHead>
+                    <TableHead rowSpan={2}>YARN COUNT</TableHead>
+                    <TableHead rowSpan={2}>FABRIC LOT NO.</TableHead>
+                    {shifts.map(shift => (
+                      <TableHead colSpan={2} key={shift.id} className="text-center">
+                        {shift.name} ({shift.startTime.substring(0, 5)}-{shift.endTime.substring(0, 5)})
+                      </TableHead>
+                    ))}
+                    <TableHead colSpan={2} className="text-center">TOTAL</TableHead>
+                  </TableRow>
+                  <TableRow>
+                    {shifts.map(shift => (
+                      <React.Fragment key={shift.id}>
+                        <TableHead>ROLLS</TableHead>
+                        <TableHead>KGS</TableHead>
+                      </React.Fragment>
+                    ))}
+                    <TableHead>ROLLS</TableHead>
+                    <TableHead>KGS</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {productionData.length > 0 ? (
+                    productionData.map((item, index) => (
+                      <TableRow key={index}>
+                        <TableCell>{item.machineName}</TableCell>
+                        <TableCell>{`${item.dia}/${item.gauge}`}</TableCell>
+                        <TableCell>{item.yarnCount}</TableCell>
+                        <TableCell>{item.lotNo}</TableCell>
+                        {shifts.map(shift => {
+                          const shiftData = item.shifts[shift.name] || { rollCount: 0, totalWeight: 0 };
                           return (
-                            date === selectedGroup.date &&
-                            item.machineName === selectedGroup.machineName &&
-                            item.allotId === selectedGroup.lotNo
+                            <React.Fragment key={shift.name}>
+                              <TableCell>{shiftData.rollCount}</TableCell>
+                              <TableCell>{shiftData.totalWeight.toFixed(2)}</TableCell>
+                            </React.Fragment>
                           );
-                        })
-                        .length > 0 ? (
-                        filteredRollConfirmations
-                          .filter(item => {
-                            const date = format(new Date(item.createdDate), 'yyyy-MM-dd');
-                            return (
-                              date === selectedGroup.date &&
-                              item.machineName === selectedGroup.machineName &&
-                              item.allotId === selectedGroup.lotNo
-                            );
-                          })
-                          .map((item, index) => (
-                            <TableRow key={index}>
-                              <TableCell>{format(new Date(item.createdDate), 'dd-MM-yyyy')}</TableCell>
-                              <TableCell>A</TableCell>
-                              <TableCell>{item.machineName}</TableCell>
-                              <TableCell>{item.allotId}</TableCell>
-                              <TableCell>{item.rollNo}</TableCell>
-                              <TableCell>{item.netWeight?.toFixed(2) || 'N/A'}</TableCell>
-                            </TableRow>
-                          ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                            No roll details found
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                ) : (
-                  // Grouped view
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Shift</TableHead>
-                        <TableHead>Machine No</TableHead>
-                        <TableHead>Lot No</TableHead>
-                        <TableHead>Customer Name</TableHead>
-                        <TableHead>Roll Count</TableHead>
-                        <TableHead>Total Weight (Kg)</TableHead>
-                        <TableHead>Avg GSM</TableHead>
-                        <TableHead>Avg Width (inch)</TableHead>
-                        <TableHead>Actions</TableHead>
+                        })}
+                        <TableCell>{item.totalRolls}</TableCell>
+                        <TableCell>{item.totalWeight.toFixed(2)}</TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {groupedData.length > 0 ? (
-                        groupedData.map((item, index) => (
-                          <TableRow key={index}>
-                            <TableCell>{format(new Date(item.date), 'dd-MM-yyyy')}</TableCell>
-                            <TableCell>{item.shift}</TableCell>
-                            <TableCell>{item.machineName}</TableCell>
-                            <TableCell>{item.lotNo}</TableCell>
-                            <TableCell>{item.customerName}</TableCell>
-                            <TableCell>{item.rollCount}</TableCell>
-                            <TableCell>{item.totalWeight.toFixed(2)}</TableCell>
-                            <TableCell>{item.avgGsm.toFixed(0)}</TableCell>
-                            <TableCell>{item.avgWidth.toFixed(0)}</TableCell>
-                            <TableCell>
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
-                                onClick={() => viewGroupDetails(item)}
-                              >
-                                <Eye className="h-4 w-4 mr-1" />
-                                View Details
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={10} className="text-center py-8 text-gray-500">
-                            No data found matching the selected filters
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                )}
-              </div>
-            </>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={4 + (shifts.length * 2) + 2} className="text-center py-8 text-gray-500">
+                        No data found matching the selected filters
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
