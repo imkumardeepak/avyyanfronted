@@ -1046,7 +1046,8 @@ const SalesOrderItemProcessingRefactored = () => {
       let twentyFirstChar = 'N';
       if (itemDescription.includes('honeycomb') || itemDescription.includes('honey comb'))
         twentyFirstChar = 'H';
-      else if (itemDescription.includes('open width')) twentyFirstChar = 'O';
+      else if (itemDescription.includes('open width')) twentyFirstChar = 'O'
+      else if (itemDescription.includes('Yes')) twentyFirstChar = 'Y';
 
       const part1 = `${firstChar}${fabricTypeCode}${fourthChar}`;
       const part2 = `${fifthChar}${yarnCount}${eighthChar}${machineDiameter}${machineGauge}`;
