@@ -1,8 +1,8 @@
 import React from 'react';
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
-import type { DispatchPlanningDto, SalesOrderDto, SalesOrderItemDto } from '@/types/api-types';
+import type { DispatchPlanningDto, SalesOrderDto } from '@/types/api-types';
 
-// Create styles matching the provided invoice format exactly
+// Create enhanced styles for better data presentation
 const styles = StyleSheet.create({
   page: {
     padding: 20,
@@ -126,16 +126,19 @@ const styles = StyleSheet.create({
   boldText: {
     fontWeight: 'bold',
   },
-  // Column widths matching the PDF
-  colSerial: { width: '6%' },
-  colDescription: { width: '30%' },
-  colHSN: { width: '10%' },
+  // Enhanced column widths for better data presentation
+  colSerial: { width: '4%' },
+  colDescription: { width: '25%' },
+  colHSN: { width: '8%' },
   colQuantity: { width: '8%' },
   colRate: { width: '8%' },
-  colPer: { width: '6%' },
-  colDisc: { width: '6%' },
-  colAmount: { width: '12%' },
+  colPer: { width: '5%' },
+  colDisc: { width: '5%' },
+  colAmount: { width: '10%' },
   colPkgs: { width: '8%' },
+  colLotNo: { width: '8%' },
+  colGrossWeight: { width: '6%' },
+  colNetWeight: { width: '6%' },
   // Tax table styles
   taxTable: {
     width: '60%',
@@ -158,7 +161,54 @@ const styles = StyleSheet.create({
   taxColLast: {
     padding: 3,
     borderRightWidth: 0,
-  }
+  },
+  // Lot details table styles
+  lotDetailsTable: {
+    width: '100%',
+    marginTop: 2,
+    marginBottom: 5,
+  },
+  lotDetailsHeader: {
+    flexDirection: 'row',
+    backgroundColor: '#f8f8f8',
+    borderBottomWidth: 1,
+    borderBottomColor: '#999',
+    borderBottomStyle: 'solid',
+    fontWeight: 'bold',
+  },
+  lotDetailsRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    borderBottomStyle: 'solid',
+  },
+  lotDetailsColHeader: {
+    padding: 2,
+    borderRightWidth: 1,
+    borderRightColor: '#999',
+    borderRightStyle: 'solid',
+    textAlign: 'center',
+    fontWeight: 'bold',
+    fontSize: 7,
+  },
+  lotDetailsCol: {
+    padding: 2,
+    borderRightWidth: 1,
+    borderRightColor: '#eee',
+    borderRightStyle: 'solid',
+    fontSize: 7,
+  },
+  lotDetailsLastCol: {
+    padding: 2,
+    borderRightWidth: 0,
+  },
+  lotColLotNo: { width: '15%' },
+  lotColDescription: { width: '25%' },
+  lotColRolls: { width: '10%' },
+  lotColGrossWeight: { width: '15%' },
+  lotColNetWeight: { width: '15%' },
+  lotColRate: { width: '10%' },
+  lotColAmount: { width: '10%' },
 });
 
 // Helper function to parse rate as number
@@ -172,6 +222,36 @@ const parseRate = (rate: string): number => {
 // Helper function to calculate total amount
 const calculateTotalAmount = (rate: number, quantity: number): number => {
   return rate * quantity;
+};
+
+// Helper function to convert number to words
+const numberToWords = (num: number): string => {
+  const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
+    'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen',
+    'Seventeen', 'Eighteen', 'Nineteen'];
+  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+  
+  if (num === 0) return 'Zero';
+  
+  if (num < 20) return ones[num];
+  
+  if (num < 100) {
+    return tens[Math.floor(num / 10)] + (num % 10 !== 0 ? ' ' + ones[num % 10] : '');
+  }
+  
+  if (num < 1000) {
+    return ones[Math.floor(num / 100)] + ' Hundred' + (num % 100 !== 0 ? ' ' + numberToWords(num % 100) : '');
+  }
+  
+  if (num < 100000) {
+    return numberToWords(Math.floor(num / 1000)) + ' Thousand' + (num % 1000 !== 0 ? ' ' + numberToWords(num % 1000) : '');
+  }
+  
+  if (num < 10000000) {
+    return numberToWords(Math.floor(num / 100000)) + ' Lakh' + (num % 100000 !== 0 ? ' ' + numberToWords(num % 100000) : '');
+  }
+  
+  return numberToWords(Math.floor(num / 10000000)) + ' Crore' + (num % 10000000 !== 0 ? ' ' + numberToWords(num % 10000000) : '');
 };
 
 // Interface for invoice data
@@ -199,31 +279,34 @@ interface InvoiceItem {
   lotDetails: {
     lotNo: string;
     description: string;
+    rolls: number;
+    grossWeight: number | null;
+    netWeight: number | null;
   }[];
 }
 
 const InvoicePDF: React.FC<{ invoiceData: InvoiceData }> = ({ invoiceData }) => {
   // Create invoice items in the exact format as the PDF
   const invoiceItems: InvoiceItem[] = [];
-  
+
   // Process lots to create invoice items
   invoiceData.lots.forEach((lot, index) => {
     const salesOrder = invoiceData.salesOrders[lot.salesOrderId];
-    const salesOrderItem = salesOrder?.items?.find(item => item.salesOrderId === lot.salesOrderId);
+    const salesOrderItem = salesOrder?.items?.find(
+      (item) => item.salesOrderId === lot.salesOrderId
+    );
 
-    
     if (salesOrderItem) {
       const rate = parseRate(salesOrderItem.rate);
-      console.log(rate);
       const amount = calculateTotalAmount(rate, lot.totalNetWeight || 0);
-      
+
       // Extract fabric type and details from stock item name and descriptions
       const fabricType = salesOrderItem.stockItemName || 'N/A';
       const descriptions = salesOrderItem.descriptions || '';
-      
+
       // Create main description similar to PDF format
       const mainDescription = `${fabricType}\nFabric - ${descriptions}`;
-      
+
       invoiceItems.push({
         slNo: index + 1,
         pkgs: `${lot.totalDispatchedRolls} Roll`,
@@ -234,18 +317,23 @@ const InvoicePDF: React.FC<{ invoiceData: InvoiceData }> = ({ invoiceData }) => 
         per: 'Kgs',
         discount: '',
         amount: amount,
-        lotDetails: [{
-          lotNo: lot.lotNo,
-          description: `HO/${lot.lotNo} GSM :- Lot No:-${lot.lotNo}`
-        }]
+        lotDetails: [
+          {
+            lotNo: lot.lotNo,
+            description: `HO/${lot.lotNo} GSM :- Lot No:-${lot.lotNo}`,
+            rolls: lot.totalDispatchedRolls,
+            grossWeight: lot.totalGrossWeight || null,
+            netWeight: lot.totalNetWeight || null,
+          },
+        ],
       });
     }
   });
-  
+
   // Calculate totals
   const totalQuantity = invoiceItems.reduce((sum, item) => sum + item.quantity, 0);
   const totalAmount = invoiceItems.reduce((sum, item) => sum + item.amount, 0);
-  
+
   // Tax calculation (as per PDF: 2.5% CGST + 2.5% SGST)
   const taxableValue = totalAmount;
   const cgstRate = 2.5;
@@ -253,11 +341,8 @@ const InvoicePDF: React.FC<{ invoiceData: InvoiceData }> = ({ invoiceData }) => 
   const cgstAmount = (taxableValue * cgstRate) / 100;
   const sgstAmount = (taxableValue * sgstRate) / 100;
   const totalTax = cgstAmount + sgstAmount;
-  const grandTotal = taxableValue + totalTax;
 
   // Get company and buyer info
-  const firstSalesOrder = Object.values(invoiceData.salesOrders)[0];
-  const companyName = 'Avyaan Knitfab'; // Fixed as per PDF
   const buyerName = invoiceData.customerName;
 
   // Format date
@@ -265,19 +350,30 @@ const InvoicePDF: React.FC<{ invoiceData: InvoiceData }> = ({ invoiceData }) => 
   const formattedDate = invoiceDate.toLocaleDateString('en-IN', {
     day: '2-digit',
     month: 'short',
-    year: '2-digit'
+    year: '2-digit',
   });
+
+  // Get first sales order for voucher information
+  const firstSalesOrder = Object.values(invoiceData.salesOrders)[0];
+  
+  // Convert amounts to words
+  const amountInWords = numberToWords(Math.round(totalAmount));
+  const taxAmountInWords = numberToWords(Math.round(totalTax));
 
   return (
     <Document>
       <Page size="A4" style={styles.page}>
         {/* Header */}
         <Text style={styles.invoiceHeader}>Tax Invoice</Text>
-        
+
         {/* IRN and Ack Details */}
         <View style={styles.row}>
-          <Text>IRN : [AUTO_GENERATED_IRN]</Text>
-          <Text style={{ marginLeft: 20 }}>Ack No. : [ACK_NUMBER]</Text>
+          {firstSalesOrder ? (
+            <Text>Voucher No: {firstSalesOrder.voucherNumber}</Text>
+          ) : (
+            <Text>Voucher No: N/A</Text>
+          )}
+          <Text style={{ marginLeft: 20 }}>Ack No. : N/A</Text>
           <Text style={{ marginLeft: 20 }}>Ack Date : {formattedDate}</Text>
         </View>
 
@@ -287,23 +383,27 @@ const InvoicePDF: React.FC<{ invoiceData: InvoiceData }> = ({ invoiceData }) => 
         <View style={styles.headerSection}>
           <View style={styles.companyInfo}>
             <Text style={styles.addressBlock}>
-              <Text style={styles.boldText}>Avyaan Knitfab</Text>{"\n"}
-              Factory: Survey No.547-551/1, Wajgaon-Deoli Highway,{"\n"}
-              At:-Wajgaon(NI) Dist:-Wardha-442001{"\n"}
-              <Text style={styles.gstin}>GSTIN/UIN: 27ABYFA2736N1ZO</Text>{"\n"}
-              State Name : Maharashtra, Code : 27{"\n"}
+              <Text style={styles.boldText}>Avyaan Knitfab</Text>
+              {'\n'}
+              Factory: Survey No.547-551/1, Wajgaon-Deoli Highway,{'\n'}
+              At:-Wajgaon(NI) Dist:-Wardha-442001{'\n'}
+              <Text style={styles.gstin}>GSTIN/UIN: 27ABYFA2736N1ZO</Text>
+              {'\n'}
+              State Name : Maharashtra, Code : 27{'\n'}
               E-Mail : info@avyaanknitfab.com
             </Text>
           </View>
-          
+
           <View style={styles.buyerInfo}>
             <Text style={styles.addressBlock}>
-              <Text style={styles.boldText}>Buyer (Bill to)</Text>{"\n"}
-              <Text style={styles.boldText}>{buyerName}</Text>{"\n"}
-              E-49, E-49/1/2, MIDC Industrial Area,{"\n"}
-              Tarapur, Boisar-401506{"\n"}
-              Dist- Thane{"\n"}
-              <Text style={styles.gstin}>GSTIN/UIN : 27AABCP7263L1ZO</Text>{"\n"}
+              <Text style={styles.boldText}>Buyer (Bill to)</Text>
+              {'\n'}
+              <Text style={styles.boldText}>{buyerName}</Text>
+              {'\n'}
+              {firstSalesOrder?.buyerAddress ? firstSalesOrder.buyerAddress : 'N/A'}
+              {'\n'}
+              <Text style={styles.gstin}>GSTIN/UIN : 27AABCP7263L1ZO</Text>
+              {'\n'}
               State Name : Maharashtra, Code : 27
             </Text>
           </View>
@@ -322,7 +422,7 @@ const InvoicePDF: React.FC<{ invoiceData: InvoiceData }> = ({ invoiceData }) => 
             <Text style={[styles.tableColHeader, styles.colDisc]}>Disc. %</Text>
             <Text style={[styles.tableColHeader, styles.colAmount]}>Amount</Text>
           </View>
-          
+
           {/* Invoice Items */}
           {invoiceItems.map((item, index) => (
             <View key={index}>
@@ -332,35 +432,62 @@ const InvoicePDF: React.FC<{ invoiceData: InvoiceData }> = ({ invoiceData }) => 
                 <Text style={[styles.tableCol, styles.colPkgs]}>{item.pkgs}</Text>
                 <Text style={[styles.tableCol, styles.colDescription]}>
                   <Text style={styles.boldText}>{item.description.split('\n')[0]}</Text>
-                  {"\n"}
+                  {'\n'}
                   {item.description.split('\n').slice(1).join('\n')}
                 </Text>
-                <Text style={[styles.tableCol, styles.colHSN, styles.centerAlign]}>{item.hsnSac}</Text>
-                <Text style={[styles.tableCol, styles.colQuantity, styles.rightAlign]}>{item.quantity.toFixed(4)}</Text>
-                <Text style={[styles.tableCol, styles.colRate, styles.rightAlign]}>{item.rate.toFixed(2)}</Text>
+                <Text style={[styles.tableCol, styles.colHSN, styles.centerAlign]}>
+                  {item.hsnSac}
+                </Text>
+                <Text style={[styles.tableCol, styles.colQuantity, styles.rightAlign]}>
+                  {item.quantity.toFixed(4)}
+                </Text>
+                <Text style={[styles.tableCol, styles.colRate, styles.rightAlign]}>
+                  {item.rate.toFixed(2)}
+                </Text>
                 <Text style={[styles.tableCol, styles.colPer, styles.centerAlign]}>{item.per}</Text>
-                <Text style={[styles.tableCol, styles.colDisc, styles.centerAlign]}>{item.discount}</Text>
-                <Text style={[styles.tableCol, styles.colAmount, styles.rightAlign]}>{item.amount.toFixed(2)}</Text>
+                <Text style={[styles.tableCol, styles.colDisc, styles.centerAlign]}>
+                  {item.discount}
+                </Text>
+                <Text style={[styles.tableCol, styles.colAmount, styles.rightAlign]}>
+                  {item.amount.toFixed(2)}
+                </Text>
               </View>
-              
-              {/* Lot Details Row */}
-              {item.lotDetails.map((lot, lotIndex) => (
-                <View key={lotIndex} style={styles.tableRow}>
-                  <Text style={[styles.tableCol, styles.colSerial]}></Text>
-                  <Text style={[styles.tableCol, styles.colDescription, styles.smallText]}>
-                    {lot.description}
-                  </Text>
-                  <Text style={[styles.tableCol, styles.colHSN]}></Text>
-                  <Text style={[styles.tableCol, styles.colQuantity]}></Text>
-                  <Text style={[styles.tableCol, styles.colRate]}></Text>
-                  <Text style={[styles.tableCol, styles.colPer]}></Text>
-                  <Text style={[styles.tableCol, styles.colDisc]}></Text>
-                  <Text style={[styles.tableCol, styles.colAmount]}></Text>
+
+              {/* Enhanced Lot Details Table */}
+              <View style={styles.lotDetailsTable}>
+                <View style={styles.lotDetailsHeader}>
+                  <Text style={[styles.lotDetailsColHeader, styles.lotColLotNo]}>Lot No</Text>
+                  <Text style={[styles.lotDetailsColHeader, styles.lotColDescription]}>Description</Text>
+                  <Text style={[styles.lotDetailsColHeader, styles.lotColRolls]}>Rolls</Text>
+                  <Text style={[styles.lotDetailsColHeader, styles.lotColGrossWeight]}>Gross Wt</Text>
+                  <Text style={[styles.lotDetailsColHeader, styles.lotColNetWeight]}>Net Wt</Text>
+                  <Text style={[styles.lotDetailsColHeader, styles.lotColRate]}>Rate</Text>
+                  <Text style={[styles.lotDetailsColHeader, styles.lotColAmount]}>Amount</Text>
                 </View>
-              ))}
+                
+                {item.lotDetails.map((lot, lotIndex) => (
+                  <View key={lotIndex} style={styles.lotDetailsRow}>
+                    <Text style={[styles.lotDetailsCol, styles.lotColLotNo]}>{lot.lotNo}</Text>
+                    <Text style={[styles.lotDetailsCol, styles.lotColDescription]}>{lot.description}</Text>
+                    <Text style={[styles.lotDetailsCol, styles.lotColRolls, styles.centerAlign]}>{lot.rolls}</Text>
+                    <Text style={[styles.lotDetailsCol, styles.lotColGrossWeight, styles.rightAlign]}>
+                      {lot.grossWeight !== null ? lot.grossWeight.toFixed(4) : 'N/A'}
+                    </Text>
+                    <Text style={[styles.lotDetailsCol, styles.lotColNetWeight, styles.rightAlign]}>
+                      {lot.netWeight !== null ? lot.netWeight.toFixed(4) : 'N/A'}
+                    </Text>
+                    <Text style={[styles.lotDetailsCol, styles.lotColRate, styles.rightAlign]}>
+                      {item.rate.toFixed(2)}
+                    </Text>
+                    <Text style={[styles.lotDetailsCol, styles.lotColAmount, styles.rightAlign]}>
+                      {calculateTotalAmount(item.rate, lot.netWeight || 0).toFixed(2)}
+                    </Text>
+                  </View>
+                ))}
+              </View>
             </View>
           ))}
-          
+
           {/* Total Row */}
           <View style={[styles.tableRow, { backgroundColor: '#f0f0f0' }]}>
             <Text style={[styles.tableCol, styles.colSerial]}></Text>
@@ -381,7 +508,7 @@ const InvoicePDF: React.FC<{ invoiceData: InvoiceData }> = ({ invoiceData }) => 
         {/* Total Amount in Words */}
         <View style={{ marginTop: 10 }}>
           <Text style={styles.boldText}>Amount Chargeable (in words)</Text>
-          <Text>INR [AMOUNT_IN_WORDS] Only</Text>
+          <Text>INR {amountInWords} Only</Text>
           <Text style={{ textAlign: 'right', fontSize: 8 }}>E. & O.E</Text>
         </View>
 
@@ -394,21 +521,21 @@ const InvoicePDF: React.FC<{ invoiceData: InvoiceData }> = ({ invoiceData }) => 
             <Text style={[styles.tableColHeader, { width: '25%' }]}>SGST/UTGST</Text>
             <Text style={[styles.tableColHeader, { width: '25%' }]}>Total</Text>
           </View>
-          
+
           <View style={styles.taxRow}>
             <Text style={[styles.taxCol, { width: '25%' }]}>60063200</Text>
             <Text style={[styles.taxCol, { width: '25%' }]}>{taxableValue.toFixed(2)}</Text>
             <Text style={[styles.taxCol, { width: '25%' }]}>
-              Rate: {cgstRate}%{"\n"}
+              Rate: {cgstRate}%{'\n'}
               Amount: {cgstAmount.toFixed(2)}
             </Text>
             <Text style={[styles.taxCol, { width: '25%' }]}>
-              Rate: {sgstRate}%{"\n"}
+              Rate: {sgstRate}%{'\n'}
               Amount: {sgstAmount.toFixed(2)}
             </Text>
             <Text style={[styles.taxColLast, { width: '25%' }]}>{totalTax.toFixed(2)}</Text>
           </View>
-          
+
           <View style={[styles.taxRow, { backgroundColor: '#f0f0f0' }]}>
             <Text style={[styles.taxCol, { width: '25%' }]}>Total</Text>
             <Text style={[styles.taxCol, { width: '25%' }]}>{taxableValue.toFixed(2)}</Text>
@@ -420,7 +547,9 @@ const InvoicePDF: React.FC<{ invoiceData: InvoiceData }> = ({ invoiceData }) => 
 
         {/* Tax Amount in Words */}
         <View style={{ marginTop: 5 }}>
-          <Text style={styles.boldText}>Tax Amount (in words) : INR [TAX_AMOUNT_IN_WORDS] Only</Text>
+          <Text style={styles.boldText}>
+            Tax Amount (in words) : INR {taxAmountInWords} Only
+          </Text>
         </View>
 
         {/* Bank Details */}
@@ -437,7 +566,10 @@ const InvoicePDF: React.FC<{ invoiceData: InvoiceData }> = ({ invoiceData }) => 
             <Text style={styles.boldText}>Remarks:</Text> Being sale of knitted fabric
           </Text>
           <Text style={styles.boldText}>Declaration for Avyaan Knitfab</Text>
-          <Text>We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.</Text>
+          <Text>
+            We declare that this invoice shows the actual price of the goods described and that all
+            particulars are true and correct.
+          </Text>
           <Text style={{ textAlign: 'right', marginTop: 20 }}>Authorised Signatory</Text>
         </View>
 

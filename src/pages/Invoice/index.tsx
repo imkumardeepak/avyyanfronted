@@ -171,6 +171,22 @@ const InvoicePage = () => {
   const handleGeneratePackingMemoPDF = async (orderGroup: DispatchOrderGroup) => {
     setIsGeneratingPDF(true);
     try {
+      // Get unique sales order IDs from the lots
+      const salesOrderIds = [...new Set(orderGroup.lots.map(lot => lot.salesOrderId))];
+      
+      // Fetch sales order details for all sales orders in this dispatch order
+      const salesOrders: Record<number, SalesOrderDto> = {};
+      for (const salesOrderId of salesOrderIds) {
+        try {
+          const response = await salesOrderApi.getSalesOrderById(salesOrderId);
+          const salesOrder = apiUtils.extractData(response);
+          salesOrders[salesOrderId] = salesOrder;
+        } catch (error) {
+          console.error(`Error fetching sales order ${salesOrderId}:`, error);
+          toast.error('Error', `Failed to fetch sales order ${salesOrderId}`);
+        }
+      }
+      
       // Get unique transport IDs from the lots
       const transportIds = [...new Set(orderGroup.lots.map(lot => lot.transportId).filter(id => id !== undefined))] as number[];
       
@@ -247,22 +263,31 @@ const InvoicePage = () => {
       const totalNetWeight = packingDetails.reduce((sum, item) => sum + item.netWeight, 0);
       const totalGrossWeight = packingDetails.reduce((sum, item) => sum + item.grossWeight, 0);
       
-      // Get customer address from the first lot (assuming all lots have the same customer)
-      // const firstLot = orderGroup.lots[0];
-      const customerAddress = ''; // We don't have this data in the current model
+      // Get customer address information from sales orders
+      let billToAddress = '';
+      let shipToAddress = '';
+      
+      // Use the first sales order for address information
+      const firstSalesOrder = Object.values(salesOrders)[0];
+      if (firstSalesOrder) {
+        billToAddress = firstSalesOrder.buyerAddress || '';
+        // For ship to address, we can use the same as bill to address or customize as needed
+        shipToAddress = firstSalesOrder.buyerAddress || '';
+      }
       
       // Prepare data for PDF
       const packingMemoData = {
         dispatchOrderId: orderGroup.dispatchOrderId,
         customerName: orderGroup.customerName,
-        customerAddress,
         dispatchDate: new Date(orderGroup.dispatchDate).toLocaleDateString(),
         lotNumber: orderGroup.lots.map(lot => lot.lotNo).join(', '),
         vehicleNumber,
         packingDetails,
         totalNetWeight,
         totalGrossWeight,
-        remarks: ''
+        remarks: '',
+        billToAddress,
+        shipToAddress
       };
       
       // Create PDF document
