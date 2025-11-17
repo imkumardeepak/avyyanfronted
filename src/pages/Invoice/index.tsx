@@ -10,6 +10,14 @@ import InvoicePDF from '@/components/InvoicePDF';
 import PackingMemoPDF from '@/components/PackingMemoPDF';
 import GatePassPDF from '@/components/GatePassPDF';
 import type { DispatchPlanningDto, SalesOrderDto, DispatchedRollDto } from '@/types/api-types';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface DispatchOrderGroup {
   dispatchOrderId: string;
@@ -24,6 +32,8 @@ const InvoicePage = () => {
   const [dispatchOrders, setDispatchOrders] = useState<DispatchOrderGroup[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [selectedOrderGroup, setSelectedOrderGroup] = useState<DispatchOrderGroup | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Load all fully dispatched orders on component mount
   useEffect(() => {
@@ -90,6 +100,18 @@ const InvoicePage = () => {
     return new Date(dateString).toLocaleDateString();
   };
 
+  // Function to open modal with order details
+  const handleViewOrderDetails = (orderGroup: DispatchOrderGroup) => {
+    setSelectedOrderGroup(orderGroup);
+    setIsModalOpen(true);
+  };
+
+  // Function to close modal
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedOrderGroup(null);
+  };
+
   // Function to generate and download invoice PDF
   const handleGenerateInvoicePDF = async (orderGroup: DispatchOrderGroup) => {
     setIsGeneratingPDF(true);
@@ -110,6 +132,7 @@ const InvoicePage = () => {
         }
       }
       
+   
       // Prepare data for PDF
       const invoiceData = {
         dispatchOrderId: orderGroup.dispatchOrderId,
@@ -148,6 +171,22 @@ const InvoicePage = () => {
   const handleGeneratePackingMemoPDF = async (orderGroup: DispatchOrderGroup) => {
     setIsGeneratingPDF(true);
     try {
+      // Get unique sales order IDs from the lots
+      const salesOrderIds = [...new Set(orderGroup.lots.map(lot => lot.salesOrderId))];
+      
+      // Fetch sales order details for all sales orders in this dispatch order
+      const salesOrders: Record<number, SalesOrderDto> = {};
+      for (const salesOrderId of salesOrderIds) {
+        try {
+          const response = await salesOrderApi.getSalesOrderById(salesOrderId);
+          const salesOrder = apiUtils.extractData(response);
+          salesOrders[salesOrderId] = salesOrder;
+        } catch (error) {
+          console.error(`Error fetching sales order ${salesOrderId}:`, error);
+          toast.error('Error', `Failed to fetch sales order ${salesOrderId}`);
+        }
+      }
+      
       // Get unique transport IDs from the lots
       const transportIds = [...new Set(orderGroup.lots.map(lot => lot.transportId).filter(id => id !== undefined))] as number[];
       
@@ -215,7 +254,8 @@ const InvoicePage = () => {
           srNo: lotIndex * 100 + rollIndex + 1, // Simple serial numbering
           psNo: parseInt(roll.fgRollNo) || 0,
           netWeight: roll.netWeight || 0,
-          grossWeight: roll.grossWeight || 0
+          grossWeight: roll.grossWeight || 0,
+          lotNo: lotNo // Include lotNo in the packing details
         }));
       });
       
@@ -223,22 +263,31 @@ const InvoicePage = () => {
       const totalNetWeight = packingDetails.reduce((sum, item) => sum + item.netWeight, 0);
       const totalGrossWeight = packingDetails.reduce((sum, item) => sum + item.grossWeight, 0);
       
-      // Get customer address from the first lot (assuming all lots have the same customer)
-      const firstLot = orderGroup.lots[0];
-      const customerAddress = ''; // We don't have this data in the current model
+      // Get customer address information from sales orders
+      let billToAddress = '';
+      let shipToAddress = '';
+      
+      // Use the first sales order for address information
+      const firstSalesOrder = Object.values(salesOrders)[0];
+      if (firstSalesOrder) {
+        billToAddress = firstSalesOrder.buyerAddress || '';
+        // For ship to address, we can use the same as bill to address or customize as needed
+        shipToAddress = firstSalesOrder.buyerAddress || '';
+      }
       
       // Prepare data for PDF
       const packingMemoData = {
         dispatchOrderId: orderGroup.dispatchOrderId,
         customerName: orderGroup.customerName,
-        customerAddress,
         dispatchDate: new Date(orderGroup.dispatchDate).toLocaleDateString(),
         lotNumber: orderGroup.lots.map(lot => lot.lotNo).join(', '),
         vehicleNumber,
         packingDetails,
         totalNetWeight,
         totalGrossWeight,
-        remarks: ''
+        remarks: '',
+        billToAddress,
+        shipToAddress
       };
       
       // Create PDF document
@@ -348,7 +397,15 @@ const InvoicePage = () => {
                   {dispatchOrders.length > 0 ? (
                     dispatchOrders.map((orderGroup) => (
                       <TableRow key={orderGroup.dispatchOrderId} className="border-b border-gray-100">
-                        <TableCell className="py-2 text-xs font-medium">{orderGroup.dispatchOrderId}</TableCell>
+                        <TableCell className="py-2 text-xs font-medium">
+                          <Button
+                            variant="link"
+                            className="p-0 h-auto font-medium text-blue-600 hover:text-blue-800"
+                            onClick={() => handleViewOrderDetails(orderGroup)}
+                          >
+                            {orderGroup.dispatchOrderId}
+                          </Button>
+                        </TableCell>
                         <TableCell className="py-2 text-xs">{orderGroup.customerName}</TableCell>
                         <TableCell className="py-2 text-xs">{orderGroup.lots.length}</TableCell>
                         <TableCell className="py-2 text-xs">{formatDate(orderGroup.dispatchDate)}</TableCell>
@@ -403,6 +460,99 @@ const InvoicePage = () => {
           )}
         </CardContent>
       </Card>
+      
+      {/* Order Details Modal */}
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold">
+              Dispatch Order Details - {selectedOrderGroup?.dispatchOrderId}
+            </DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="h-[70vh] pr-4">
+            {selectedOrderGroup && (
+              <div className="space-y-4">
+                {/* Order Summary */}
+                <Card className="border border-gray-200">
+                  <CardHeader className="bg-gray-50 py-2 px-4">
+                    <CardTitle className="text-base font-semibold">Order Summary</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm font-medium">Dispatch Order ID:</p>
+                        <p className="text-sm">{selectedOrderGroup.dispatchOrderId}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">Customer:</p>
+                        <p className="text-sm">{selectedOrderGroup.customerName}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">Total Lots:</p>
+                        <p className="text-sm">{selectedOrderGroup.lots.length}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">Dispatch Date:</p>
+                        <p className="text-sm">{formatDate(selectedOrderGroup.dispatchDate)}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">Total Gross Weight:</p>
+                        <p className="text-sm">{selectedOrderGroup.totalGrossWeight.toFixed(2)} kg</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">Total Net Weight:</p>
+                        <p className="text-sm">{selectedOrderGroup.totalNetWeight.toFixed(2)} kg</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Lots Details */}
+                <Card className="border border-gray-200">
+                  <CardHeader className="bg-gray-50 py-2 px-4">
+                    <CardTitle className="text-base font-semibold">Lots Details</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-gray-100">
+                          <TableHead className="text-xs font-medium py-2 px-3">Lot No</TableHead>
+                          <TableHead className="text-xs font-medium py-2 px-3">Customer</TableHead>
+                          <TableHead className="text-xs font-medium py-2 px-3">Tape</TableHead>
+                          <TableHead className="text-xs font-medium py-2 px-3">Required Rolls</TableHead>
+                          <TableHead className="text-xs font-medium py-2 px-3">Ready Rolls</TableHead>
+                          <TableHead className="text-xs font-medium py-2 px-3">Dispatched Rolls</TableHead>
+                          <TableHead className="text-xs font-medium py-2 px-3">Gross Weight (kg)</TableHead>
+                          <TableHead className="text-xs font-medium py-2 px-3">Net Weight (kg)</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {selectedOrderGroup.lots.map((lot, index) => (
+                          <TableRow key={index} className="border-b border-gray-100">
+                            <TableCell className="py-2 px-3 text-xs">{lot.lotNo}</TableCell>
+                            <TableCell className="py-2 px-3 text-xs">{lot.customerName}</TableCell>
+                            <TableCell className="py-2 px-3 text-xs">{lot.tape}</TableCell>
+                            <TableCell className="py-2 px-3 text-xs">{lot.totalRequiredRolls}</TableCell>
+                            <TableCell className="py-2 px-3 text-xs">{lot.totalReadyRolls}</TableCell>
+                            <TableCell className="py-2 px-3 text-xs">{lot.totalDispatchedRolls}</TableCell>
+                            <TableCell className="py-2 px-3 text-xs">{lot.totalGrossWeight?.toFixed(2) || '0.00'}</TableCell>
+                            <TableCell className="py-2 px-3 text-xs">{lot.totalNetWeight?.toFixed(2) || '0.00'}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </ScrollArea>
+          <DialogFooter>
+            <Button onClick={handleCloseModal} variant="outline" size="sm">
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

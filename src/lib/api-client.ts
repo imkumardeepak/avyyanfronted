@@ -140,9 +140,9 @@ apiClient.interceptors.response.use(
 
     // Handle 401 Unauthorized errors (token expired)
     if (error.response?.status === 401 && !originalRequest._retry) {
-          apiUtils.clearAuth();
-          window.location.href = '/login';
-          return Promise.reject(error);
+      apiUtils.clearAuth();
+      window.location.href = '/login';
+      return Promise.reject(error);
     }
   }
 );
@@ -164,16 +164,16 @@ export const apiUtils = {
       if (axiosError.response?.data?.message) {
         return axiosError.response.data.message;
       }
-      
+
       if (axiosError.response?.data?.error) {
         return axiosError.response.data.error;
       }
     }
-    
+
     if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
       return error.message;
     }
-    
+
     return 'An unexpected error occurred';
   },
 
@@ -547,11 +547,11 @@ export const productionAllotmentApi = {
   // POST /api/ProductionAllotment/stkprint/{id} - Generate QR codes for machine allocation
   generateQRCodes: (id: number): Promise<AxiosResponse<{ message: string }>> =>
     apiClient.post(`/ProductionAllotment/stkprint/${id}`),
-    
+
   // POST /api/ProductionAllotment/stkprint/roll-assignment/{id} - Generate QR codes for specific roll numbers in a roll assignment
   generateQRCodesForRollAssignment: (id: number, rollNumbers: number[]): Promise<AxiosResponse<{ message: string }>> =>
     apiClient.post(`/ProductionAllotment/stkprint/roll-assignment/${id}`, { rollNumbers }),
-    
+
   // POST /api/ProductionAllotment/fgsticker/{id} - Print FG Roll sticker
   printFGRollSticker: (id: number): Promise<AxiosResponse<{ message: string }>> =>
     apiClient.post(`/ProductionAllotment/fgsticker/${id}`),
