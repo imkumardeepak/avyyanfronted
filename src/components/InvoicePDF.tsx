@@ -2,49 +2,43 @@ import React from 'react';
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 import type { DispatchPlanningDto, SalesOrderDto, SalesOrderItemDto } from '@/types/api-types';
 
-// Create styles
+// Create styles matching the provided invoice format exactly
 const styles = StyleSheet.create({
   page: {
-    padding: 30,
-    fontSize: 10,
+    padding: 20,
+    fontSize: 9,
     fontFamily: 'Helvetica',
   },
-  header: {
-    textAlign: 'center',
-    marginBottom: 20,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#000',
-    borderBottomStyle: 'solid',
+  headerSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10,
   },
-  title: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 5,
+  companyInfo: {
+    width: '50%',
+  },
+  buyerInfo: {
+    width: '50%',
   },
   section: {
-    marginVertical: 10,
+    marginVertical: 5,
   },
   sectionHeader: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: 'bold',
-    marginBottom: 5,
-    paddingBottom: 3,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
-    borderBottomStyle: 'solid',
+    marginBottom: 3,
   },
   row: {
     flexDirection: 'row',
-    marginBottom: 5,
+    marginBottom: 2,
   },
   label: {
     fontWeight: 'bold',
-    width: 120,
+    width: 100,
   },
   table: {
     width: '100%',
-    marginTop: 10,
+    marginTop: 5,
     borderWidth: 1,
     borderColor: '#000',
     borderStyle: 'solid',
@@ -64,24 +58,23 @@ const styles = StyleSheet.create({
     borderBottomStyle: 'solid',
   },
   tableColHeader: {
-    flex: 1,
-    padding: 5,
+    padding: 3,
     borderRightWidth: 1,
     borderRightColor: '#000',
     borderRightStyle: 'solid',
     textAlign: 'center',
     fontWeight: 'bold',
+    fontSize: 8,
   },
   tableCol: {
-    flex: 1,
-    padding: 5,
+    padding: 3,
     borderRightWidth: 1,
     borderRightColor: '#ccc',
     borderRightStyle: 'solid',
+    fontSize: 8,
   },
   lastTableCol: {
-    flex: 1,
-    padding: 5,
+    padding: 3,
     borderRightWidth: 0,
   },
   rightAlign: {
@@ -92,16 +85,80 @@ const styles = StyleSheet.create({
   },
   footer: {
     position: 'absolute',
-    bottom: 30,
-    left: 30,
-    right: 30,
+    bottom: 20,
+    left: 20,
+    right: 20,
     textAlign: 'center',
     borderTopWidth: 1,
     borderTopColor: '#000',
     borderTopStyle: 'solid',
-    paddingTop: 10,
+    paddingTop: 5,
     fontSize: 8,
   },
+  // Invoice-specific styles
+  invoiceHeader: {
+    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  addressBlock: {
+    fontSize: 8,
+    marginBottom: 5,
+  },
+  gstin: {
+    fontWeight: 'bold',
+  },
+  keyValueRow: {
+    flexDirection: 'row',
+    marginBottom: 1,
+  },
+  key: {
+    fontWeight: 'bold',
+    width: 80,
+  },
+  value: {
+    flex: 1,
+  },
+  smallText: {
+    fontSize: 7,
+  },
+  boldText: {
+    fontWeight: 'bold',
+  },
+  // Column widths matching the PDF
+  colSerial: { width: '6%' },
+  colDescription: { width: '30%' },
+  colHSN: { width: '10%' },
+  colQuantity: { width: '8%' },
+  colRate: { width: '8%' },
+  colPer: { width: '6%' },
+  colDisc: { width: '6%' },
+  colAmount: { width: '12%' },
+  colPkgs: { width: '8%' },
+  // Tax table styles
+  taxTable: {
+    width: '60%',
+    marginLeft: 'auto',
+    marginTop: 10,
+  },
+  taxRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#000',
+    borderBottomStyle: 'solid',
+  },
+  taxCol: {
+    padding: 3,
+    borderRightWidth: 1,
+    borderRightColor: '#000',
+    borderRightStyle: 'solid',
+    fontSize: 8,
+  },
+  taxColLast: {
+    padding: 3,
+    borderRightWidth: 0,
+  }
 });
 
 // Helper function to parse rate as number
@@ -128,132 +185,265 @@ interface InvoiceData {
   totalNetWeight: number;
 }
 
-// Interface for grouped lot data
-interface GroupedLot {
-  lotNo: string;
-  salesOrderId: number;
-  salesOrderItemId: number;
-  salesOrderItem?: SalesOrderItemDto;
-  totalQuantity: number;
-  totalNetWeight: number;
+// Interface for invoice items matching PDF structure
+interface InvoiceItem {
+  slNo: number;
+  pkgs: string;
+  description: string;
+  hsnSac: string;
+  quantity: number;
   rate: number;
-  totalAmount: number;
+  per: string;
+  discount: string;
+  amount: number;
+  lotDetails: {
+    lotNo: string;
+    description: string;
+  }[];
 }
 
 const InvoicePDF: React.FC<{ invoiceData: InvoiceData }> = ({ invoiceData }) => {
-  // Group lots by sales order and item
-  const groupedLots: GroupedLot[] = [];
+  // Create invoice items in the exact format as the PDF
+  const invoiceItems: InvoiceItem[] = [];
   
-  // Group the lots by sales order item
-  const lotGroups: Record<string, DispatchPlanningDto[]> = {};
-  invoiceData.lots.forEach(lot => {
-    const key = `${lot.salesOrderId}-${lot.salesOrderItemId}`;
-    if (!lotGroups[key]) {
-      lotGroups[key] = [];
-    }
-    lotGroups[key].push(lot);
-  });
-  
-  // Process each group to calculate totals
-  Object.values(lotGroups).forEach(group => {
-    if (group.length > 0) {
-      const firstLot = group[0];
-      const salesOrder = invoiceData.salesOrders[firstLot.salesOrderId];
-      const salesOrderItem = salesOrder?.items?.find(item => item.id === firstLot.salesOrderItemId);
+  // Process lots to create invoice items
+  invoiceData.lots.forEach((lot, index) => {
+    const salesOrder = invoiceData.salesOrders[lot.salesOrderId];
+    const salesOrderItem = salesOrder?.items?.find(item => item.salesOrderId === lot.salesOrderId);
+
+    
+    if (salesOrderItem) {
+      const rate = parseRate(salesOrderItem.rate);
+      console.log(rate);
+      const amount = calculateTotalAmount(rate, lot.totalNetWeight || 0);
       
-      const totalQuantity = group.reduce((sum, lot) => sum + lot.totalDispatchedRolls, 0);
-      const totalNetWeight = group.reduce((sum, lot) => sum + (lot.totalNetWeight || 0), 0);
-      const rate = salesOrderItem ? parseRate(salesOrderItem.rate) : 0;
-      const totalAmount = calculateTotalAmount(rate, totalNetWeight);
+      // Extract fabric type and details from stock item name and descriptions
+      const fabricType = salesOrderItem.stockItemName || 'N/A';
+      const descriptions = salesOrderItem.descriptions || '';
       
-      groupedLots.push({
-        lotNo: firstLot.lotNo,
-        salesOrderId: firstLot.salesOrderId,
-        salesOrderItemId: firstLot.salesOrderItemId,
-        salesOrderItem,
-        totalQuantity,
-        totalNetWeight,
-        rate,
-        totalAmount
+      // Create main description similar to PDF format
+      const mainDescription = `${fabricType}\nFabric - ${descriptions}`;
+      
+      invoiceItems.push({
+        slNo: index + 1,
+        pkgs: `${lot.totalDispatchedRolls} Roll`,
+        description: mainDescription,
+        hsnSac: '60063200',
+        quantity: lot.totalNetWeight || 0,
+        rate: rate,
+        per: 'Kgs',
+        discount: '',
+        amount: amount,
+        lotDetails: [{
+          lotNo: lot.lotNo,
+          description: `HO/${lot.lotNo} GSM :- Lot No:-${lot.lotNo}`
+        }]
       });
     }
   });
   
-  // Calculate grand total
-  const grandTotal = groupedLots.reduce((sum, item) => sum + item.totalAmount, 0);
+  // Calculate totals
+  const totalQuantity = invoiceItems.reduce((sum, item) => sum + item.quantity, 0);
+  const totalAmount = invoiceItems.reduce((sum, item) => sum + item.amount, 0);
+  
+  // Tax calculation (as per PDF: 2.5% CGST + 2.5% SGST)
+  const taxableValue = totalAmount;
+  const cgstRate = 2.5;
+  const sgstRate = 2.5;
+  const cgstAmount = (taxableValue * cgstRate) / 100;
+  const sgstAmount = (taxableValue * sgstRate) / 100;
+  const totalTax = cgstAmount + sgstAmount;
+  const grandTotal = taxableValue + totalTax;
+
+  // Get company and buyer info
+  const firstSalesOrder = Object.values(invoiceData.salesOrders)[0];
+  const companyName = 'Avyaan Knitfab'; // Fixed as per PDF
+  const buyerName = invoiceData.customerName;
+
+  // Format date
+  const invoiceDate = new Date(invoiceData.dispatchDate);
+  const formattedDate = invoiceDate.toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: '2-digit'
+  });
 
   return (
     <Document>
       <Page size="A4" style={styles.page}>
         {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>INVOICE</Text>
-          <Text>Dispatch Order ID: {invoiceData.dispatchOrderId}</Text>
-          <Text>Customer: {invoiceData.customerName}</Text>
-          <Text>Date: {new Date(invoiceData.dispatchDate).toLocaleDateString()}</Text>
-        </View>
+        <Text style={styles.invoiceHeader}>Tax Invoice</Text>
         
-        {/* Dispatch Details */}
-        <View style={styles.section}>
-          <Text style={styles.sectionHeader}>Dispatch Details</Text>
-          <View style={styles.row}>
-            <Text style={styles.label}>Total Lots:</Text>
-            <Text>{invoiceData.lots.length}</Text>
+        {/* IRN and Ack Details */}
+        <View style={styles.row}>
+          <Text>IRN : [AUTO_GENERATED_IRN]</Text>
+          <Text style={{ marginLeft: 20 }}>Ack No. : [ACK_NUMBER]</Text>
+          <Text style={{ marginLeft: 20 }}>Ack Date : {formattedDate}</Text>
+        </View>
+
+        <View style={{ borderBottomWidth: 1, borderBottomColor: '#000', marginVertical: 5 }}></View>
+
+        {/* Company and Buyer Information */}
+        <View style={styles.headerSection}>
+          <View style={styles.companyInfo}>
+            <Text style={styles.addressBlock}>
+              <Text style={styles.boldText}>Avyaan Knitfab</Text>{"\n"}
+              Factory: Survey No.547-551/1, Wajgaon-Deoli Highway,{"\n"}
+              At:-Wajgaon(NI) Dist:-Wardha-442001{"\n"}
+              <Text style={styles.gstin}>GSTIN/UIN: 27ABYFA2736N1ZO</Text>{"\n"}
+              State Name : Maharashtra, Code : 27{"\n"}
+              E-Mail : info@avyaanknitfab.com
+            </Text>
           </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>Total Gross Weight:</Text>
-            <Text>{invoiceData.totalGrossWeight.toFixed(2)} kg</Text>
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>Total Net Weight:</Text>
-            <Text>{invoiceData.totalNetWeight.toFixed(2)} kg</Text>
+          
+          <View style={styles.buyerInfo}>
+            <Text style={styles.addressBlock}>
+              <Text style={styles.boldText}>Buyer (Bill to)</Text>{"\n"}
+              <Text style={styles.boldText}>{buyerName}</Text>{"\n"}
+              E-49, E-49/1/2, MIDC Industrial Area,{"\n"}
+              Tarapur, Boisar-401506{"\n"}
+              Dist- Thane{"\n"}
+              <Text style={styles.gstin}>GSTIN/UIN : 27AABCP7263L1ZO</Text>{"\n"}
+              State Name : Maharashtra, Code : 27
+            </Text>
           </View>
         </View>
-        
-        {/* Lot Details Table */}
-        <View style={styles.section}>
-          <Text style={styles.sectionHeader}>Lot Details</Text>
-          <View style={styles.table}>
-            {/* Table Header */}
-            <View style={styles.tableHeader}>
-              <Text style={[styles.tableColHeader]}>Lot No</Text>
-              <Text style={[styles.tableColHeader]}>Sales Order ID</Text>
-              <Text style={[styles.tableColHeader]}>Item Name</Text>
-              <Text style={[styles.tableColHeader, styles.rightAlign]}>Quantity (Rolls)</Text>
-              <Text style={[styles.tableColHeader, styles.rightAlign]}>Net Weight (kg)</Text>
-              <Text style={[styles.tableColHeader, styles.rightAlign]}>Rate</Text>
-              <Text style={[styles.tableColHeader, styles.rightAlign]}>Amount</Text>
-            </View>
-            
-            {/* Table Rows */}
-            {groupedLots.map((lot, index) => (
-              <View key={index} style={styles.tableRow}>
-                <Text style={[styles.tableCol]}>{lot.lotNo}</Text>
-                <Text style={[styles.tableCol]}>{lot.salesOrderId}</Text>
-                <Text style={[styles.tableCol]}>{lot.salesOrderItem?.stockItemName || 'N/A'}</Text>
-                <Text style={[styles.tableCol, styles.rightAlign]}>{lot.totalQuantity.toFixed(2)}</Text>
-                <Text style={[styles.tableCol, styles.rightAlign]}>{lot.totalNetWeight.toFixed(2)}</Text>
-                <Text style={[styles.tableCol, styles.rightAlign]}>{lot.rate.toFixed(2)}</Text>
-                <Text style={[styles.tableCol, styles.rightAlign, styles.lastTableCol]}>{lot.totalAmount.toFixed(2)}</Text>
+
+        {/* Invoice Details Table */}
+        <View style={styles.table}>
+          <View style={styles.tableHeader}>
+            <Text style={[styles.tableColHeader, styles.colSerial]}>SR No</Text>
+            <Text style={[styles.tableColHeader, styles.colPkgs]}>Packages</Text>
+            <Text style={[styles.tableColHeader, styles.colDescription]}>Description of Goods</Text>
+            <Text style={[styles.tableColHeader, styles.colHSN]}>HSN/SAC</Text>
+            <Text style={[styles.tableColHeader, styles.colQuantity]}>Quantity</Text>
+            <Text style={[styles.tableColHeader, styles.colRate]}>Rate</Text>
+            <Text style={[styles.tableColHeader, styles.colPer]}>per</Text>
+            <Text style={[styles.tableColHeader, styles.colDisc]}>Disc. %</Text>
+            <Text style={[styles.tableColHeader, styles.colAmount]}>Amount</Text>
+          </View>
+          
+          {/* Invoice Items */}
+          {invoiceItems.map((item, index) => (
+            <View key={index}>
+              {/* Main Item Row */}
+              <View style={styles.tableRow}>
+                <Text style={[styles.tableCol, styles.colSerial]}>{item.slNo}</Text>
+                <Text style={[styles.tableCol, styles.colPkgs]}>{item.pkgs}</Text>
+                <Text style={[styles.tableCol, styles.colDescription]}>
+                  <Text style={styles.boldText}>{item.description.split('\n')[0]}</Text>
+                  {"\n"}
+                  {item.description.split('\n').slice(1).join('\n')}
+                </Text>
+                <Text style={[styles.tableCol, styles.colHSN, styles.centerAlign]}>{item.hsnSac}</Text>
+                <Text style={[styles.tableCol, styles.colQuantity, styles.rightAlign]}>{item.quantity.toFixed(4)}</Text>
+                <Text style={[styles.tableCol, styles.colRate, styles.rightAlign]}>{item.rate.toFixed(2)}</Text>
+                <Text style={[styles.tableCol, styles.colPer, styles.centerAlign]}>{item.per}</Text>
+                <Text style={[styles.tableCol, styles.colDisc, styles.centerAlign]}>{item.discount}</Text>
+                <Text style={[styles.tableCol, styles.colAmount, styles.rightAlign]}>{item.amount.toFixed(2)}</Text>
               </View>
-            ))}
-            
-            {/* Grand Total Row */}
-            <View style={[styles.tableRow, { backgroundColor: '#f0f0f0', fontWeight: 'bold' }]}>
-              <Text style={[styles.tableCol, { borderRightWidth: 0 }]}></Text>
-              <Text style={[styles.tableCol, { borderRightWidth: 0 }]}></Text>
-              <Text style={[styles.tableCol, { borderRightWidth: 0 }]}></Text>
-              <Text style={[styles.tableCol, { borderRightWidth: 0 }]}></Text>
-              <Text style={[styles.tableCol, { borderRightWidth: 0 }]}></Text>
-              <Text style={[styles.tableCol, styles.rightAlign]}>Grand Total:</Text>
-              <Text style={[styles.tableCol, styles.rightAlign, styles.lastTableCol]}>{grandTotal.toFixed(2)}</Text>
+              
+              {/* Lot Details Row */}
+              {item.lotDetails.map((lot, lotIndex) => (
+                <View key={lotIndex} style={styles.tableRow}>
+                  <Text style={[styles.tableCol, styles.colSerial]}></Text>
+                  <Text style={[styles.tableCol, styles.colDescription, styles.smallText]}>
+                    {lot.description}
+                  </Text>
+                  <Text style={[styles.tableCol, styles.colHSN]}></Text>
+                  <Text style={[styles.tableCol, styles.colQuantity]}></Text>
+                  <Text style={[styles.tableCol, styles.colRate]}></Text>
+                  <Text style={[styles.tableCol, styles.colPer]}></Text>
+                  <Text style={[styles.tableCol, styles.colDisc]}></Text>
+                  <Text style={[styles.tableCol, styles.colAmount]}></Text>
+                </View>
+              ))}
             </View>
+          ))}
+          
+          {/* Total Row */}
+          <View style={[styles.tableRow, { backgroundColor: '#f0f0f0' }]}>
+            <Text style={[styles.tableCol, styles.colSerial]}></Text>
+            <Text style={[styles.tableCol, styles.colDescription]}></Text>
+            <Text style={[styles.tableCol, styles.colHSN]}></Text>
+            <Text style={[styles.tableCol, styles.colQuantity, styles.rightAlign, styles.boldText]}>
+              {totalQuantity.toFixed(4)} Kgs
+            </Text>
+            <Text style={[styles.tableCol, styles.colRate]}></Text>
+            <Text style={[styles.tableCol, styles.colPer]}></Text>
+            <Text style={[styles.tableCol, styles.colDisc]}></Text>
+            <Text style={[styles.tableCol, styles.colAmount, styles.rightAlign, styles.boldText]}>
+              ₹ {totalAmount.toFixed(2)}
+            </Text>
           </View>
         </View>
-        
+
+        {/* Total Amount in Words */}
+        <View style={{ marginTop: 10 }}>
+          <Text style={styles.boldText}>Amount Chargeable (in words)</Text>
+          <Text>INR [AMOUNT_IN_WORDS] Only</Text>
+          <Text style={{ textAlign: 'right', fontSize: 8 }}>E. & O.E</Text>
+        </View>
+
+        {/* Tax Table */}
+        <View style={styles.taxTable}>
+          <View style={styles.tableHeader}>
+            <Text style={[styles.tableColHeader, { width: '25%' }]}>HSN/SAC</Text>
+            <Text style={[styles.tableColHeader, { width: '25%' }]}>Taxable Value</Text>
+            <Text style={[styles.tableColHeader, { width: '25%' }]}>CGST</Text>
+            <Text style={[styles.tableColHeader, { width: '25%' }]}>SGST/UTGST</Text>
+            <Text style={[styles.tableColHeader, { width: '25%' }]}>Total</Text>
+          </View>
+          
+          <View style={styles.taxRow}>
+            <Text style={[styles.taxCol, { width: '25%' }]}>60063200</Text>
+            <Text style={[styles.taxCol, { width: '25%' }]}>{taxableValue.toFixed(2)}</Text>
+            <Text style={[styles.taxCol, { width: '25%' }]}>
+              Rate: {cgstRate}%{"\n"}
+              Amount: {cgstAmount.toFixed(2)}
+            </Text>
+            <Text style={[styles.taxCol, { width: '25%' }]}>
+              Rate: {sgstRate}%{"\n"}
+              Amount: {sgstAmount.toFixed(2)}
+            </Text>
+            <Text style={[styles.taxColLast, { width: '25%' }]}>{totalTax.toFixed(2)}</Text>
+          </View>
+          
+          <View style={[styles.taxRow, { backgroundColor: '#f0f0f0' }]}>
+            <Text style={[styles.taxCol, { width: '25%' }]}>Total</Text>
+            <Text style={[styles.taxCol, { width: '25%' }]}>{taxableValue.toFixed(2)}</Text>
+            <Text style={[styles.taxCol, { width: '25%' }]}>{cgstAmount.toFixed(2)}</Text>
+            <Text style={[styles.taxCol, { width: '25%' }]}>{sgstAmount.toFixed(2)}</Text>
+            <Text style={[styles.taxColLast, { width: '25%' }]}>{totalTax.toFixed(2)}</Text>
+          </View>
+        </View>
+
+        {/* Tax Amount in Words */}
+        <View style={{ marginTop: 5 }}>
+          <Text style={styles.boldText}>Tax Amount (in words) : INR [TAX_AMOUNT_IN_WORDS] Only</Text>
+        </View>
+
+        {/* Bank Details */}
+        <View style={{ marginTop: 10, fontSize: 8 }}>
+          <Text style={styles.boldText}>Company's Bank Details</Text>
+          <Text>Acc Holder's Name : Avyaan Knitfab</Text>
+          <Text>Bank Name : Punjab National Bank A/C No. 0467008700012227</Text>
+          <Text>Branch & IFS Code : Wardha-442001 & PUNB0046700</Text>
+        </View>
+
+        {/* Remarks and Declaration */}
+        <View style={{ marginTop: 10, fontSize: 8 }}>
+          <Text>
+            <Text style={styles.boldText}>Remarks:</Text> Being sale of knitted fabric
+          </Text>
+          <Text style={styles.boldText}>Declaration for Avyaan Knitfab</Text>
+          <Text>We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.</Text>
+          <Text style={{ textAlign: 'right', marginTop: 20 }}>Authorised Signatory</Text>
+        </View>
+
         {/* Footer */}
         <View style={styles.footer}>
-          <Text>Generated by Avyaan Knitfab System - {new Date().toLocaleDateString()}</Text>
+          <Text>This is a Computer Generated Invoice</Text>
         </View>
       </Page>
     </Document>
