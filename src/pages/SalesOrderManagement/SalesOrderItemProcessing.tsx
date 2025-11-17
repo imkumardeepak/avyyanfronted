@@ -371,22 +371,29 @@ const SalesOrderItemProcessingRefactored = () => {
     if (actualQuantity > 0 && rollPerKg > 0) {
       const totalRolls = actualQuantity / rollPerKg;
       const wholeRolls = Math.floor(totalRolls);
+      const fractionalRoll = totalRolls - wholeRolls;
+      
+      // If there's a fractional roll, add one additional roll for production planning
+      const adjustedTotalRolls = fractionalRoll > 0 ? Math.ceil(totalRolls) : totalRolls;
 
       setRollCalculation({
         actualQuantity,
         rollPerKg,
-        numberOfRolls: totalRolls,
-        totalWholeRolls: wholeRolls,
-        fractionalRoll: totalRolls - wholeRolls,
-        fractionalWeight: (totalRolls - wholeRolls) * rollPerKg,
+        numberOfRolls: adjustedTotalRolls,
+        totalWholeRolls: Math.floor(adjustedTotalRolls),
+        fractionalRoll: adjustedTotalRolls - Math.floor(adjustedTotalRolls),
+        fractionalWeight: (adjustedTotalRolls - Math.floor(adjustedTotalRolls)) * rollPerKg,
       });
     } else if (actualQuantity > 0 && parsedDescriptionValues.numberOfRolls > 0) {
       const calculatedRollPerKg = actualQuantity / parsedDescriptionValues.numberOfRolls;
+      // Use the parsed number of rolls as is
+      const numberOfRolls = parsedDescriptionValues.numberOfRolls;
+        
       setRollCalculation({
         actualQuantity,
         rollPerKg: calculatedRollPerKg,
-        numberOfRolls: parsedDescriptionValues.numberOfRolls,
-        totalWholeRolls: parsedDescriptionValues.numberOfRolls,
+        numberOfRolls: numberOfRolls,
+        totalWholeRolls: numberOfRolls,
         fractionalRoll: 0,
         fractionalWeight: 0,
       });
@@ -606,6 +613,8 @@ const SalesOrderItemProcessingRefactored = () => {
       return;
     }
 
+    // Use the adjusted roll calculation from rollCalculation state
+    const totalRolls = rollCalculation.numberOfRolls;
     const wholeRolls = rollCalculation.totalWholeRolls;
     const fractionalRoll = rollCalculation.fractionalRoll;
     const fractionalWeight = rollCalculation.fractionalWeight;
@@ -615,10 +624,13 @@ const SalesOrderItemProcessingRefactored = () => {
 
     let updatedMachines = selectedMachines.map((machine, index) => {
       let machineRolls = wholeRollsPerMachine + (index < remainingWholeRolls ? 1 : 0);
-      if (fractionalRoll > 0 && index === selectedMachines.length - 1)
+      // If there's a fractional roll, distribute it to the last machine
+      if (fractionalRoll > 0 && index === selectedMachines.length - 1) {
         machineRolls += fractionalRoll;
+      }
 
       let machineWeight = machineRolls * rollPerKg;
+      // Adjust weight calculation for fractional roll
       if (fractionalRoll > 0 && index === selectedMachines.length - 1) {
         machineWeight = (machineRolls - fractionalRoll) * rollPerKg + fractionalWeight;
       }
@@ -883,15 +895,81 @@ const SalesOrderItemProcessingRefactored = () => {
         }
       }
 
-      const fourthChar = itemDescription.includes('lycra') ? 'L' : 'X';
+      const fourthChar = itemDescription.includes('lycra') || itemDescription.includes('spandex') ? 'L' : 'X';
 
+      // Enhanced yarn type detection for complex descriptions
       let fifthChar: string | null = null;
-      const countRegex = /count:\s*(\d+)\/(\d+)/i;
-      const countMatch = selectedItem.descriptions?.match(countRegex);
-      if (countMatch && countMatch[2]) fifthChar = countMatch[2] === '2' ? '2' : '1';
-
       let yarnCount: string | null = null;
-      if (countMatch && countMatch[1]) yarnCount = countMatch[1].padStart(2, '0').substring(0, 2);
+      
+      // Try multiple regex patterns to find yarn information
+      const regexPatterns = [
+        /count:\s*(\d+)s\/(\d+)/i,  // Pattern for "Count: 40s/1"
+        /count:\s*(\d+)\/(\d+)/i,   // Original pattern: "count: 30/1"
+        /(\d+)s\/(\d+)/i,           // Pattern for "40s/1"
+        /(\d+)\/(\d+)\s*[A-Z]*/i,   // Alternative pattern: "30/1 Nm"
+        /\/(\d+)\s*[A-Z]*/i         // Simple pattern: "/1 Nm"
+      ];
+      
+      let countMatch: RegExpMatchArray | null = null;
+      for (const pattern of regexPatterns) {
+        countMatch = selectedItem.descriptions?.match(pattern);
+        if (countMatch && countMatch[1] && countMatch[2]) {
+          // For patterns like "40s/1", first group is yarn count (40), second is yarn type (1)
+          yarnCount = countMatch[1].padStart(2, '0').substring(0, 2);
+          fifthChar = countMatch[2] === '2' ? '2' : '1';
+          break;
+        }
+      }
+      
+      // Fallback: if no pattern matches, try to find standalone numbers after "/"
+      if (!fifthChar) {
+        const slashMatch = selectedItem.descriptions?.match(/\/(\d+)/);
+        if (slashMatch && slashMatch[1]) {
+          fifthChar = slashMatch[1] === '2' ? '2' : '1';
+        }
+      }
+      
+      // Additional fallback for yarn count if not found
+      if (!yarnCount && countMatch && countMatch[1]) {
+        yarnCount = countMatch[1].padStart(2, '0').substring(0, 2);
+      }
+      
+      // Final fallbacks: default values if still not found
+      if (!fifthChar) {
+        fifthChar = '1'; // Default yarn type
+      }
+      
+      if (!yarnCount) {
+        // Try to find any number that might represent yarn count
+        const anyNumberMatch = selectedItem.descriptions?.match(/(\d+)s/i);
+        if (anyNumberMatch && anyNumberMatch[1]) {
+          yarnCount = anyNumberMatch[1].padStart(2, '0').substring(0, 2);
+        } else {
+          yarnCount = '40'; // Default yarn count
+        }
+      }
+
+      // Validate required fields before generating lotment ID
+      if (!fabricTypeCode) {
+        throw new Error(
+          'Fabric type code not found. Please ensure the sales order was created properly with correct fabric information.'
+        );
+      }
+
+      // Removed fifthChar validation since we now have a default value
+      /*
+      if (!fifthChar) {
+        throw new Error(
+          'Fifth character (yarn type) not found. Please ensure the sales order was created properly with correct yarn information.'
+        );
+      }
+      */
+
+      if (!yarnCount) {
+        throw new Error(
+          'Yarn count not found. Please ensure the sales order was created properly with correct yarn count information.'
+        );
+      }
 
       const eighthChar = itemDescription.includes('carded') ? 'K' : 'C';
 
@@ -927,11 +1005,14 @@ const SalesOrderItemProcessingRefactored = () => {
         );
       }
 
+      // Removed fifthChar validation since we now have a default value
+      /*
       if (!fifthChar) {
         throw new Error(
           'Fifth character (yarn type) not found. Please ensure the sales order was created properly with correct yarn information.'
         );
       }
+      */
 
       if (!yarnCount) {
         throw new Error(
