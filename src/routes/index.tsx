@@ -61,6 +61,7 @@ const ShiftForm = lazy(() => import('../pages/ShiftManagement/ShiftForm'));
 
 // Sales Order Management Pages
 const SalesOrderManagement = lazy(() => import('../pages/SalesOrderManagement'));
+const CreateSalesOrder = lazy(() => import('../pages/SalesOrderManagement/CreateSalesOrder'));
 const SalesOrderItemProcessing = lazy(
   () => import('../pages/SalesOrderManagement/SalesOrderItemProcessing')
 );
@@ -375,6 +376,14 @@ const Router = () => {
               element={
                 <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
                   <SalesOrderManagement />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="sales-orders/create"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <CreateSalesOrder />
                 </LazyRoute>
               }
             />

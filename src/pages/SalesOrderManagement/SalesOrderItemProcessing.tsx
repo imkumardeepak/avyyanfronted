@@ -772,9 +772,7 @@ const SalesOrderItemProcessingRefactored = () => {
 
       // Create item description for other checks
       const itemDescription = (
-        selectedItem.stockItemName +
-        ' ' +
-        (selectedItem.descriptions || '')
+      selectedItem.descriptions
       ).toLowerCase();
 
       // Find fabric structure in master data
@@ -846,11 +844,11 @@ const SalesOrderItemProcessingRefactored = () => {
             'double pique': 'DP',
             'single jersey pleated': 'PL',
             'single jersysmall biscuit': 'SB',
-            waffle: 'WA',
+             'waffle': 'WA',
             'waffle miss cam': 'WM',
             'pointelle rib': 'PR',
-            herringbone: 'HB',
-            stripe: 'ST',
+            'herringbone': 'HB',
+            'stripe': 'ST',
           };
 
           for (const [key, code] of Object.entries(fabricTypeMap)) {
@@ -863,7 +861,9 @@ const SalesOrderItemProcessingRefactored = () => {
       } else {
         // Fallback to original mapping if no fabric structures or description
         const fabricTypeMap: { [key: string]: string } = {
-          'single jersey': 'SJ',
+          'single jersey' : 'SJ',
+          'S/J': 'SJ',
+
           '1x1 rib': '1R',
           '2x1 rib': '2R',
           '3x1 rib': '3R',
@@ -880,11 +880,11 @@ const SalesOrderItemProcessingRefactored = () => {
           'double pique': 'DP',
           'single jersey pleated': 'PL',
           'single jersysmall biscuit': 'SB',
-          waffle: 'WA',
+          'waffle': 'WA',
           'waffle miss cam': 'WM',
           'pointelle rib': 'PR',
-          herringbone: 'HB',
-          stripe: 'ST',
+          'herringbone': 'HB',
+          'stripe' : 'ST',
         };
 
         for (const [key, code] of Object.entries(fabricTypeMap)) {
@@ -1043,11 +1043,16 @@ const SalesOrderItemProcessingRefactored = () => {
 
       const serialNumber = await ProductionAllotmentService.getNextSerialNumber();
 
-      let twentyFirstChar = 'N';
+      let twentyFirstChar = '';
       if (itemDescription.includes('honeycomb') || itemDescription.includes('honey comb'))
         twentyFirstChar = 'H';
-      else if (itemDescription.includes('open width')) twentyFirstChar = 'O'
+      else if (itemDescription.includes('open width')|| itemDescription.includes('OW')) twentyFirstChar = 'O'
       else if (itemDescription.includes('Yes')) twentyFirstChar = 'Y';
+       if (!twentyFirstChar) {
+        throw new Error(
+          'Slit line not found. Please ensure the sales order was created properly with correct information.'
+        );
+      }
 
       const part1 = `${firstChar}${fabricTypeCode}${fourthChar}`;
       const part2 = `${fifthChar}${yarnCount}${eighthChar}${machineDiameter}${machineGauge}`;
@@ -1092,12 +1097,12 @@ const SalesOrderItemProcessingRefactored = () => {
     const totalAllocated = selectedMachines.reduce((sum, m) => sum + m.allocatedWeight, 0);
     const actualQuantity = Number(rollInput.actualQuantity || 0);
 
-    if (selectedMachines.length > 0 && totalAllocated > actualQuantity) {
-      alert(
-        `Error: Total allocated weight (${totalAllocated.toFixed(2)} kg) exceeds actual quantity (${actualQuantity.toFixed(2)} kg). Please adjust machine allocations before processing.`
-      );
-      return;
-    }
+    // if (selectedMachines.length > 0 && totalAllocated > actualQuantity) {
+    //   alert(
+    //     `Error: Total allocated weight (${totalAllocated.toFixed(2)} kg) exceeds actual quantity (${actualQuantity.toFixed(2)} kg). Please adjust machine allocations before processing.`
+    //   );
+    //   return;
+    // }
 
     let lotmentId: string | null = null;
     try {
@@ -1161,7 +1166,25 @@ const SalesOrderItemProcessingRefactored = () => {
         // Look for slit line pattern (note: description has "Slit Iine" typo instead of "Slit Line")
         const slitLineRegex = /slit\s*(?:iine|line)\s*:\s*([^|]+)/i;
         const match = desc.match(slitLineRegex);
-        return match ? match[1].trim() : 'N/A';
+        if (match) {
+          // Extract just the value part and trim whitespace
+          const value = match[1].trim();
+          // Handle common values like "Yes", "No", "1", "0"
+          if (value.toLowerCase() === 'yes' ) {
+            return 'Yes';
+          } else if (value.toLowerCase() === 'no' ) {
+            return 'No';
+          }
+           else if (value.toLowerCase() === 'honeycomb' ) {
+            return 'honeycomb';
+          }
+          else if (value.toLowerCase() === 'open width' || value.toLowerCase() === 'OW' ) {
+            return 'open width';
+          }
+          // Return the value as is for other cases
+          return value;
+        }
+        return 'N/A';
       };
 
       const requestData = {

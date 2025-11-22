@@ -616,72 +616,7 @@ const ProductionAllotment: React.FC = () => {
             </TableBody>
           </Table>
 
-          {/* Roll Breakdown Section */}
-          <div className="mt-6">
-            <h4 className="font-semibold mb-2">Roll Breakdown Details</h4>
-            {allotment.machineAllocations.map((allocation: MachineAllocationResponseDto) => (
-              <div key={allocation.id} className="mb-4 p-3 border rounded">
-                <h5 className="font-medium mb-2">{allocation.machineName} - Roll Breakdown</h5>
-                {allocation.rollBreakdown && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <h6 className="font-medium mb-1">Whole Rolls:</h6>
-                      {allocation.rollBreakdown.wholeRolls &&
-                      allocation.rollBreakdown.wholeRolls.length > 0 ? (
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Quantity</TableHead>
-                              <TableHead>Weight per Roll (kg)</TableHead>
-                              <TableHead>Total Weight (kg)</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {allocation.rollBreakdown.wholeRolls.map((roll, index) => (
-                              <TableRow key={index}>
-                                <TableCell>{roll.quantity}</TableCell>
-                                <TableCell>{roll.weightPerRoll.toFixed(2)}</TableCell>
-                                <TableCell>{roll.totalWeight.toFixed(2)}</TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">No whole rolls</p>
-                      )}
-                    </div>
-                    {allocation.rollBreakdown.fractionalRoll && (
-                      <div>
-                        <h6 className="font-medium mb-1">Fractional Roll:</h6>
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Quantity</TableHead>
-                              <TableHead>Weight per Roll (kg)</TableHead>
-                              <TableHead>Total Weight (kg)</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            <TableRow>
-                              <TableCell>
-                                {allocation.rollBreakdown.fractionalRoll.quantity}
-                              </TableCell>
-                              <TableCell>
-                                {allocation.rollBreakdown.fractionalRoll.weightPerRoll.toFixed(2)}
-                              </TableCell>
-                              <TableCell>
-                                {allocation.rollBreakdown.fractionalRoll.totalWeight.toFixed(2)}
-                              </TableCell>
-                            </TableRow>
-                          </TableBody>
-                        </Table>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+       
         </div>
       </div>
     );
@@ -692,7 +627,7 @@ const ProductionAllotment: React.FC = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex justify-between items-center">
-            <span>Production Lotments</span>
+            <span>Lot List</span>
             <Badge variant="secondary">{productionAllotments?.length || 0} items</Badge>
           </CardTitle>
         </CardHeader>

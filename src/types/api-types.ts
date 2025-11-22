@@ -1376,3 +1376,185 @@ export interface CourierSearchRequestDto {
   contactPerson?: string;
   isActive?: boolean;
 }
+
+// ============================================
+// SALES ORDER WEB DTOs
+// ============================================
+
+export interface SalesOrderWebResponseDto {
+  id: number;
+  
+  // Voucher details
+  voucherType: string;
+  voucherNumber: string;
+  orderDate: string; // ISO 8601 datetime
+  termsOfPayment: string;
+  isJobWork: boolean; // Checkbox for job work
+  
+  // Company details
+  companyName: string;
+  companyGSTIN: string;
+  companyState: string;
+  
+  // Buyer details (Bill To)
+  buyerName: string;
+  buyerGSTIN?: string | null;
+  buyerState?: string | null;
+  buyerPhone: string;
+  buyerContactPerson: string;
+  buyerAddress: string;
+  
+  // Consignee details (Ship To)
+  consigneeName: string;
+  consigneeGSTIN?: string | null;
+  consigneeState?: string | null;
+  consigneePhone: string;
+  consigneeContactPerson: string;
+  consigneeAddress: string;
+  
+  // Order details
+  remarks: string;
+  
+  // Items
+  items: SalesOrderItemWebResponseDto[];
+  
+  // Audit fields
+  createdAt: string; // ISO 8601 datetime
+  createdBy: string;
+  updatedAt: string; // ISO 8601 datetime
+  updatedBy: string;
+}
+
+export interface SalesOrderItemWebResponseDto {
+  id: number;
+  salesOrderWebId: number;
+  
+  // Item details
+  itemName: string;
+  itemDescription: string;
+  yarnCount: string;
+  diaGG: string;
+  fabricType: string;
+  composition: string;
+  wtPerRoll: number;
+  noOfRolls: number;
+  rate: number;
+  qty: number;
+  amount: number;
+  igst: number;
+  sgst: number;
+  cgst: number; // Added CGST field
+  remarks: string;
+}
+
+export interface CreateSalesOrderWebRequestDto {
+  // Voucher details
+  voucherType: string;
+  voucherNumber: string;
+  orderDate: string; // ISO 8601 datetime
+  termsOfPayment: string;
+  isJobWork: boolean; // Checkbox for job work
+  
+  // Company details
+  companyName: string;
+  companyGSTIN: string;
+  companyState: string;
+  
+  // Buyer details (Bill To)
+  buyerName: string;
+  buyerGSTIN?: string | null;
+  buyerState?: string | null;
+  buyerPhone: string;
+  buyerContactPerson: string;
+  buyerAddress: string;
+  
+  // Consignee details (Ship To)
+  consigneeName: string;
+  consigneeGSTIN?: string | null;
+  consigneeState?: string | null;
+  consigneePhone: string;
+  consigneeContactPerson: string;
+  consigneeAddress: string;
+  
+  // Order details
+  remarks: string;
+  
+  // Items
+  items: CreateSalesOrderItemWebRequestDto[];
+}
+
+export interface CreateSalesOrderItemWebRequestDto {
+  // Item details
+  itemName: string;
+  itemDescription: string;
+  yarnCount: string;
+  diaGG: string;
+  fabricType: string;
+  composition: string;
+  wtPerRoll: number;
+  noOfRolls: number;
+  rate: number;
+  qty: number;
+  amount: number;
+  igst: number;
+  sgst: number;
+  cgst: number; // Added CGST field
+  remarks: string;
+}
+
+export interface UpdateSalesOrderWebRequestDto {
+  // Voucher details
+  voucherType: string;
+  voucherNumber: string;
+  orderDate: string; // ISO 8601 datetime
+  termsOfPayment: string;
+  isJobWork: boolean; // Checkbox for job work
+  
+  // Company details
+  companyName: string;
+  companyGSTIN: string;
+  companyState: string;
+  
+  // Buyer details (Bill To)
+  buyerName: string;
+  buyerGSTIN?: string | null;
+  buyerState?: string | null;
+  buyerPhone: string;
+  buyerContactPerson: string;
+  buyerAddress: string;
+  
+  // Consignee details (Ship To)
+  consigneeName: string;
+  consigneeGSTIN?: string | null;
+  consigneeState?: string | null;
+  consigneePhone: string;
+  consigneeContactPerson: string;
+  consigneeAddress: string;
+  
+  // Order details
+  remarks: string;
+  
+  // Items
+  items: UpdateSalesOrderItemWebRequestDto[];
+}
+
+export interface UpdateSalesOrderItemWebRequestDto {
+  id?: number;
+  
+  // Item details
+  itemName: string;
+  itemDescription: string;
+  yarnCount: string;
+  diaGG: string;
+  fabricType: string;
+  composition: string;
+  wtPerRoll: number;
+  noOfRolls: number;
+  rate: number;
+  qty: number;
+  amount: number;
+  igst: number;
+  sgst: number;
+  cgst: number; // Added CGST field
+  remarks: string;
+}

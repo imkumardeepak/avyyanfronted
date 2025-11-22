@@ -506,6 +506,44 @@ export const vouchersApi = {
 };
 
 // ============================================
+// COMPANY API (/api/Company)
+// ============================================
+
+export const companyApi = {
+  // GET /api/Company - Get company details
+  getCompanyDetails: (): Promise<AxiosResponse<unknown>> =>
+    apiClient.get('/Company'),
+};
+
+// ============================================
+// ALL LEDGER API (/api/AllLedger)
+// ============================================
+
+export const allLedgerApi = {
+  // GET /api/AllLedger/GetCustomer - Get all customers
+  getCustomers: (): Promise<AxiosResponse<unknown>> =>
+    apiClient.get('/AllLedger/GetCustomer'),
+    
+  // GET /api/AllLedger/GetSupplier - Get all suppliers
+  getSuppliers: (): Promise<AxiosResponse<unknown>> =>
+    apiClient.get('/AllLedger/GetSupplier'),
+    
+  // GET /api/AllLedger/GetCustomerData - Get detailed customer data
+  getCustomerData: (): Promise<AxiosResponse<unknown>> =>
+    apiClient.get('/AllLedger/GetCustomerData'),
+};
+
+// ============================================
+// STOCK ITEM API (/api/StockItem)
+// ============================================
+
+export const stockItemApi = {
+  // GET /api/StockItem - Get all stock items
+  getStockItems: (): Promise<AxiosResponse<unknown>> =>
+    apiClient.get('/StockItem'),
+};
+
+// ============================================
 // SALES ORDER API (/api/SalesOrder)
 // ============================================
 
@@ -785,4 +823,8 @@ export const api = {
   rollAssignment: rollAssignmentApi,
   storageCapture: storageCaptureApi,
   dispatchPlanning: dispatchPlanningApi,
+  vouchers: vouchersApi,
+  company: companyApi,
+  allLedger: allLedgerApi,
+  stockItem: stockItemApi,
 };

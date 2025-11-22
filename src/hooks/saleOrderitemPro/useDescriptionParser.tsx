@@ -96,17 +96,7 @@ export const useDescriptionParser = () => {
     const fabricPatterns = [
       /fabric\s*:\s*([a-z0-9\s]+)/i,
       /fabric\s+type\s*:\s*([a-z0-9\s]+)/i,
-      /material\s*:\s*([a-z0-9\s]+)/i,
-      /composition\s*:\s*([a-z0-9\s]+)/i
-    ];
-    
-    // Specific fabric types to look for
-    const fabricTypes = [
-      'single jersey', '1x1 rib', '2x1 rib', '3x1 rib', 'two thread fleece', 
-      'three thread fleece', 'variegated rib', 'popcorn strip', 'honey comb', 
-      'honeycomb strip', 'pop corn', 'pique crinkle', 'rice knit', 'single pique', 
-      'double pique', 'single jersey pleated', 'small biscuit', 'waffle', 
-      'waffle miss cam', 'pointelle rib', 'herringbone', 'stripe'
+     
     ];
     
     // First try pattern matching
@@ -114,20 +104,7 @@ export const useDescriptionParser = () => {
       const match = desc.match(pattern);
       if (match && match[1]) {
         const fabricCandidate = match[1].trim();
-        // Check if it's a known fabric type
-        for (const fabricType of fabricTypes) {
-          if (fabricCandidate.includes(fabricType)) {
-            return fabricType;
-          }
-        }
         return fabricCandidate;
-      }
-    }
-    
-    // Then try direct fabric type matching
-    for (const fabricType of fabricTypes) {
-      if (desc.includes(fabricType)) {
-        return fabricType;
       }
     }
     
