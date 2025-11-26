@@ -6,6 +6,17 @@ import type {
 } from '@/types/api-types';
 
 export class SalesOrderWebService {
+  // GET /api/SalesOrderWeb/next-serial-number - Get next serial number
+  static async getNextSerialNumber(): Promise<string> {
+    try {
+      const response = await apiClient.get<string>('/SalesOrderWeb/next-serial-number');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching next serial number:', error);
+      throw error;
+    }
+  }
+
   // GET /api/SalesOrderWeb/{id} - Get sales order web by ID
   static async getSalesOrderWebById(id: number): Promise<SalesOrderWebResponseDto> {
     try {

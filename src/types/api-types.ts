@@ -1390,6 +1390,7 @@ export interface SalesOrderWebResponseDto {
   orderDate: string; // ISO 8601 datetime
   termsOfPayment: string;
   isJobWork: boolean; // Checkbox for job work
+  serialNo?: string; // Add serial number field
   
   // Company details
   companyName: string;
@@ -1414,6 +1415,10 @@ export interface SalesOrderWebResponseDto {
   
   // Order details
   remarks: string;
+  
+  // New fields for totals
+  totalQuantity: number;
+  totalAmount: number;
   
   // Items
   items: SalesOrderItemWebResponseDto[];
@@ -1433,7 +1438,8 @@ export interface SalesOrderItemWebResponseDto {
   itemName: string;
   itemDescription: string;
   yarnCount: string;
-  diaGG: string;
+  dia: number;
+  gg: number;
   fabricType: string;
   composition: string;
   wtPerRoll: number;
@@ -1445,6 +1451,11 @@ export interface SalesOrderItemWebResponseDto {
   sgst: number;
   cgst: number; // Added CGST field
   remarks: string;
+  
+  // New fields
+  slitLine?: string;
+  stitchLength?: string;
+  dueDate?: string;
 }
 
 export interface CreateSalesOrderWebRequestDto {
@@ -1454,6 +1465,7 @@ export interface CreateSalesOrderWebRequestDto {
   orderDate: string; // ISO 8601 datetime
   termsOfPayment: string;
   isJobWork: boolean; // Checkbox for job work
+  serialNo?: string; // Add serial number field
   
   // Company details
   companyName: string;
@@ -1478,6 +1490,10 @@ export interface CreateSalesOrderWebRequestDto {
   
   // Order details
   remarks: string;
+  
+  // New fields for totals
+  totalQuantity: number;
+  totalAmount: number;
   
   // Items
   items: CreateSalesOrderItemWebRequestDto[];
@@ -1488,7 +1504,8 @@ export interface CreateSalesOrderItemWebRequestDto {
   itemName: string;
   itemDescription: string;
   yarnCount: string;
-  diaGG: string;
+  dia: number;
+  gg: number;
   fabricType: string;
   composition: string;
   wtPerRoll: number;
@@ -1500,6 +1517,11 @@ export interface CreateSalesOrderItemWebRequestDto {
   sgst: number;
   cgst: number; // Added CGST field
   remarks: string;
+  
+  // New fields
+  slitLine?: string;
+  stitchLength?: string;
+  dueDate?: string;
 }
 
 export interface UpdateSalesOrderWebRequestDto {
@@ -1509,6 +1531,7 @@ export interface UpdateSalesOrderWebRequestDto {
   orderDate: string; // ISO 8601 datetime
   termsOfPayment: string;
   isJobWork: boolean; // Checkbox for job work
+  serialNo?: string; // Add serial number field
   
   // Company details
   companyName: string;
@@ -1533,6 +1556,10 @@ export interface UpdateSalesOrderWebRequestDto {
   
   // Order details
   remarks: string;
+  
+  // New fields for totals
+  totalQuantity: number;
+  totalAmount: number;
   
   // Items
   items: UpdateSalesOrderItemWebRequestDto[];
@@ -1545,7 +1572,8 @@ export interface UpdateSalesOrderItemWebRequestDto {
   itemName: string;
   itemDescription: string;
   yarnCount: string;
-  diaGG: string;
+  dia: number;
+  gg: number;
   fabricType: string;
   composition: string;
   wtPerRoll: number;
@@ -1557,4 +1585,39 @@ export interface UpdateSalesOrderItemWebRequestDto {
   sgst: number;
   cgst: number; // Added CGST field
   remarks: string;
+  
+  // New fields
+  slitLine?: string;
+  stitchLength?: string;
+  dueDate?: string;
+}
+
+// ============================================
+// SLIT LINE DTOs (AvyyanBackend.DTOs.SlitLine)
+// ============================================
+
+export interface SlitLineResponseDto {
+  id: number;
+  slitLine: string;
+  slitLineCode: string;
+  createdAt: string;
+  updatedAt?: string;
+  isActive: boolean;
+}
+
+export interface CreateSlitLineRequestDto {
+  slitLine: string;
+  slitLineCode: string;
+}
+
+export interface UpdateSlitLineRequestDto {
+  slitLine: string;
+  slitLineCode: string;
+  isActive: boolean;
+}
+
+export interface SlitLineSearchRequestDto {
+  slitLine?: string;
+  slitLineCode?: string;
+  isActive?: boolean;
 }

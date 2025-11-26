@@ -89,6 +89,10 @@ const TransportForm = lazy(() => import('../pages/TransportManagement/TransportF
 const CourierManagement = lazy(() => import('../pages/CourierManagement'));
 const CourierForm = lazy(() => import('../pages/CourierManagement/CourierForm'));
 
+// Slit Line Management Pages
+const SlitLineManagement = lazy(() => import('../pages/SlitLineManagement'));
+const SlitLineForm = lazy(() => import('../pages/SlitLineManagement/SlitLineForm'));
+
 // Reports Page
 const Reports = lazy(() => import('../pages/ProductionReport'));
 const FabricStockReport = lazy(() => import('../pages/FabricStockReport'));
@@ -366,6 +370,32 @@ const Router = () => {
               element={
                 <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
                   <ShiftForm />
+                </LazyRoute>
+              }
+            />
+
+            {/* Slit Line Management Routes */}
+            <Route
+              path="slit-lines"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <SlitLineManagement />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="slit-lines/create"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <SlitLineForm />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="slit-lines/:id/edit"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <SlitLineForm />
                 </LazyRoute>
               }
             />

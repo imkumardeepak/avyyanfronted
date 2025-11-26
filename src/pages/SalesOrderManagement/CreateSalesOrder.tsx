@@ -7,8 +7,9 @@ import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@
 import { Plus, Save, X, ChevronDown, ChevronUp, Search } from 'lucide-react';
 import { TallyService } from '@/services/tallyService';
 import { SalesOrderWebService } from '@/services/salesOrderWebService';
+import { useFabricStructures } from '@/hooks/queries/useFabricStructureQueries';
 import type { CompanyDetails, DetailedCustomer, StockItem } from '@/services/tallyService';
-import type { CreateSalesOrderWebRequestDto } from '@/types/api-types';
+import type { CreateSalesOrderWebRequestDto, FabricStructureResponseDto } from '@/types/api-types';
 import { toast } from '@/lib/toast';
 import { getUser } from '@/lib/auth';
 import { Textarea } from '@/components/ui/textarea';
@@ -19,7 +20,8 @@ interface SalesOrderItem {
   itemId: string;
   itemName: string;
   yarnCount: string;
-  diaGG: string;
+  dia: number;
+  gg: number;
   fabricType: string;
   composition: string;
   wtPerRoll: number;
@@ -111,6 +113,71 @@ const EnhancedSearchSelect = ({
   );
 };
 
+// Searchable Fabric Type Select Component
+const SearchableFabricTypeSelect = ({ 
+  value, 
+  onValueChange, 
+  placeholder = "Select Fabric Type"
+}: {
+  value: string;
+  onValueChange: (value: string) => void;
+  placeholder?: string;
+}) => {
+  const [searchTerm, setSearchTerm] = useState("");
+  const { data: fabricStructures = [] } = useFabricStructures();
+
+  const filteredOptions = useMemo(() => {
+    if (!searchTerm) return fabricStructures.slice(0, 50); // Limit initial results
+    return fabricStructures.filter(fabric => 
+      fabric.fabricstr.toLowerCase().includes(searchTerm.toLowerCase())
+    ).slice(0, 100); // Limit search results
+  }, [fabricStructures, searchTerm]);
+
+  return (
+    <Select value={value} onValueChange={onValueChange}>
+      <SelectTrigger className="h-7 text-xs border-gray-300">
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent className="max-h-80">
+        <div className="p-1 sticky top-0 bg-white z-10 border-b">
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400" />
+            <Input
+              placeholder="Type to search fabric types..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-7 h-7 text-xs border-0 focus:ring-0"
+              autoFocus
+            />
+          </div>
+        </div>
+        <div className="max-h-60 overflow-y-auto">
+          {filteredOptions.length === 0 ? (
+            <div className="p-2 text-xs text-gray-500 text-center">No fabric types found</div>
+          ) : (
+            filteredOptions.map((fabric) => (
+              <SelectItem 
+                key={fabric.id} 
+                value={fabric.fabricstr}
+                className="text-xs py-1"
+              >
+                <div>
+                  <div className="font-medium">{fabric.fabricstr}</div>
+                  {fabric.fabricCode && (
+                    <div className="text-xs text-gray-500">
+                      Code: {fabric.fabricCode}
+                    </div>
+                  )}
+                </div>
+              </SelectItem>
+            ))
+          )}
+        </div>
+      </SelectContent>
+    </Select>
+  );
+};
+
 const CreateSalesOrder = () => {
   const navigate = useNavigate();
 
@@ -128,7 +195,8 @@ const CreateSalesOrder = () => {
       itemId: '',
       itemName: '',
       yarnCount: '',
-      diaGG: '',
+      dia: 0,
+      gg: 0,
       fabricType: '',
       composition: '',
       wtPerRoll: 0,
@@ -146,6 +214,9 @@ const CreateSalesOrder = () => {
       stitchLength: '' // Add Stitch Length property
     }
   ]);
+  
+  // Add serial number state for the main sales order
+  const [serialNo, setSerialNo] = useState('');
 
   const [companyDetails, setCompanyDetails] = useState<CompanyDetails>({
     name: "Avyyan Textiles Pvt Ltd",
@@ -155,6 +226,7 @@ const CreateSalesOrder = () => {
 
   const [customers, setCustomers] = useState<DetailedCustomer[]>([]);
   const [items, setItems] = useState<StockItem[]>([]);
+  const { data: fabricStructures = [] } = useFabricStructures();
 
   // Voucher fields
   const [voucherType, setVoucherType] = useState('Sales Order');
@@ -227,22 +299,46 @@ const CreateSalesOrder = () => {
           TallyService.getStockItems()
         ]);
         
+        console.log('Company data fetched:', companyData); // Debug log
         setCompanyDetails(companyData);
         setCustomers(customerData);
         setItems(itemData);
       } catch (error) {
         console.error('Error fetching data:', error);
+        toast.error('Error', 'Failed to fetch data from server. Please check your connection.');
       }
     };
 
     fetchData();
   }, []);
 
-  // Generate voucher number
+  // Generate voucher number and serial number
   useEffect(() => {
-    const financialYear = getFinancialYear();
-    const series = isJobWork ? 'J' : 'A';
-    setVoucherNumber(`AKF/${financialYear}/${series}0001`);
+    const generateVoucherAndSerialNumber = async () => {
+      try {
+        const financialYear = getFinancialYear();
+        const series = isJobWork ? 'J' : 'A';
+        
+        // Get the next serial number from the backend
+        const nextSerialNumber = await SalesOrderWebService.getNextSerialNumber();
+        
+        // Set the serial number in state
+        setSerialNo(nextSerialNumber);
+        
+        // Format the voucher number according to the required format
+        setVoucherNumber(`AKF/${financialYear}/${series}${nextSerialNumber}`);
+      } catch (error) {
+        console.error('Error generating voucher and serial number:', error);
+        // Fallback to default if there's an error
+        const financialYear = getFinancialYear();
+        const series = isJobWork ? 'J' : 'A';
+        setVoucherNumber(`AKF/${financialYear}/${series}0001`);
+        setSerialNo('0001');
+        toast.error('Error', 'Failed to generate voucher number. Using default.');
+      }
+    };
+
+    generateVoucherAndSerialNumber();
   }, [isJobWork, selectedBuyer]);
 
   // Helper function to get financial year
@@ -282,7 +378,8 @@ const CreateSalesOrder = () => {
         itemId: '',
         itemName: '',
         yarnCount: '',
-        diaGG: '',
+        dia: 0,
+        gg: 0,
         fabricType: '',
         composition: '',
         wtPerRoll: 0,
@@ -293,7 +390,11 @@ const CreateSalesOrder = () => {
         igst: 0,
         sgst: 0,
         cgst: 0,
-        remarks: ''
+        remarks: '',
+        hsncode: '',
+        dueDate: '',
+        slitLine: '',
+        stitchLength: ''
       }
     ]);
   };
@@ -342,12 +443,17 @@ const CreateSalesOrder = () => {
         console.warn('Could not get current user information:', userError);
       }
       
+      // Calculate totals
+      const totalQty = rows.reduce((sum, row) => sum + row.qty, 0);
+      const totalAmount = rows.reduce((sum, row) => sum + row.amount, 0);
+      
       const createDto: CreateSalesOrderWebRequestDto = {
         voucherType: voucherType,
         voucherNumber: voucherNumber,
-        orderDate: orderDate,
+        orderDate: new Date(orderDate).toISOString(), // Convert to ISO format
         termsOfPayment: termsOfPayment,
         isJobWork: isJobWork,
+        serialNo: serialNo, // Add serial number to main order
         
         companyName: companyDetails.name,
         companyGSTIN: companyDetails.gstin,
@@ -369,11 +475,16 @@ const CreateSalesOrder = () => {
         
         remarks: '',
         
+        // Add totals
+        totalQuantity: totalQty,
+        totalAmount: totalAmount,
+        
         items: rows.map(row => ({
           itemName: row.itemName,
           itemDescription: '',
           yarnCount: row.yarnCount,
-          diaGG: row.diaGG,
+          dia: row.dia,
+          gg: row.gg,
           fabricType: row.fabricType,
           composition: row.composition,
           wtPerRoll: row.wtPerRoll,
@@ -384,7 +495,11 @@ const CreateSalesOrder = () => {
           igst: row.igst,
           sgst: row.sgst,
           cgst: row.cgst,
-          remarks: row.remarks
+          remarks: row.remarks,
+          // New fields
+          slitLine: row.slitLine || undefined,
+          stitchLength: row.stitchLength || undefined,
+          dueDate: row.dueDate ? new Date(row.dueDate).toISOString() : undefined
         }))
       };
 
@@ -450,8 +565,8 @@ const CreateSalesOrder = () => {
                 <div className="space-y-1">
                   <Input disabled value={companyDetails.name} className="h-6 text-xs" />
                   <div className="grid grid-cols-2 gap-1">
-                    <Input disabled value={companyDetails.gstin} className="h-6 text-xs" />
-                    <Input disabled value={companyDetails.state} className="h-6 text-xs" />
+                    <Input disabled value={companyDetails.gstin || 'GSTIN not available'} className="h-6 text-xs" />
+                    <Input disabled value={companyDetails.state || 'State not available'} className="h-6 text-xs" />
                   </div>
                 </div>
               </CardContent>
@@ -483,8 +598,8 @@ const CreateSalesOrder = () => {
                   </Select>
                   <Input 
                     value={voucherNumber} 
-                    onChange={(e) => setVoucherNumber(e.target.value)}
-                    className="h-6 text-xs"
+                    readOnly
+                    className="h-6 text-xs bg-gray-100"
                     placeholder="Voucher No"
                   />
                 </div>
@@ -511,7 +626,14 @@ const CreateSalesOrder = () => {
                   className="h-6 text-xs"
                   placeholder="Payment Terms"
                 />
+                <Input 
+                  value={serialNo} 
+                  readOnly
+                  className="h-6 text-xs bg-gray-100"
+                  placeholder="Serial No"
+                />
               </CardContent>
+
             )}
           </Card>
         </div>
@@ -713,7 +835,7 @@ const CreateSalesOrder = () => {
           <CardHeader className="py-1">
             <div className="flex justify-between items-center">
               <CardTitle className="text-sm">Order Items</CardTitle>
-              <Button type="button" variant="outline" size="sm" onClick={addRow} className="h-6 text-xs">
+              <Button type="button" variant="outline" size="sm" onClick={() => addRow()} className="h-6 text-xs">
                 <Plus className="h-3 w-3 mr-1" /> Add
               </Button>
             </div>
@@ -774,12 +896,23 @@ const CreateSalesOrder = () => {
                       />
                     </div>
                     <div>
-                      <label className="text-xs text-gray-500">Dia * GG</label>
+                      <label className="text-xs text-gray-500">Dia</label>
                       <Input 
-                        value={row.diaGG} 
-                        onChange={e => updateRow(index, 'diaGG', e.target.value)}
+                        type="number"
+                        value={row.dia} 
+                        onChange={e => updateRow(index, 'dia', Number(e.target.value))}
                         className="h-6 text-xs"
-                        placeholder="Dia*GG"
+                        placeholder="Dia"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500">GG</label>
+                      <Input 
+                        type="number"
+                        value={row.gg} 
+                        onChange={e => updateRow(index, 'gg', Number(e.target.value))}
+                        className="h-6 text-xs"
+                        placeholder="GG"
                       />
                     </div>
                     <div>
@@ -806,11 +939,10 @@ const CreateSalesOrder = () => {
                   <div className="col-span-3 grid grid-cols-2 gap-0.5">
                     <div>
                       <label className="text-xs text-gray-500">Fabric Type</label>
-                      <Input 
-                        value={row.fabricType} 
-                        onChange={e => updateRow(index, 'fabricType', e.target.value)}
-                        className="h-6 text-xs"
-                        placeholder="Fabric Type"
+                      <SearchableFabricTypeSelect
+                        value={row.fabricType}
+                        onValueChange={(value) => updateRow(index, 'fabricType', value)}
+                        placeholder="Select Fabric Type"
                       />
                     </div>
                     <div>
@@ -918,15 +1050,6 @@ const CreateSalesOrder = () => {
                         placeholder="Remarks"
                       />
                     </div>
-                    <div>
-                      <label className="text-xs text-gray-500">HSN/SAC</label>
-                      <Input 
-                        value={row.hsncode || ''} 
-                        disabled
-                        className="h-6 text-xs bg-gray-50"
-                        placeholder="HSN/SAC"
-                      />
-                    </div>
                   </div>
                 </div>
                 
@@ -942,6 +1065,7 @@ const CreateSalesOrder = () => {
                     />
                   </div>
                 </div>
+
               </div>
             ))}
 

@@ -28,6 +28,7 @@ export const PAGE_NAMES = {
     PICKING_AND_LOADING: 'Picking and Loading',
     TRANSPORT_MASTER: 'Transport Master',
     COURIER_MASTER: 'Courier Master',
+    SLIT_LINE_MASTER: 'Slit Line Master',
     INVOICE_GENERATION: 'Invoice Generation',
     
     PRODUCTION_REPORT: 'Production Report',

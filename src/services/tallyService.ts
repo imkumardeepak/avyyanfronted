@@ -4,7 +4,7 @@ import { toast } from '@/lib/toast';
 import type { AxiosResponse } from 'axios';
 
 // Define response types
-export interface TallyApiResponse<T> {
+interface TallyApiResponse<T> {
   success: boolean;
   message: string;
   data?: T;
@@ -44,17 +44,30 @@ export interface StockItem {
   hsncode?: string;
   yarnCount?: string;
   fabricType?: string;
-  // Add other fields as needed based on the actual API response
 }
 
 export class TallyService {
   // Fetch company details
   static async getCompanyDetails(): Promise<CompanyDetails> {
     try {
-      const response = await companyApi.getCompanyDetails();
+      const response: AxiosResponse<TallyApiResponse<string[]>> = await companyApi.getCompanyDetails() as AxiosResponse<TallyApiResponse<string[]>>;
       
-      // For now, returning mock data since we need to parse the actual response
-      // In a real implementation, you would parse the response.data to extract company details
+      // Parse the actual response from the backend
+      if (response.data.success && response.data.data) {
+        // Assuming the backend returns an array of company names
+        const companies = response.data.data;
+        if (companies && companies.length > 0) {
+          // Return the first company's details
+          // In a real implementation, you might want to let the user select a company
+          return {
+            name: companies[0],
+            gstin: "27AABCA1234D1Z5", // Default GSTIN since it's not available from current API
+            state: "Maharashtra" // Default state since it's not available from current API
+          };
+        }
+      }
+      
+      // Fallback to mock data if no company data is available
       return {
         name: "Avyyan Textiles Pvt Ltd",
         gstin: "27AABCA1234D1Z5",
@@ -73,7 +86,6 @@ export class TallyService {
       const response: AxiosResponse<TallyApiResponse<string[]>> = await allLedgerApi.getCustomers() as AxiosResponse<TallyApiResponse<string[]>>;
       
       // Parse the response to create customer objects
-      // This is a simplified implementation - you would need to adjust based on actual API response format
       if (response.data.success && response.data.data) {
         return response.data.data.map((customerName: string, index: number) => ({
           id: index + 1,
@@ -132,7 +144,6 @@ export class TallyService {
       const response: AxiosResponse<TallyApiResponse<string[]>> = await allLedgerApi.getSuppliers() as AxiosResponse<TallyApiResponse<string[]>>;
       
       // Parse the response to create supplier objects
-      // This is a simplified implementation - you would need to adjust based on actual API response format
       if (response.data.success && response.data.data) {
         return response.data.data.map((supplierName: string, index: number) => ({
           id: index + 1,
