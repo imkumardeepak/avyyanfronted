@@ -533,9 +533,13 @@ export const vouchersApi = {
 // ============================================
 
 export const companyApi = {
-  // GET /api/Company - Get company details
-  getCompanyDetails: (): Promise<AxiosResponse<TallyApiResponse<string[]>>> =>
+  // GET /api/Company - Get company names
+  getCompanyNames: (): Promise<AxiosResponse<TallyApiResponse<string[]>>> =>
     apiClient.get('/Company'),
+    
+  // GET /api/Company/details - Get detailed company information
+  getCompanyDetails: (): Promise<AxiosResponse<TallyApiResponse<any[]>>> =>
+    apiClient.get('/Company/details'),
 };
 
 // ============================================

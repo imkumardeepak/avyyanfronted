@@ -8,6 +8,7 @@ import { Plus, Save, X, ChevronDown, ChevronUp, Search } from 'lucide-react';
 import { TallyService } from '@/services/tallyService';
 import { SalesOrderWebService } from '@/services/salesOrderWebService';
 import { useFabricStructures } from '@/hooks/queries/useFabricStructureQueries';
+import { useSlitLines } from '@/hooks/queries/useSlitLineQueries';
 import type { CompanyDetails, DetailedCustomer, StockItem } from '@/services/tallyService';
 import type { CreateSalesOrderWebRequestDto, FabricStructureResponseDto } from '@/types/api-types';
 import { toast } from '@/lib/toast';
@@ -168,6 +169,69 @@ const SearchableFabricTypeSelect = ({
                       Code: {fabric.fabricCode}
                     </div>
                   )}
+                </div>
+              </SelectItem>
+            ))
+          )}
+        </div>
+      </SelectContent>
+    </Select>
+  );
+};
+
+// Searchable Slit Line Select Component
+const SearchableSlitLineSelect = ({ 
+  value, 
+  onValueChange, 
+  placeholder = "Select Slit Line"
+}: {
+  value: string;
+  onValueChange: (value: string) => void;
+  placeholder?: string;
+}) => {
+  const [searchTerm, setSearchTerm] = useState("");
+  const { data: slitLines = [] } = useSlitLines();
+
+  const filteredOptions = useMemo(() => {
+    if (!searchTerm) return slitLines.slice(0, 50); // Limit initial results
+    return slitLines.filter(slitLine => 
+      slitLine.slitLine.toLowerCase().includes(searchTerm.toLowerCase())
+    ).slice(0, 100); // Limit search results
+  }, [slitLines, searchTerm]);
+
+  return (
+    <Select value={value} onValueChange={onValueChange}>
+      <SelectTrigger className="h-7 text-xs border-gray-300">
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent className="max-h-80">
+        <div className="p-1 sticky top-0 bg-white z-10 border-b">
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400" />
+            <Input
+              placeholder="Type to search slit lines..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-7 h-7 text-xs border-0 focus:ring-0"
+              autoFocus
+            />
+          </div>
+        </div>
+        <div className="max-h-60 overflow-y-auto">
+          {filteredOptions.length === 0 ? (
+            <div className="p-2 text-xs text-gray-500 text-center">No slit lines found</div>
+          ) : (
+            filteredOptions.map((slitLine) => (
+              <SelectItem 
+                key={slitLine.id} 
+                value={slitLine.slitLine}
+                className="text-xs py-1"
+              >
+                <div>
+                  <div className="font-medium">{slitLine.slitLine}</div>
+                  <div className="text-xs text-gray-500">
+                    Code: {slitLine.slitLineCode}
+                  </div>
                 </div>
               </SelectItem>
             ))
@@ -568,6 +632,56 @@ const CreateSalesOrder = () => {
                     <Input disabled value={companyDetails.gstin || 'GSTIN not available'} className="h-6 text-xs" />
                     <Input disabled value={companyDetails.state || 'State not available'} className="h-6 text-xs" />
                   </div>
+                  {companyDetails.address && (
+                    <Textarea 
+                      disabled 
+                      value={companyDetails.address} 
+                      className="h-10 text-xs resize-none" 
+                      placeholder="Address not available"
+                    />
+                  )}
+                  <div className="grid grid-cols-2 gap-1">
+                    {companyDetails.email && (
+                      <Input 
+                        disabled 
+                        value={`Email: ${companyDetails.email}`} 
+                        className="h-6 text-xs" 
+                      />
+                    )}
+                    {companyDetails.phone && (
+                      <Input 
+                        disabled 
+                        value={`Phone: ${companyDetails.phone}`} 
+                        className="h-6 text-xs" 
+                      />
+                    )}
+                  </div>
+                  <div className="grid grid-cols-3 gap-1">
+                    {companyDetails.city && (
+                      <Input 
+                        disabled 
+                        value={companyDetails.city} 
+                        className="h-6 text-xs" 
+                        placeholder="City not available"
+                      />
+                    )}
+                    {companyDetails.zipcode && (
+                      <Input 
+                        disabled 
+                        value={companyDetails.zipcode} 
+                        className="h-6 text-xs" 
+                        placeholder="Zipcode not available"
+                      />
+                    )}
+                    {companyDetails.country && (
+                      <Input 
+                        disabled 
+                        value={companyDetails.country} 
+                        className="h-6 text-xs" 
+                        placeholder="Country not available"
+                      />
+                    )}
+                  </div>
                 </div>
               </CardContent>
             )}
@@ -917,11 +1031,10 @@ const CreateSalesOrder = () => {
                     </div>
                     <div>
                       <label className="text-xs text-gray-500">Slit Line</label>
-                      <Input 
-                        value={row.slitLine || ''} 
-                        onChange={e => updateRow(index, 'slitLine', e.target.value)}
-                        className="h-6 text-xs"
-                        placeholder="Slit Line"
+                      <SearchableSlitLineSelect
+                        value={row.slitLine || ''}
+                        onValueChange={(value) => updateRow(index, 'slitLine', value)}
+                        placeholder="Select Slit Line"
                       />
                     </div>
                     <div>
