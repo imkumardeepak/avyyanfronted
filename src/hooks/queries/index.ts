@@ -106,9 +106,21 @@ export * from './useShiftQueries';
 export * from './useSalesOrderQueries';
 export * from './useProductionAllotmentQueries';
 
+// Slit Line Queries
+export {
+  slitLineKeys,
+  useSlitLines,
+  useSlitLine,
+  useSearchSlitLines,
+  useCreateSlitLine,
+  useUpdateSlitLine,
+  useDeleteSlitLine,
+} from './useSlitLineQueries';
+
 // Export transport and courier hooks
 export * from './useTransportQueries';
 export * from './useCourierQueries';
+export * from './useSlitLineQueries';
 
 // Common Query Utilities
 export const queryUtils = {
@@ -139,6 +151,10 @@ export const queryUtils = {
   
   invalidateShiftQueries: (queryClient: { invalidateQueries: (args: { queryKey: string[] }) => void }) => {
     queryClient.invalidateQueries({ queryKey: ['shifts'] });
+  },
+  
+  invalidateSlitLineQueries: (queryClient: { invalidateQueries: (args: { queryKey: string[] }) => void }) => {
+    queryClient.invalidateQueries({ queryKey: ['slitLines'] });
   },
 
   // Clear all caches
@@ -203,6 +219,14 @@ export const createQueryKeys = {
     list: (filters: unknown) => [...createQueryKeys.shifts.lists(), { filters }] as const,
     details: () => [...createQueryKeys.shifts.all, 'detail'] as const,
     detail: (id: number) => [...createQueryKeys.shifts.details(), id] as const,
+  },
+  
+  slitLines: {
+    all: ['slitLines'] as const,
+    lists: () => [...createQueryKeys.slitLines.all, 'list'] as const,
+    list: (filters: unknown) => [...createQueryKeys.slitLines.lists(), { filters }] as const,
+    details: () => [...createQueryKeys.slitLines.all, 'detail'] as const,
+    detail: (id: number) => [...createQueryKeys.slitLines.details(), id] as const,
   },
 };
 

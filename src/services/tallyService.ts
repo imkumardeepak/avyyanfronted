@@ -14,6 +14,12 @@ export interface CompanyDetails {
   name: string;
   gstin: string;
   state: string;
+  address?: string;
+  email?: string;
+  phone?: string;
+  city?: string;
+  zipcode?: string;
+  country?: string;
 }
 
 export interface Customer {
@@ -50,15 +56,40 @@ export class TallyService {
   // Fetch company details
   static async getCompanyDetails(): Promise<CompanyDetails> {
     try {
-      const response: AxiosResponse<TallyApiResponse<string[]>> = await companyApi.getCompanyDetails() as AxiosResponse<TallyApiResponse<string[]>>;
+      // First try to get detailed company information
+      try {
+        const response: AxiosResponse<TallyApiResponse<any[]>> = await companyApi.getCompanyDetails() as AxiosResponse<TallyApiResponse<any[]>>;
+        
+        // Parse the actual response from the backend
+        if (response.data.success && response.data.data) {
+          // Assuming the backend returns an array of company details
+          const companies = response.data.data;
+          if (companies && companies.length > 0) {
+            // Return the first company's details
+            const company = companies[0];
+            return {
+              name: company.name1 || company.name || "Unknown Company",
+              gstin: company.gst || "Not Available",
+              state: company.state || "Not Available",
+              address: company.address || undefined,
+              email: company.contactpersonemail || company.email || undefined,
+              phone: company.phoneno || company.contactpersonno || undefined,
+              city: company.city || undefined,
+              zipcode: company.zipcode || undefined,
+              country: company.country || undefined
+            };
+          }
+        }
+      } catch (detailedError) {
+        console.warn('Could not fetch detailed company information, falling back to basic company names');
+      }
       
-      // Parse the actual response from the backend
-      if (response.data.success && response.data.data) {
-        // Assuming the backend returns an array of company names
-        const companies = response.data.data;
+      // Fallback to basic company names if detailed info is not available
+      const namesResponse: AxiosResponse<TallyApiResponse<string[]>> = await companyApi.getCompanyNames() as AxiosResponse<TallyApiResponse<string[]>>;
+      
+      if (namesResponse.data.success && namesResponse.data.data) {
+        const companies = namesResponse.data.data;
         if (companies && companies.length > 0) {
-          // Return the first company's details
-          // In a real implementation, you might want to let the user select a company
           return {
             name: companies[0],
             gstin: "27AABCA1234D1Z5", // Default GSTIN since it's not available from current API
