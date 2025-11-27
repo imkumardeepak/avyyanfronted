@@ -101,6 +101,12 @@ const navConfig: NavItem[] = [
         icon: ArrowRight,
         description: 'Manage slit lines for production',
       }, 
+      {
+        title: PAGE_NAMES.EXCEL_UPLOAD,
+        href: '/excel-upload',
+        icon: ArrowRight,
+        description: 'Upload Excel and CSV files',
+      },
     ],
   },
   {

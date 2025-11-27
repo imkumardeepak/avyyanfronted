@@ -18,6 +18,7 @@ const Login = lazy(() => import('../pages/Login'));
 const Register = lazy(() => import('../pages/Register'));
 const PasswordReset = lazy(() => import('../pages/PasswordReset'));
 const Invoice = lazy(() => import('../pages/Invoice'));
+const ExcelUpload = lazy(() => import('../pages/ExcelUpload'));
 
 // User Management Pages
 const UserManagement = lazy(() => import('../pages/UserManagement'));
@@ -80,6 +81,7 @@ const PickingAndLoading = lazy(() => import('../pages/PickingAndLoading'));
 const DispatchPlanning = lazy(() => import('../pages/DispatchPlanning'));
 const DispatchDetails = lazy(() => import('../pages/DispatchDetails'));
 const LoadingSheet = lazy(() => import('../pages/LoadingSheet'));
+
 
 // Transport Management Pages
 const TransportManagement = lazy(() => import('../pages/TransportManagement'));
@@ -712,8 +714,17 @@ const Router = () => {
                 </LazyRoute>
               }
             /> */}
-
+           {/* Excel Upload Route */}
+            <Route
+              path="excel-upload"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <ExcelUpload />
+                </LazyRoute>
+              }
+            />
           </Route>
+             
         </Routes>
       </Suspense>
     </>

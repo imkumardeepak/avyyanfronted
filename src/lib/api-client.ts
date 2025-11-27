@@ -79,6 +79,7 @@ import type {
   CreateSlitLineRequestDto,
   UpdateSlitLineRequestDto,
   SlitLineSearchRequestDto,
+  UploadFgRollsResponseDto,
 } from '@/types/api-types';
 
 // Add TallyApiResponse interface
@@ -536,7 +537,7 @@ export const companyApi = {
   // GET /api/Company - Get company names
   getCompanyNames: (): Promise<AxiosResponse<TallyApiResponse<string[]>>> =>
     apiClient.get('/Company'),
-    
+
   // GET /api/Company/details - Get detailed company information
   getCompanyDetails: (): Promise<AxiosResponse<TallyApiResponse<any[]>>> =>
     apiClient.get('/Company/details'),
@@ -550,11 +551,11 @@ export const allLedgerApi = {
   // GET /api/AllLedger/GetCustomer - Get all customers
   getCustomers: (): Promise<AxiosResponse<TallyApiResponse<string[]>>> =>
     apiClient.get('/AllLedger/GetCustomer'),
-    
+
   // GET /api/AllLedger/GetSupplier - Get all suppliers
   getSuppliers: (): Promise<AxiosResponse<TallyApiResponse<string[]>>> =>
     apiClient.get('/AllLedger/GetSupplier'),
-    
+
   // GET /api/AllLedger/GetCustomerData - Get detailed customer data
   getCustomerData: (): Promise<AxiosResponse<TallyApiResponse<any[]>>> =>
     apiClient.get('/AllLedger/GetCustomerData'),
@@ -862,6 +863,20 @@ export const slitLineApi = {
     apiClient.delete(`/SlitLine/${id}`),
 };
 
+// ============================================
+// FG ROLLS API (/api/fg-rolls)
+// ============================================
+
+export const fgRollsApi = {
+  uploadFgRolls: (vouchers: any[]): Promise<AxiosResponse<UploadFgRollsResponseDto>> =>
+    apiClient.post('/fg-rolls/upload', vouchers, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    }),
+};
+
+
 // Export all APIs grouped by functionality
 export const api = {
   auth: authApi,
@@ -885,4 +900,5 @@ export const api = {
   company: companyApi,
   allLedger: allLedgerApi,
   stockItem: stockItemApi,
+  fgRolls: fgRollsApi
 };
