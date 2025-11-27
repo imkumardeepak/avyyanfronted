@@ -32,7 +32,8 @@ export const PAGE_NAMES = {
     INVOICE_GENERATION: 'Invoice Generation',
     
     PRODUCTION_REPORT: 'Production Report',
-    FABRIC_STOCK_REPORT: 'Fabric Stock Report'
+    FABRIC_STOCK_REPORT: 'Fabric Stock Report',
+    EXCEL_UPLOAD: 'Excel Upload'
 } as const;
 
 // Array of all page names for role management

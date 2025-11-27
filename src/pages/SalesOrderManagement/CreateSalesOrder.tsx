@@ -38,6 +38,8 @@ interface SalesOrderItem {
   dueDate?: string; // Add Due Date property
   slitLine?: string; // Add Slit Line property
   stitchLength?: string; // Add Stitch Length property
+  isProcess?: boolean; // Add Process flag
+  unit?: string; // Add Unit field
 }
 
 // Enhanced Searchable Select Component
@@ -275,7 +277,9 @@ const CreateSalesOrder = () => {
       hsncode: '', // Add HSN/SAC code property
       dueDate: '', // Add Due Date property
       slitLine: '', // Add Slit Line property
-      stitchLength: '' // Add Stitch Length property
+      stitchLength: '', // Add Stitch Length property
+      isProcess: false, // Add Process flag
+      unit: '' // Add Unit field
     }
   ]);
   
@@ -298,6 +302,12 @@ const CreateSalesOrder = () => {
   const [termsOfPayment, setTermsOfPayment] = useState('');
   const [isJobWork, setIsJobWork] = useState(false);
   const [orderDate, setOrderDate] = useState(new Date().toISOString().split('T')[0]);
+  
+  // Additional fields
+  const [isProcess, setIsProcess] = useState(false);
+  const [orderNo, setOrderNo] = useState('');
+  const [termsOfDelivery, setTermsOfDelivery] = useState('');
+  const [dispatchThrough, setDispatchThrough] = useState('');
 
   const [selectedBuyer, setSelectedBuyer] = useState<DetailedCustomer | null>(null);
   const [selectedConsignee, setSelectedConsignee] = useState<DetailedCustomer | null>(null);
@@ -458,7 +468,9 @@ const CreateSalesOrder = () => {
         hsncode: '',
         dueDate: '',
         slitLine: '',
-        stitchLength: ''
+        stitchLength: '',
+        isProcess: false,
+        unit: ''
       }
     ]);
   };
@@ -518,6 +530,10 @@ const CreateSalesOrder = () => {
         termsOfPayment: termsOfPayment,
         isJobWork: isJobWork,
         serialNo: serialNo, // Add serial number to main order
+        isProcess: isProcess, // Add process flag
+        orderNo: orderNo, // Add order number
+        termsOfDelivery: termsOfDelivery, // Add terms of delivery
+        dispatchThrough: dispatchThrough, // Add dispatch through
         
         companyName: companyDetails.name,
         companyGSTIN: companyDetails.gstin,
@@ -561,9 +577,11 @@ const CreateSalesOrder = () => {
           cgst: row.cgst,
           remarks: row.remarks,
           // New fields
+          unit: row.unit || undefined,
           slitLine: row.slitLine || undefined,
           stitchLength: row.stitchLength || undefined,
-          dueDate: row.dueDate ? new Date(row.dueDate).toISOString() : undefined
+          dueDate: row.dueDate ? new Date(row.dueDate).toISOString() : undefined,
+          isProcess: row.isProcess || false
         }))
       };
 
@@ -745,6 +763,33 @@ const CreateSalesOrder = () => {
                   readOnly
                   className="h-6 text-xs bg-gray-100"
                   placeholder="Serial No"
+                />
+                <div className="flex items-center space-x-1">
+                  <input
+                    type="checkbox"
+                    checked={isProcess}
+                    onChange={(e) => setIsProcess(e.target.checked)}
+                    className="rounded scale-75"
+                  />
+                  <span className="text-xs">Process</span>
+                </div>
+                <Input 
+                  value={orderNo} 
+                  onChange={(e) => setOrderNo(e.target.value)}
+                  className="h-6 text-xs"
+                  placeholder="Order No"
+                />
+                <Input 
+                  value={termsOfDelivery} 
+                  onChange={(e) => setTermsOfDelivery(e.target.value)}
+                  className="h-6 text-xs"
+                  placeholder="Terms of Delivery"
+                />
+                <Input 
+                  value={dispatchThrough} 
+                  onChange={(e) => setDispatchThrough(e.target.value)}
+                  className="h-6 text-xs"
+                  placeholder="Dispatch Through"
                 />
               </CardContent>
 
@@ -1103,13 +1148,21 @@ const CreateSalesOrder = () => {
                     </div>
                     <div>
                       <label className="text-xs text-gray-500">Qty</label>
-                      <Input 
-                        type="number" 
-                        value={row.qty} 
-                        onChange={e => updateRow(index, 'qty', Number(e.target.value))}
-                        className="h-6 text-xs"
-                        placeholder="Qty"
-                      />
+                      <div className="flex">
+                        <Input 
+                          type="number" 
+                          value={row.qty} 
+                          onChange={e => updateRow(index, 'qty', Number(e.target.value))}
+                          className="h-6 text-xs w-2/3"
+                          placeholder="Qty"
+                        />
+                        <Input 
+                          value={row.unit || ''} 
+                          onChange={e => updateRow(index, 'unit', e.target.value)}
+                          className="h-6 text-xs w-1/3"
+                          placeholder="Unit"
+                        />
+                      </div>
                     </div>
                     <div>
                       <label className="text-xs text-gray-500">Amount</label>
@@ -1162,6 +1215,15 @@ const CreateSalesOrder = () => {
                         className="h-6 text-xs"
                         placeholder="Remarks"
                       />
+                    </div>
+                    <div className="flex items-center justify-center pt-4">
+                      <input
+                        type="checkbox"
+                        checked={row.isProcess || false}
+                        onChange={e => updateRow(index, 'isProcess', e.target.checked)}
+                        className="rounded scale-75"
+                      />
+                      <span className="text-xs ml-1">Process</span>
                     </div>
                   </div>
                 </div>

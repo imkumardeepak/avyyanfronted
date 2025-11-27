@@ -79,6 +79,7 @@ import type {
   CreateSlitLineRequestDto,
   UpdateSlitLineRequestDto,
   SlitLineSearchRequestDto,
+  UploadFgRollsResponseDto,
 } from '@/types/api-types';
 
 // Add TallyApiResponse interface
@@ -862,6 +863,20 @@ export const slitLineApi = {
     apiClient.delete(`/SlitLine/${id}`),
 };
 
+// ============================================
+// FG ROLLS API (/api/fg-rolls)
+// ============================================
+
+export const fgRollsApi = {
+  uploadFgRolls: (vouchers: any[]): Promise<AxiosResponse<UploadFgRollsResponseDto>> =>
+    apiClient.post('/fg-rolls/upload', vouchers, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    }),
+};
+
+
 // Export all APIs grouped by functionality
 export const api = {
   auth: authApi,
@@ -885,4 +900,5 @@ export const api = {
   company: companyApi,
   allLedger: allLedgerApi,
   stockItem: stockItemApi,
+  fgRolls: fgRollsApi,
 };

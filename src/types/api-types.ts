@@ -1467,6 +1467,12 @@ export interface CreateSalesOrderWebRequestDto {
   isJobWork: boolean; // Checkbox for job work
   serialNo?: string; // Add serial number field
   
+  // Additional fields
+  isProcess?: boolean; // Process flag
+  orderNo?: string; // Order number
+  termsOfDelivery?: string; // Terms of delivery
+  dispatchThrough?: string; // Dispatch through
+  
   // Company details
   companyName: string;
   companyGSTIN: string;
@@ -1519,9 +1525,11 @@ export interface CreateSalesOrderItemWebRequestDto {
   remarks: string;
   
   // New fields
+  unit?: string; // Unit field
   slitLine?: string;
   stitchLength?: string;
   dueDate?: string;
+  isProcess?: boolean; // Process flag
 }
 
 export interface UpdateSalesOrderWebRequestDto {
@@ -1532,6 +1540,12 @@ export interface UpdateSalesOrderWebRequestDto {
   termsOfPayment: string;
   isJobWork: boolean; // Checkbox for job work
   serialNo?: string; // Add serial number field
+  
+  // Additional fields
+  isProcess?: boolean; // Process flag
+  orderNo?: string; // Order number
+  termsOfDelivery?: string; // Terms of delivery
+  dispatchThrough?: string; // Dispatch through
   
   // Company details
   companyName: string;
@@ -1587,9 +1601,11 @@ export interface UpdateSalesOrderItemWebRequestDto {
   remarks: string;
   
   // New fields
+  unit?: string; // Unit field
   slitLine?: string;
   stitchLength?: string;
   dueDate?: string;
+  isProcess?: boolean; // Process flag
 }
 
 // ============================================
@@ -1620,4 +1636,27 @@ export interface SlitLineSearchRequestDto {
   slitLine?: string;
   slitLineCode?: string;
   isActive?: boolean;
+}
+
+// ============================================
+// FG ROLLS DTOs
+// ============================================
+
+export interface FgRollDto {
+  machineNo: string;
+  rollNumber: string;
+}
+
+export interface VoucherGroupDto {
+  voucherNo: string;
+  itemName: string;
+  lotNo: string;
+  rolls: FgRollDto[];
+}
+
+export interface UploadFgRollsResponseDto {
+  success: boolean;
+  message: string;
+  totalRolls: number;
+  data: VoucherGroupDto[];
 }
