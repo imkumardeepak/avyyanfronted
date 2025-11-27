@@ -14,7 +14,7 @@ export const PAGE_NAMES = {
     SALES_ORDERS: 'Sales Orders',
     CHAT: 'Chat',
     NOTIFICATIONS: 'Notifications',
-    PRODUCTION_ALLOTMENT: 'Production Lotment',
+    PRODUCTION_ALLOTMENT: 'Lot List',
     STORAGE_CAPTURE: 'Storage Capture',
     TAPE_COLOR_MASTER: 'Tape Color',
     SHIFT_MASTER: 'Shift Master',
@@ -28,6 +28,7 @@ export const PAGE_NAMES = {
     PICKING_AND_LOADING: 'Picking and Loading',
     TRANSPORT_MASTER: 'Transport Master',
     COURIER_MASTER: 'Courier Master',
+    SLIT_LINE_MASTER: 'Slit Line Master',
     INVOICE_GENERATION: 'Invoice Generation',
     
     PRODUCTION_REPORT: 'Production Report',

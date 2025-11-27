@@ -61,6 +61,7 @@ const ShiftForm = lazy(() => import('../pages/ShiftManagement/ShiftForm'));
 
 // Sales Order Management Pages
 const SalesOrderManagement = lazy(() => import('../pages/SalesOrderManagement'));
+const CreateSalesOrder = lazy(() => import('../pages/SalesOrderManagement/CreateSalesOrder'));
 const SalesOrderItemProcessing = lazy(
   () => import('../pages/SalesOrderManagement/SalesOrderItemProcessing')
 );
@@ -87,6 +88,10 @@ const TransportForm = lazy(() => import('../pages/TransportManagement/TransportF
 // Courier Management Pages
 const CourierManagement = lazy(() => import('../pages/CourierManagement'));
 const CourierForm = lazy(() => import('../pages/CourierManagement/CourierForm'));
+
+// Slit Line Management Pages
+const SlitLineManagement = lazy(() => import('../pages/SlitLineManagement'));
+const SlitLineForm = lazy(() => import('../pages/SlitLineManagement/SlitLineForm'));
 
 // Reports Page
 const Reports = lazy(() => import('../pages/ProductionReport'));
@@ -369,12 +374,46 @@ const Router = () => {
               }
             />
 
+            {/* Slit Line Management Routes */}
+            <Route
+              path="slit-lines"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <SlitLineManagement />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="slit-lines/create"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <SlitLineForm />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="slit-lines/:id/edit"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <SlitLineForm />
+                </LazyRoute>
+              }
+            />
+
             {/* Sales Order Management Routes */}
             <Route
               path="sales-orders"
               element={
                 <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
                   <SalesOrderManagement />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="sales-orders/create"
+              element={
+                <LazyRoute onLoadStart={handleStart} onLoadComplete={handleComplete}>
+                  <CreateSalesOrder />
                 </LazyRoute>
               }
             />

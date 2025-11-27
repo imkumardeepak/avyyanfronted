@@ -95,6 +95,12 @@ const navConfig: NavItem[] = [
         icon: ArrowRight,
         description: 'Manage courier companies and services',
       },
+      {
+        title: PAGE_NAMES.SLIT_LINE_MASTER,
+        href: '/slit-lines',
+        icon: ArrowRight,
+        description: 'Manage slit lines for production',
+      }, 
     ],
   },
   {

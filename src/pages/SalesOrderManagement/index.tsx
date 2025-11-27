@@ -17,7 +17,7 @@ import {
   useProcessedSalesOrders,
 } from '@/hooks/queries/useSalesOrderQueries';
 import { formatDate } from '@/lib/utils';
-import { Eye, RefreshCw, Settings } from 'lucide-react';
+import { Eye, Plus, RefreshCw, Settings } from 'lucide-react';
 import type { Row } from '@tanstack/react-table';
 import type { SalesOrderDto, SalesOrderItemDto } from '@/types/api-types';
 import { vouchersApi } from '@/lib/api-client';
@@ -53,6 +53,11 @@ const SalesOrderManagement = () => {
     } finally {
       setIsRefreshing(false);
     }
+  };
+
+  const handleCreateSalesOrder = () => {
+    // Navigate to the create sales order page
+    navigate('/sales-orders/create');
   };
 
   const handleViewItems = (order: SalesOrderDto) => {
@@ -180,10 +185,16 @@ const SalesOrderManagement = () => {
           <h1 className="text-3xl font-bold font-display">Sales Order Management</h1>
           <p className="text-muted-foreground">Manage sales orders (Unprocessed and Processed)</p>
         </div>
-        <Button onClick={handleRefresh} disabled={isRefreshing}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
+        <div className="flex space-x-2">
+          <Button onClick={handleCreateSalesOrder}>
+            <Plus className="h-4 w-4 mr-2" />
+            Create Sales Order
+          </Button>
+          <Button onClick={handleRefresh} disabled={isRefreshing}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Filter Buttons */}

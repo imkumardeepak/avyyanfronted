@@ -75,7 +75,30 @@ import type {
   CreateCourierRequestDto,
   UpdateCourierRequestDto,
   CourierSearchRequestDto,
+  SlitLineResponseDto,
+  CreateSlitLineRequestDto,
+  UpdateSlitLineRequestDto,
+  SlitLineSearchRequestDto,
 } from '@/types/api-types';
+
+// Add TallyApiResponse interface
+interface TallyApiResponse<T> {
+  success: boolean;
+  message: string;
+  data?: T;
+}
+
+// Add StockItem interface for Tally integration
+interface StockItem {
+  id: number;
+  name: string;
+  alias?: string;
+  unit?: string;
+  category?: string;
+  hsncode?: string;
+  yarnCount?: string;
+  fabricType?: string;
+}
 
 // API Configuration
 const API_CONFIG = {
@@ -506,6 +529,48 @@ export const vouchersApi = {
 };
 
 // ============================================
+// COMPANY API (/api/Company)
+// ============================================
+
+export const companyApi = {
+  // GET /api/Company - Get company names
+  getCompanyNames: (): Promise<AxiosResponse<TallyApiResponse<string[]>>> =>
+    apiClient.get('/Company'),
+    
+  // GET /api/Company/details - Get detailed company information
+  getCompanyDetails: (): Promise<AxiosResponse<TallyApiResponse<any[]>>> =>
+    apiClient.get('/Company/details'),
+};
+
+// ============================================
+// ALL LEDGER API (/api/AllLedger)
+// ============================================
+
+export const allLedgerApi = {
+  // GET /api/AllLedger/GetCustomer - Get all customers
+  getCustomers: (): Promise<AxiosResponse<TallyApiResponse<string[]>>> =>
+    apiClient.get('/AllLedger/GetCustomer'),
+    
+  // GET /api/AllLedger/GetSupplier - Get all suppliers
+  getSuppliers: (): Promise<AxiosResponse<TallyApiResponse<string[]>>> =>
+    apiClient.get('/AllLedger/GetSupplier'),
+    
+  // GET /api/AllLedger/GetCustomerData - Get detailed customer data
+  getCustomerData: (): Promise<AxiosResponse<TallyApiResponse<any[]>>> =>
+    apiClient.get('/AllLedger/GetCustomerData'),
+};
+
+// ============================================
+// STOCK ITEM API (/api/StockItem)
+// ============================================
+
+export const stockItemApi = {
+  // GET /api/StockItem - Get all stock items
+  getStockItems: (): Promise<AxiosResponse<TallyApiResponse<StockItem[]>>> =>
+    apiClient.get('/StockItem'),
+};
+
+// ============================================
 // SALES ORDER API (/api/SalesOrder)
 // ============================================
 
@@ -767,6 +832,36 @@ export const courierApi = {
     apiClient.delete(`/Courier/${id}`),
 };
 
+// ============================================
+// SLIT LINE API (/api/SlitLine)
+// ============================================
+
+export const slitLineApi = {
+  // GET /api/SlitLine - Get all slit lines
+  getAllSlitLines: (): Promise<AxiosResponse<SlitLineResponseDto[]>> =>
+    apiClient.get('/SlitLine'),
+
+  // GET /api/SlitLine/{id} - Get slit line by ID
+  getSlitLine: (id: number): Promise<AxiosResponse<SlitLineResponseDto>> =>
+    apiClient.get(`/SlitLine/${id}`),
+
+  // GET /api/SlitLine/search - Search slit lines
+  searchSlitLines: (params: SlitLineSearchRequestDto): Promise<AxiosResponse<SlitLineResponseDto[]>> =>
+    apiClient.get('/SlitLine/search', { params }),
+
+  // POST /api/SlitLine - Create new slit line
+  createSlitLine: (data: CreateSlitLineRequestDto): Promise<AxiosResponse<SlitLineResponseDto>> =>
+    apiClient.post('/SlitLine', data),
+
+  // PUT /api/SlitLine/{id} - Update slit line
+  updateSlitLine: (id: number, data: UpdateSlitLineRequestDto): Promise<AxiosResponse<SlitLineResponseDto>> =>
+    apiClient.put(`/SlitLine/${id}`, data),
+
+  // DELETE /api/SlitLine/{id} - Delete slit line
+  deleteSlitLine: (id: number): Promise<AxiosResponse<void>> =>
+    apiClient.delete(`/SlitLine/${id}`),
+};
+
 // Export all APIs grouped by functionality
 export const api = {
   auth: authApi,
@@ -785,4 +880,9 @@ export const api = {
   rollAssignment: rollAssignmentApi,
   storageCapture: storageCaptureApi,
   dispatchPlanning: dispatchPlanningApi,
+  slitLine: slitLineApi,
+  vouchers: vouchersApi,
+  company: companyApi,
+  allLedger: allLedgerApi,
+  stockItem: stockItemApi,
 };
