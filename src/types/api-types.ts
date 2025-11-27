@@ -1383,7 +1383,7 @@ export interface CourierSearchRequestDto {
 
 export interface SalesOrderWebResponseDto {
   id: number;
-  
+
   // Voucher details
   voucherType: string;
   voucherNumber: string;
@@ -1391,12 +1391,12 @@ export interface SalesOrderWebResponseDto {
   termsOfPayment: string;
   isJobWork: boolean; // Checkbox for job work
   serialNo?: string; // Add serial number field
-  
+
   // Company details
   companyName: string;
   companyGSTIN: string;
   companyState: string;
-  
+
   // Buyer details (Bill To)
   buyerName: string;
   buyerGSTIN?: string | null;
@@ -1404,7 +1404,7 @@ export interface SalesOrderWebResponseDto {
   buyerPhone: string;
   buyerContactPerson: string;
   buyerAddress: string;
-  
+
   // Consignee details (Ship To)
   consigneeName: string;
   consigneeGSTIN?: string | null;
@@ -1412,17 +1412,17 @@ export interface SalesOrderWebResponseDto {
   consigneePhone: string;
   consigneeContactPerson: string;
   consigneeAddress: string;
-  
+
   // Order details
   remarks: string;
-  
+
   // New fields for totals
   totalQuantity: number;
   totalAmount: number;
-  
+
   // Items
   items: SalesOrderItemWebResponseDto[];
-  
+
   // Audit fields
   createdAt: string; // ISO 8601 datetime
   createdBy: string;
@@ -1433,7 +1433,7 @@ export interface SalesOrderWebResponseDto {
 export interface SalesOrderItemWebResponseDto {
   id: number;
   salesOrderWebId: number;
-  
+
   // Item details
   itemName: string;
   itemDescription: string;
@@ -1451,7 +1451,7 @@ export interface SalesOrderItemWebResponseDto {
   sgst: number;
   cgst: number; // Added CGST field
   remarks: string;
-  
+
   // New fields
   slitLine?: string;
   stitchLength?: string;
@@ -1466,18 +1466,12 @@ export interface CreateSalesOrderWebRequestDto {
   termsOfPayment: string;
   isJobWork: boolean; // Checkbox for job work
   serialNo?: string; // Add serial number field
-  
-  // Additional fields
-  isProcess?: boolean; // Process flag
-  orderNo?: string; // Order number
-  termsOfDelivery?: string; // Terms of delivery
-  dispatchThrough?: string; // Dispatch through
-  
+
   // Company details
   companyName: string;
   companyGSTIN: string;
   companyState: string;
-  
+
   // Buyer details (Bill To)
   buyerName: string;
   buyerGSTIN?: string | null;
@@ -1485,7 +1479,7 @@ export interface CreateSalesOrderWebRequestDto {
   buyerPhone: string;
   buyerContactPerson: string;
   buyerAddress: string;
-  
+
   // Consignee details (Ship To)
   consigneeName: string;
   consigneeGSTIN?: string | null;
@@ -1493,14 +1487,14 @@ export interface CreateSalesOrderWebRequestDto {
   consigneePhone: string;
   consigneeContactPerson: string;
   consigneeAddress: string;
-  
+
   // Order details
   remarks: string;
-  
+
   // New fields for totals
   totalQuantity: number;
   totalAmount: number;
-  
+
   // Items
   items: CreateSalesOrderItemWebRequestDto[];
 }
@@ -1523,7 +1517,7 @@ export interface CreateSalesOrderItemWebRequestDto {
   sgst: number;
   cgst: number; // Added CGST field
   remarks: string;
-  
+
   // New fields
   unit?: string; // Unit field
   slitLine?: string;
@@ -1540,18 +1534,12 @@ export interface UpdateSalesOrderWebRequestDto {
   termsOfPayment: string;
   isJobWork: boolean; // Checkbox for job work
   serialNo?: string; // Add serial number field
-  
-  // Additional fields
-  isProcess?: boolean; // Process flag
-  orderNo?: string; // Order number
-  termsOfDelivery?: string; // Terms of delivery
-  dispatchThrough?: string; // Dispatch through
-  
+
   // Company details
   companyName: string;
   companyGSTIN: string;
   companyState: string;
-  
+
   // Buyer details (Bill To)
   buyerName: string;
   buyerGSTIN?: string | null;
@@ -1559,7 +1547,7 @@ export interface UpdateSalesOrderWebRequestDto {
   buyerPhone: string;
   buyerContactPerson: string;
   buyerAddress: string;
-  
+
   // Consignee details (Ship To)
   consigneeName: string;
   consigneeGSTIN?: string | null;
@@ -1567,21 +1555,21 @@ export interface UpdateSalesOrderWebRequestDto {
   consigneePhone: string;
   consigneeContactPerson: string;
   consigneeAddress: string;
-  
+
   // Order details
   remarks: string;
-  
+
   // New fields for totals
   totalQuantity: number;
   totalAmount: number;
-  
+
   // Items
   items: UpdateSalesOrderItemWebRequestDto[];
 }
 
 export interface UpdateSalesOrderItemWebRequestDto {
   id?: number;
-  
+
   // Item details
   itemName: string;
   itemDescription: string;
@@ -1599,7 +1587,7 @@ export interface UpdateSalesOrderItemWebRequestDto {
   sgst: number;
   cgst: number; // Added CGST field
   remarks: string;
-  
+
   // New fields
   unit?: string; // Unit field
   slitLine?: string;
@@ -1638,10 +1626,6 @@ export interface SlitLineSearchRequestDto {
   isActive?: boolean;
 }
 
-// ============================================
-// FG ROLLS DTOs
-// ============================================
-
 export interface FgRollDto {
   machineNo: string;
   rollNumber: string;
@@ -1660,3 +1644,4 @@ export interface UploadFgRollsResponseDto {
   totalRolls: number;
   data: VoucherGroupDto[];
 }
+
