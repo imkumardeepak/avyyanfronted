@@ -10,6 +10,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
 
+  console.log("ProtectedRoute: ", { isAuthenticated, isLoading });
+
   if (isLoading) {
     return <Loader />;
   }
