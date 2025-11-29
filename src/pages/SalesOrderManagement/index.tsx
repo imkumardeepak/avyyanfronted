@@ -13,16 +13,17 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { apiUtils } from '@/lib/api-client';
 import {
-  useUnprocessedSalesOrders,
-  useProcessedSalesOrders,
-} from '@/hooks/queries/useSalesOrderQueries';
+  useUnprocessedSalesOrdersWeb,
+  useProcessedSalesOrdersWeb,
+} from '@/hooks/queries/useSalesOrderWebQueries';
 import { formatDate } from '@/lib/utils';
 import { Eye, Plus, RefreshCw, Settings } from 'lucide-react';
 import type { Row } from '@tanstack/react-table';
-import type { SalesOrderDto, SalesOrderItemDto } from '@/types/api-types';
+import type { SalesOrderWebResponseDto, SalesOrderItemWebResponseDto } from '@/types/api-types';
 import { vouchersApi } from '@/lib/api-client';
+import { SalesOrderWebService } from '@/services/salesOrderWebService';
 
-type SalesOrderCellProps = { row: Row<SalesOrderDto> };
+type SalesOrderCellProps = { row: Row<SalesOrderWebResponseDto> };
 
 const SalesOrderManagement = () => {
   const navigate = useNavigate();
@@ -31,14 +32,14 @@ const SalesOrderManagement = () => {
     isLoading: isUnprocessedLoading,
     error: unprocessedError,
     refetch: refetchUnprocessed,
-  } = useUnprocessedSalesOrders();
+  } = useUnprocessedSalesOrdersWeb();
   const {
     data: processedSalesOrders = [],
     isLoading: isProcessedLoading,
     error: processedError,
     refetch: refetchProcessed,
-  } = useProcessedSalesOrders();
-  const [selectedOrder, setSelectedOrder] = useState<SalesOrderDto | null>(null);
+  } = useProcessedSalesOrdersWeb();
+  const [selectedOrder, setSelectedOrder] = useState<SalesOrderWebResponseDto | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [filter, setFilter] = useState<'all' | 'unprocessed' | 'processed'>('all');
@@ -60,12 +61,12 @@ const SalesOrderManagement = () => {
     navigate('/sales-orders/create');
   };
 
-  const handleViewItems = (order: SalesOrderDto) => {
+  const handleViewItems = (order: SalesOrderWebResponseDto) => {
     setSelectedOrder(order);
     setIsModalOpen(true);
   };
 
-  const handleProcessOrderItem = (item: SalesOrderItemDto, order: SalesOrderDto) => {
+  const handleProcessOrderItem = (item: SalesOrderItemWebResponseDto, order: SalesOrderWebResponseDto) => {
     // Navigate to the processing page with specific item data
     navigate(`/sales-orders/${order.id}/process-item/${item.id}`, {
       state: {
@@ -103,35 +104,35 @@ const SalesOrderManagement = () => {
       },
     },
     {
-      accessorKey: 'partyName',
+      accessorKey: 'buyerName',
       header: 'Party Name',
       cell: ({ row }: SalesOrderCellProps) => {
         const order = row.original;
-        return <div>{order.partyName}</div>;
+        return <div>{order.buyerName}</div>;
       },
     },
     {
-      accessorKey: 'salesDate',
+      accessorKey: 'orderDate',
       header: 'Sales Date',
       cell: ({ row }: SalesOrderCellProps) => {
         const order = row.original;
-        return <div>{formatDate(new Date(order.salesDate))}</div>;
+        return <div>{formatDate(new Date(order.orderDate))}</div>;
       },
     },
     {
-      accessorKey: 'processFlag',
+      accessorKey: 'isJobWork',
       header: 'Status',
       cell: ({ row }: SalesOrderCellProps) => {
         const order = row.original;
         return (
           <div>
-            {order.processFlag === 0 ? (
+            {order.isJobWork ? (
               <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">
-                Unprocessed
+                Job Work
               </span>
             ) : (
               <span className="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-800 ring-1 ring-inset ring-green-600/20">
-                Processed
+                Regular
               </span>
             )}
           </div>
@@ -247,7 +248,7 @@ const SalesOrderManagement = () => {
                 <div className="text-sm font-normal mt-2">
                   Voucher:{' '}
                   <span className="text-primary font-medium">{selectedOrder.voucherNumber}</span> |
-                  Party: {selectedOrder.partyName}
+                  Party: {selectedOrder.buyerName}
                 </div>
               )}
             </DialogTitle>
@@ -267,21 +268,27 @@ const SalesOrderManagement = () => {
                           </span>
                         </p>
                         <p>
-                          <span className="font-medium">Party Name:</span> {selectedOrder.partyName}
+                          <span className="font-medium">Party Name:</span> {selectedOrder.buyerName}
                         </p>
                         <p>
                           <span className="font-medium">Sales Date:</span>{' '}
-                          {formatDate(new Date(selectedOrder.salesDate))}
+                          {formatDate(new Date(selectedOrder.orderDate))}
                         </p>
                         <p>
-                          <span className="font-medium">Reference:</span> {selectedOrder.reference}
+                          <span className="font-medium">Terms of Payment:</span>{' '}
+                          {selectedOrder.termsOfPayment}
                         </p>
                         <p>
-                          <span className="font-medium">GST Registration:</span>{' '}
-                          {selectedOrder.gstRegistrationType}
+                          <span className="font-medium">Company Name:</span>{' '}
+                          {selectedOrder.companyName}
                         </p>
                         <p>
-                          <span className="font-medium">State:</span> {selectedOrder.stateName}
+                          <span className="font-medium">Company GSTIN:</span>{' '}
+                          {selectedOrder.companyGSTIN}
+                        </p>
+                        <p>
+                          <span className="font-medium">Company State:</span>{' '}
+                          {selectedOrder.companyState}
                         </p>
                       </div>
                     </div>
@@ -289,19 +296,21 @@ const SalesOrderManagement = () => {
                       <h3 className="text-lg font-semibold mb-2">Additional Information</h3>
                       <div className="space-y-1 text-sm">
                         <p>
-                          <span className="font-medium">Voucher Type:</span> {selectedOrder.vchType}
+                          <span className="font-medium">Voucher Type:</span> {selectedOrder.voucherType}
                         </p>
                         <p>
-                          <span className="font-medium">Status:</span>{' '}
-                          {selectedOrder.processFlag === 0 ? (
-                            <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">
-                              Unprocessed
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-800 ring-1 ring-inset ring-green-600/20">
-                              Processed
-                            </span>
-                          )}
+                          <span className="font-medium">Job Work:</span>{' '}
+                          {selectedOrder.isJobWork ? 'Yes' : 'No'}
+                        </p>
+                        <p>
+                          <span className="font-medium">Serial No:</span> {selectedOrder.serialNo || '-'}
+                        </p>
+                        <p>
+                          <span className="font-medium">Total Quantity:</span>{' '}
+                          {selectedOrder.totalQuantity}
+                        </p>
+                        <p>
+                          <span className="font-medium">Total Amount:</span> ₹{selectedOrder.totalAmount}
                         </p>
                         <p>
                           <span className="font-medium">Created At:</span>{' '}
@@ -326,16 +335,19 @@ const SalesOrderManagement = () => {
                               Item Name
                             </th>
                             <th className="text-left p-3 sticky top-0 bg-muted z-10 min-w-[120px]">
-                              Actual Qty
+                              Quantity
                             </th>
                             <th className="text-left p-3 sticky top-0 bg-muted z-10 min-w-[200px]">
                               Description
                             </th>
                             <th className="text-left p-3 sticky top-0 bg-muted z-10 min-w-[150px]">
-                              Order No
+                              Fabric Type
                             </th>
                             <th className="text-left p-3 sticky top-0 bg-muted z-10 min-w-[120px]">
-                              Status
+                              Rate
+                            </th>
+                            <th className="text-left p-3 sticky top-0 bg-muted z-10 min-w-[120px]">
+                              Amount
                             </th>
                             <th className="text-left p-3 sticky top-0 bg-muted z-10 min-w-[120px]">
                               Action
@@ -343,41 +355,26 @@ const SalesOrderManagement = () => {
                           </tr>
                         </thead>
                         <tbody>
-                          {selectedOrder.items.map((item: SalesOrderItemDto) => (
+                          {selectedOrder.items.map((item: SalesOrderItemWebResponseDto) => (
                             <tr key={item.id} className="border-t hover:bg-muted/50">
+                              <td className="p-3 whitespace-normal break-words">{item.itemName}</td>
+                              <td className="p-3">{item.qty}</td>
                               <td className="p-3 whitespace-normal break-words">
-                                {item.stockItemName}
+                                {item.itemDescription || '-'}
                               </td>
-                              <td className="p-3">{item.actualQty}</td>
-                              <td className="p-3 whitespace-normal break-words">
-                                {item.descriptions || '-'}
-                              </td>
-                              <td className="p-3">{item.orderNo}</td>
+                              <td className="p-3">{item.fabricType}</td>
+                              <td className="p-3">₹{item.rate}</td>
+                              <td className="p-3">₹{item.amount}</td>
                               <td className="p-3">
-                                {item.processFlag === 0 ? (
-                                  <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">
-                                    Unprocessed
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-800 ring-1 ring-inset ring-green-600/20">
-                                    Processed
-                                  </span>
-                                )}
-                              </td>
-                              <td className="p-3">
-                                {item.processFlag === 0 ? (
-                                  <Button
-                                    variant="default"
-                                    size="sm"
-                                    onClick={() => handleProcessOrderItem(item, selectedOrder)}
-                                    className="bg-green-600 hover:bg-green-700"
-                                  >
-                                    <Settings className="h-4 w-4 mr-1" />
-                                    Process
-                                  </Button>
-                                ) : (
-                                  <span className="text-sm text-muted-foreground">Processed</span>
-                                )}
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  onClick={() => handleProcessOrderItem(item, selectedOrder)}
+                                  className="bg-green-600 hover:bg-green-700"
+                                >
+                                  <Settings className="h-4 w-4 mr-1" />
+                                  Process
+                                </Button>
                               </td>
                             </tr>
                           ))}
@@ -386,32 +383,29 @@ const SalesOrderManagement = () => {
                     </div>
                   </div>
 
-                  {selectedOrder.orderTerms && (
+                  {selectedOrder.remarks && (
                     <div>
-                      <h3 className="text-lg font-semibold mb-2">Order Terms</h3>
+                      <h3 className="text-lg font-semibold mb-2">Remarks</h3>
                       <div className="border rounded-lg p-3 bg-muted">
-                        <p className="text-sm">{selectedOrder.orderTerms}</p>
+                        <p className="text-sm">{selectedOrder.remarks}</p>
                       </div>
                     </div>
                   )}
 
-                  {selectedOrder.companyAddress && (
-                    <div>
-                      <h3 className="text-lg font-semibold mb-2">Company Address</h3>
-                      <div className="border rounded-lg p-3 bg-muted">
-                        <p className="text-sm">{selectedOrder.companyAddress}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {selectedOrder.buyerAddress && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <h3 className="text-lg font-semibold mb-2">Buyer Address</h3>
                       <div className="border rounded-lg p-3 bg-muted">
                         <p className="text-sm">{selectedOrder.buyerAddress}</p>
                       </div>
                     </div>
-                  )}
+                    <div>
+                      <h3 className="text-lg font-semibold mb-2">Consignee Address</h3>
+                      <div className="border rounded-lg p-3 bg-muted">
+                        <p className="text-sm">{selectedOrder.consigneeAddress}</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

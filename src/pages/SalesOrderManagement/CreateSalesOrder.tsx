@@ -756,99 +756,7 @@ const CreateSalesOrder = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
      
 
-          {/* Consignee Section */}
-          <Card className="text-xs">
-            <CardHeader 
-              className="cursor-pointer py-1" 
-              onClick={() => toggleSection('consignee')}
-            >
-              <div className="flex justify-between items-center">
-                <CardTitle className="text-sm">Consignee (Ship To)</CardTitle>
-                {expandedSections.consignee ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-              </div>
-            </CardHeader>
-            {expandedSections.consignee && (
-              <CardContent className="pt-0 space-y-1">
-                <EnhancedSearchSelect
-                  options={customers}
-                  value={selectedConsignee ? selectedConsignee.id.toString() : ''}
-                  onValueChange={(v) => setSelectedConsignee(customers.find(c => c.id.toString() === v) || null)}
-                  placeholder="Select Consignee"
-                  showDetails={true}
-                />
-                
-                {selectedConsignee && (
-                  <div className="p-1 bg-green-50 rounded text-xs border">
-                    <div className="font-semibold text-green-800 mb-1">Consignee Info</div>
-                    <div className="grid grid-cols-2 gap-x-2 gap-y-1">
-                      <div>
-                        <label className="text-xs font-medium">GSTIN:</label>
-                        <Input 
-                          value={editableConsignee.gstin} 
-                          onChange={(e) => setEditableConsignee({...editableConsignee, gstin: e.target.value})}
-                          className="h-6 text-xs mt-0.5"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium">State:</label>
-                        <Input 
-                          value={editableConsignee.state} 
-                          onChange={(e) => setEditableConsignee({...editableConsignee, state: e.target.value})}
-                          className="h-6 text-xs mt-0.5"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium">Contact Person:</label>
-                        <Input 
-                          value={editableConsignee.contactPerson} 
-                          onChange={(e) => setEditableConsignee({...editableConsignee, contactPerson: e.target.value})}
-                          className="h-6 text-xs mt-0.5"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium">Mobile:</label>
-                        <Input 
-                          value={editableConsignee.phone} 
-                          onChange={(e) => setEditableConsignee({...editableConsignee, phone: e.target.value})}
-                          className="h-6 text-xs mt-0.5"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium">Phone:</label>
-                        <Input 
-                          value={editableConsignee.contactPersonPhone} 
-                          onChange={(e) => setEditableConsignee({...editableConsignee, contactPersonPhone: e.target.value})}
-                          className="h-6 text-xs mt-0.5"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium">Email:</label>
-                        <Input 
-                          value={editableConsignee.email} 
-                          onChange={(e) => setEditableConsignee({...editableConsignee, email: e.target.value})}
-                          className="h-6 text-xs mt-0.5"
-                        />
-                      </div>
-                      <div className="col-span-2">
-                        <label className="text-xs font-medium">Address:</label>
-                        <Textarea 
-                          value={editableConsignee.address} 
-                          onChange={(e) => setEditableConsignee({...editableConsignee, address: e.target.value})}
-                          className="h-6 text-xs mt-0.5"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-                
-                {customers.length === 0 && (
-                  <div className="text-xs text-red-500 p-1 bg-red-50 rounded">
-                    No consignees loaded
-                  </div>
-                )}
-              </CardContent>
-            )}
-          </Card>
+      
                {/* Buyer Section */}
           <Card className="text-xs">
             <CardHeader 
@@ -937,6 +845,99 @@ const CreateSalesOrder = () => {
                 {customers.length === 0 && (
                   <div className="text-xs text-red-500 p-1 bg-red-50 rounded">
                     No buyers loaded
+                  </div>
+                )}
+              </CardContent>
+            )}
+          </Card>
+              {/* Consignee Section */}
+          <Card className="text-xs">
+            <CardHeader 
+              className="cursor-pointer py-1" 
+              onClick={() => toggleSection('consignee')}
+            >
+              <div className="flex justify-between items-center">
+                <CardTitle className="text-sm">Consignee (Ship To)</CardTitle>
+                {expandedSections.consignee ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              </div>
+            </CardHeader>
+            {expandedSections.consignee && (
+              <CardContent className="pt-0 space-y-1">
+                <EnhancedSearchSelect
+                  options={customers}
+                  value={selectedConsignee ? selectedConsignee.id.toString() : ''}
+                  onValueChange={(v) => setSelectedConsignee(customers.find(c => c.id.toString() === v) || null)}
+                  placeholder="Select Consignee"
+                  showDetails={true}
+                />
+                
+                {selectedConsignee && (
+                  <div className="p-1 bg-green-50 rounded text-xs border">
+                    <div className="font-semibold text-green-800 mb-1">Consignee Info</div>
+                    <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+                      <div>
+                        <label className="text-xs font-medium">GSTIN:</label>
+                        <Input 
+                          value={editableConsignee.gstin} 
+                          onChange={(e) => setEditableConsignee({...editableConsignee, gstin: e.target.value})}
+                          className="h-6 text-xs mt-0.5"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium">State:</label>
+                        <Input 
+                          value={editableConsignee.state} 
+                          onChange={(e) => setEditableConsignee({...editableConsignee, state: e.target.value})}
+                          className="h-6 text-xs mt-0.5"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium">Contact Person:</label>
+                        <Input 
+                          value={editableConsignee.contactPerson} 
+                          onChange={(e) => setEditableConsignee({...editableConsignee, contactPerson: e.target.value})}
+                          className="h-6 text-xs mt-0.5"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium">Mobile:</label>
+                        <Input 
+                          value={editableConsignee.phone} 
+                          onChange={(e) => setEditableConsignee({...editableConsignee, phone: e.target.value})}
+                          className="h-6 text-xs mt-0.5"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium">Phone:</label>
+                        <Input 
+                          value={editableConsignee.contactPersonPhone} 
+                          onChange={(e) => setEditableConsignee({...editableConsignee, contactPersonPhone: e.target.value})}
+                          className="h-6 text-xs mt-0.5"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium">Email:</label>
+                        <Input 
+                          value={editableConsignee.email} 
+                          onChange={(e) => setEditableConsignee({...editableConsignee, email: e.target.value})}
+                          className="h-6 text-xs mt-0.5"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <label className="text-xs font-medium">Address:</label>
+                        <Textarea 
+                          value={editableConsignee.address} 
+                          onChange={(e) => setEditableConsignee({...editableConsignee, address: e.target.value})}
+                          className="h-6 text-xs mt-0.5"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {customers.length === 0 && (
+                  <div className="text-xs text-red-500 p-1 bg-red-50 rounded">
+                    No consignees loaded
                   </div>
                 )}
               </CardContent>

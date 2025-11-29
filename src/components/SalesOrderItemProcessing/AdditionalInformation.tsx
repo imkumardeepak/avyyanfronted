@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { SalesOrderDto } from '@/types/api-types';
+import type { SalesOrderWebResponseDto } from '@/types/api-types';
 import { useEffect } from 'react';
 
 interface AdditionalFields {
@@ -16,7 +16,7 @@ interface AdditionalFields {
 
 interface AdditionalInformationProps {
   additionalFields: AdditionalFields;
-  selectedOrder: SalesOrderDto | null;
+  selectedOrder: SalesOrderWebResponseDto | null;
   onAdditionalFieldChange: (
     field: keyof AdditionalFields,
     value: string | number | null
@@ -76,12 +76,12 @@ export function AdditionalInformation({
               onChange={(e) => onAdditionalFieldChange('counter', e.target.value)}
               placeholder="Enter counter"
             />
-            {/* <div className="text-xs text-muted-foreground space-y-1">
+            <div className="text-xs text-muted-foreground space-y-1">
               <p>Calculated: {calculatedCounter}</p>
-            //   <p className="text-xs text-muted-foreground italic">
-            //     Formula: (169300 × {count} × {rollPerKg}) ÷ ({needle} × {feeder} × {stichLength})
-            //   </p> 
-            </div> */}
+             <p className="text-xs text-muted-foreground italic">
+               Formula: (169300 × {count} × {rollPerKg}) ÷ ({needle} × {feeder} × {stichLength})
+              </p> 
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -98,7 +98,7 @@ export function AdditionalInformation({
             <Label htmlFor="party-name">Party Name</Label>
             <Input
               id="party-name"
-              value={selectedOrder?.partyName || ''}
+              value={selectedOrder?.buyerName || ''}
               disabled
               placeholder="Party name from sales order"
             />

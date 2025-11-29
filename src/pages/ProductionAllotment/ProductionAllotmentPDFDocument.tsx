@@ -28,17 +28,17 @@ Font.register({
   ],
 });
 
-// Create styles
+// Create styles with reduced font size
 const styles = StyleSheet.create({
   page: {
-    padding: 15,
+    padding: 10,
     fontFamily: 'Roboto',
-    fontSize: 10,
+    fontSize: 8, // Reduced from 10 to 8
     borderWidth: 1,
     borderColor: '#000',
   },
   header: {
-    fontSize: 16,
+    fontSize: 14, // Reduced from 16 to 14
     fontWeight: 600,
     marginBottom: 0,
     textAlign: 'center',
@@ -46,7 +46,7 @@ const styles = StyleSheet.create({
     borderColor: '#000',
   },
   subheader: {
-    fontSize: 12,
+    fontSize: 10, // Reduced from 12 to 10
     fontWeight: 600,
     marginBottom: 0,
     textAlign: 'center',
@@ -65,30 +65,30 @@ const styles = StyleSheet.create({
     fontWeight: 500,
     borderWidth: 1,
     borderColor: '#000',
-    padding: 3,
+    padding: 2, // Reduced padding
   },
   value: {
     width: '25%',
     borderWidth: 1,
     borderColor: '#000',
-    padding: 3,
+    padding: 2, // Reduced padding
   },
   wideLabel: {
     width: '50%',
     fontWeight: 500,
     borderWidth: 1,
     borderColor: '#000',
-    padding: 3,
+    padding: 2, // Reduced padding
   },
   wideValue: {
     width: '50%',
     borderWidth: 1,
     borderColor: '#000',
-    padding: 3,
+    padding: 2, // Reduced padding
   },
   table: {
     width: '100%',
-    marginVertical: 10,
+    marginVertical: 5, // Reduced margin
     borderWidth: 1,
     borderColor: '#000',
   },
@@ -96,24 +96,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   tableColHeader: {
-    width: '12.5%',
+    width: '10%', // Reduced width for more columns
     borderRightWidth: 1,
     borderColor: '#000',
     backgroundColor: '#f0f0f0',
-    padding: 2,
+    padding: 1, // Reduced padding
     textAlign: 'center',
     fontWeight: 600,
+    fontSize: 7, // Smaller font for headers
   },
   tableCol: {
-    width: '12.5%',
+    width: '10%', // Reduced width for more columns
     borderRightWidth: 1,
     borderTopWidth: 1,
     borderColor: '#000',
-    padding: 2,
+    padding: 1, // Reduced padding
     textAlign: 'center',
+    fontSize: 7, // Smaller font for content
   },
   footer: {
-    marginTop: 20,
+    marginTop: 10, // Reduced margin
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
@@ -122,7 +124,8 @@ const styles = StyleSheet.create({
   },
   footerLabel: {
     fontWeight: 600,
-    marginTop: 10,
+    marginTop: 5, // Reduced margin
+    fontSize: 8, // Consistent font size
   },
 });
 
@@ -188,24 +191,31 @@ const ProductionAllotmentPDFDocument: React.FC<{
         <View style={styles.row}>
           <Text style={styles.label}>FABRIC STRUCTURE</Text>
           <Text style={styles.value}>{allotment.fabricType || 'N/A'}</Text>
+          <Text style={styles.label}>COMPOSITION</Text>
+          <Text style={styles.value}>{allotment.composition || 'N/A'}</Text>
         </View>
 
+        {/* Shift A+B Table - 20 rows */}
         <View style={styles.table}>
           <View style={styles.tableRow}>
-            <Text style={styles.tableColHeader}>SR. NO.</Text>
-            <Text style={styles.tableColHeader}>SHFT</Text>
-            <Text style={styles.tableColHeader}>ROLL NO.</Text>
-            <Text style={styles.tableColHeader}>ROLL WT.</Text>
+            <Text style={styles.tableColHeader}>SR.</Text>
+            <Text style={styles.tableColHeader}>SHIFT</Text>
+            <Text style={styles.tableColHeader}>ROLL</Text>
+            <Text style={styles.tableColHeader}>WT</Text>
             <Text style={styles.tableColHeader}>FFD</Text>
-            <Text style={styles.tableColHeader}>LYCRA BREAK</Text>
-            <Text style={styles.tableColHeader}>NEEDLE BREAK</Text>
+            <Text style={styles.tableColHeader}>LYCRA</Text>
+            <Text style={styles.tableColHeader}>NEEDLE</Text>
+            <Text style={styles.tableColHeader}>OIL</Text>
+            <Text style={styles.tableColHeader}>DROP</Text>
             <Text style={[styles.tableColHeader, { borderRightWidth: 0 }]}>REMARK</Text>
           </View>
 
-          {Array.from({ length: 10 }).map((_, index) => (
+          {Array.from({ length: 20 }).map((_, index) => (
             <View key={index} style={styles.tableRow}>
               <Text style={styles.tableCol}>{index + 1}</Text>
               <Text style={styles.tableCol}>A+B</Text>
+              <Text style={styles.tableCol}></Text>
+              <Text style={styles.tableCol}></Text>
               <Text style={styles.tableCol}></Text>
               <Text style={styles.tableCol}></Text>
               <Text style={styles.tableCol}></Text>
@@ -215,22 +225,28 @@ const ProductionAllotmentPDFDocument: React.FC<{
             </View>
           ))}
         </View>
+
+        {/* Shift B+C Table - 20 rows */}
         <View style={styles.table}>
           <View style={styles.tableRow}>
-            <Text style={styles.tableColHeader}>SR. NO.</Text>
-            <Text style={styles.tableColHeader}>SHFT</Text>
-            <Text style={styles.tableColHeader}>ROLL NO.</Text>
-            <Text style={styles.tableColHeader}>ROLL WT.</Text>
+            <Text style={styles.tableColHeader}>SR.</Text>
+            <Text style={styles.tableColHeader}>SHIFT</Text>
+            <Text style={styles.tableColHeader}>ROLL</Text>
+            <Text style={styles.tableColHeader}>WT</Text>
             <Text style={styles.tableColHeader}>FFD</Text>
-            <Text style={styles.tableColHeader}>LYCRA BREAK</Text>
-            <Text style={styles.tableColHeader}>NEEDLE BREAK</Text>
+            <Text style={styles.tableColHeader}>LYCRA</Text>
+            <Text style={styles.tableColHeader}>NEEDLE</Text>
+            <Text style={styles.tableColHeader}>OIL</Text>
+            <Text style={styles.tableColHeader}>DROP</Text>
             <Text style={[styles.tableColHeader, { borderRightWidth: 0 }]}>REMARK</Text>
           </View>
 
-          {Array.from({ length: 10 }).map((_, index) => (
+          {Array.from({ length: 20 }).map((_, index) => (
             <View key={index} style={styles.tableRow}>
               <Text style={styles.tableCol}>{index + 1}</Text>
               <Text style={styles.tableCol}>B+C</Text>
+              <Text style={styles.tableCol}></Text>
+              <Text style={styles.tableCol}></Text>
               <Text style={styles.tableCol}></Text>
               <Text style={styles.tableCol}></Text>
               <Text style={styles.tableCol}></Text>
@@ -251,7 +267,7 @@ const ProductionAllotmentPDFDocument: React.FC<{
           </View>
         </View>
 
-        <Text style={{ fontSize: 8, textAlign: 'center', marginTop: 10 }}>
+        <Text style={{ fontSize: 6, textAlign: 'center', marginTop: 5 }}>
           Generated by Avyaan Knitfab System - {new Date().toLocaleDateString()}
         </Text>
       </Page>

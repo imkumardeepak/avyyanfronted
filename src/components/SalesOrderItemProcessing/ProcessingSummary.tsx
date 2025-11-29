@@ -1,8 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import type { SalesOrderItemDto } from '@/types/api-types';
+import type { SalesOrderItemWebResponseDto } from '@/types/api-types';
 
 interface ProcessingSummaryProps {
-  selectedItem: SalesOrderItemDto;
+  selectedItem: SalesOrderItemWebResponseDto;
 }
 
 export function ProcessingSummary({ selectedItem }: ProcessingSummaryProps) {
@@ -25,9 +25,7 @@ export function ProcessingSummary({ selectedItem }: ProcessingSummaryProps) {
           </div>
           <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
             <div className="text-2xl font-bold text-green-600">
-              {typeof selectedItem.actualQty === 'string'
-                ? parseFloat(selectedItem.actualQty) || 0
-                : selectedItem.actualQty || 0}
+              {selectedItem.qty}
             </div>
             <div className="text-sm text-green-600">Quantity (kg)</div>
           </div>

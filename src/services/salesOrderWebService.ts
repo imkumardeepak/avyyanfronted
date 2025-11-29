@@ -70,4 +70,14 @@ export class SalesOrderWebService {
       throw error;
     }
   }
+
+  // PUT /api/SalesOrderWeb/{salesOrderWebId}/items/{salesOrderItemWebId}/process - Mark a sales order web item as processed
+  static async markSalesOrderItemWebAsProcessed(salesOrderWebId: number, salesOrderItemWebId: number): Promise<void> {
+    try {
+      await apiClient.put(`/SalesOrderWeb/${salesOrderWebId}/items/${salesOrderItemWebId}/process`);
+    } catch (error) {
+      console.error('Error marking sales order web item as processed:', error);
+      throw error;
+    }
+  }
 }

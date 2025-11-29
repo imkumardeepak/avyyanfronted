@@ -2,6 +2,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Calculator } from 'lucide-react';
+import type { SalesOrderItemWebResponseDto } from '@/types/api-types';
+import { useEffect } from 'react';
 
 interface RollInput {
   actualQuantity: number;
@@ -18,13 +20,8 @@ interface RollCalculationProps {
     fractionalRoll: number;
     fractionalWeight: number;
   };
-  selectedItem: {
-    actualQty?: string | number;
-  };
-  parsedDescriptionValues: {
-    weightPerRoll: number;
-    numberOfRolls: number;
-  };
+  selectedItem: SalesOrderItemWebResponseDto;
+  // Removed parsedDescriptionValues as we're using dedicated fields now
   onRollInputChange: (field: keyof RollInput, value: number) => void;
 }
 
@@ -32,9 +29,16 @@ export function RollCalculation({
   rollInput,
   rollCalculation,
   selectedItem,
-  parsedDescriptionValues,
+  // Removed parsedDescriptionValues as we're using dedicated fields now
   onRollInputChange,
 }: RollCalculationProps) {
+  // Automatically populate rollPerKg from wtPerRoll when available and rollPerKg is not set
+  useEffect(() => {
+    if (selectedItem?.wtPerRoll > 0 && !rollInput.rollPerKg) {
+      onRollInputChange('rollPerKg', selectedItem.wtPerRoll);
+    }
+  }, [selectedItem?.wtPerRoll, rollInput.rollPerKg, onRollInputChange]);
+
   return (
     <Card>
       <CardHeader>
@@ -60,11 +64,7 @@ export function RollCalculation({
                 className="text-center font-mono"
               />
               <div className="text-xs text-muted-foreground">
-                From Sales Order:{' '}
-                {typeof selectedItem.actualQty === 'string'
-                  ? parseFloat(selectedItem.actualQty) || 0
-                  : selectedItem.actualQty || 0}{' '}
-                kg
+                From Sales Order: {selectedItem.qty || 0} kg
               </div>
             </div>
             <div className="space-y-2">
@@ -81,18 +81,17 @@ export function RollCalculation({
                 className="text-center font-mono"
               />
               <div className="text-xs text-muted-foreground">
-                {parsedDescriptionValues.weightPerRoll > 0 ? (
+                {selectedItem.wtPerRoll > 0 ? (
                   <span className="text-green-600">
-                    ✓ Auto-parsed from description: {parsedDescriptionValues.weightPerRoll}{' '}
-                    kg/roll
+                    ✓ From Sales Order: {selectedItem.wtPerRoll} kg/roll
                   </span>
-                ) : parsedDescriptionValues.numberOfRolls > 0 ? (
+                ) : selectedItem.noOfRolls > 0 ? (
                   <span className="text-green-600">
-                    ✓ Calculated from {parsedDescriptionValues.numberOfRolls} rolls
+                    ✓ Calculated from {selectedItem.noOfRolls} rolls in Sales Order
                   </span>
                 ) : (
                   <span className="text-orange-600">
-                    ⚠ Enter manually (not found in description)
+                    ⚠ Enter manually (not found in sales order)
                   </span>
                 )}
               </div>

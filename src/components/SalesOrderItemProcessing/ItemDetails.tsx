@@ -1,10 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Package } from 'lucide-react';
-import type { SalesOrderDto, SalesOrderItemDto } from '@/types/api-types';
+import type { SalesOrderWebResponseDto, SalesOrderItemWebResponseDto } from '@/types/api-types';
 
 interface ItemDetailsProps {
-  selectedItem: SalesOrderItemDto;
-  selectedOrder: SalesOrderDto;
+  selectedItem: SalesOrderItemWebResponseDto;
+  selectedOrder: SalesOrderWebResponseDto;
 }
 
 export function ItemDetails({ selectedItem, selectedOrder }: ItemDetailsProps) {
@@ -23,12 +23,12 @@ export function ItemDetails({ selectedItem, selectedOrder }: ItemDetailsProps) {
             <div className="space-y-2">
               <div>
                 <span className="text-sm font-medium text-muted-foreground">Item Name:</span>
-                <p className="font-semibold">{selectedItem.stockItemName}</p>
+                <p className="font-semibold">{selectedItem.itemName}</p>
               </div>
               <div>
                 <span className="text-sm font-medium text-muted-foreground">Description:</span>
                 <p className="text-sm">
-                  {selectedItem.descriptions || 'No description available'}
+                  {selectedItem.itemDescription || 'No description available'}
                 </p>
               </div>
             </div>
@@ -39,7 +39,7 @@ export function ItemDetails({ selectedItem, selectedOrder }: ItemDetailsProps) {
             <div className="space-y-2">
               <div>
                 <span className="text-sm font-medium text-muted-foreground">Order Number:</span>
-                <p className="font-semibold">{selectedItem.orderNo}</p>
+                <p className="font-semibold">{selectedOrder.voucherNumber}</p>
               </div>
               <div>
                 <span className="text-sm font-medium text-muted-foreground">Voucher Number:</span>

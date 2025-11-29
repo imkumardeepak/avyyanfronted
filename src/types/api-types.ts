@@ -1423,6 +1423,10 @@ export interface SalesOrderWebResponseDto {
   // Items
   items: SalesOrderItemWebResponseDto[];
 
+  // Process fields
+  isProcess: number;
+  processDate?: string;
+
   // Audit fields
   createdAt: string; // ISO 8601 datetime
   createdBy: string;
@@ -1456,6 +1460,10 @@ export interface SalesOrderItemWebResponseDto {
   slitLine?: string;
   stitchLength?: string;
   dueDate?: string;
+  
+  // Process fields
+  isProcess: number; // Changed from boolean to number to match backend
+  processDate?: string; // Added process date field
 }
 
 export interface CreateSalesOrderWebRequestDto {
