@@ -1527,9 +1527,11 @@ export interface CreateSalesOrderItemWebRequestDto {
   remarks: string;
 
   // New fields
+  unit?: string; // Unit field
   slitLine?: string;
   stitchLength?: string;
   dueDate?: string;
+  isProcess?: boolean; // Process flag
 }
 
 export interface UpdateSalesOrderWebRequestDto {
@@ -1595,9 +1597,11 @@ export interface UpdateSalesOrderItemWebRequestDto {
   remarks: string;
 
   // New fields
+  unit?: string; // Unit field
   slitLine?: string;
   stitchLength?: string;
   dueDate?: string;
+  isProcess?: boolean; // Process flag
 }
 
 // ============================================
